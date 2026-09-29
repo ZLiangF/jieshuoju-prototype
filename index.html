@@ -49,7 +49,6 @@
         <div class="source-tabs" id="source-tabs">
           <button class="on" type="button" data-source="file">上传文件</button>
           <button type="button" data-source="paste">粘贴文本</button>
-          <button type="button" data-source="ai">AI 生成剧本</button>
         </div>
 
         <div class="upload-pane on" data-pane="file">
@@ -72,12 +71,6 @@
           <textarea id="paste-text" placeholder="在此粘贴完整剧本… 支持对白短剧、漫剧分镜稿或解说旁白体。"></textarea>
           <div class="sub">粘贴后进入创作设定，再点风格库选择画风</div>
           <button class="btn primary" id="confirm-paste" type="button">确认粘贴</button>
-        </div>
-
-        <div class="upload-pane" data-pane="ai">
-          <textarea id="ai-text" placeholder="故事设定、主角特征、剧情脉络、结局… 例如：外卖员隐姓埋名三年，前妻为攀附权贵逼他离婚。"></textarea>
-          <div class="sub">先写故事构想，再在风格库里选择画面风格</div>
-          <button class="btn primary" id="confirm-ai" type="button">生成剧本</button>
         </div>
       </div>
 
@@ -298,13 +291,11 @@
       document.body.classList.add("is-filled");
       var titles = {
         file: ["上传成功", "离婚后（3集）.txt · 删除后可重新上传"],
-        paste: ["已粘贴文本", "18,420 字 · 预估 3 集 · 可删除后重贴"],
-        ai: ["AI 已生成剧本", "可删除重写，再点风格库选择画风"]
+        paste: ["已粘贴文本", "18,420 字 · 预估 3 集 · 可删除后重贴"]
       };
       var pack = titles[state.source] || titles.file;
       document.getElementById("ok-title").textContent = pack[0];
       document.getElementById("ok-sub").textContent = pack[1];
-      if (state.source === "ai") document.getElementById("f-name").value = "AI生成剧本（3集）";
       if (state.source === "paste") document.getElementById("f-name").value = "粘贴剧本（3集）";
       if (state.source === "file") document.getElementById("f-name").value = "离婚后（3集）";
     }
@@ -429,7 +420,6 @@
       }
       showFilled("paste");
     };
-    document.getElementById("confirm-ai").onclick = function () { showFilled("ai"); };
     document.getElementById("remove-file").onclick = showEmpty;
     document.getElementById("new-project").onclick = showEmpty;
     document.getElementById("start-create").onclick = startCreate;
