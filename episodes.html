@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>分集视频 · 离婚后（3集）</title>
+  <link rel="stylesheet" href="css/product.css?v=16" />
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="tb-left">
+      <a class="tb-back" href="index.html">‹ 离婚后（3集）</a>
+    </div>
+    <div class="tb-center steps">
+      <a class="step" href="outline.html">剧本大纲</a>
+      <span style="color:#555">›</span>
+      <a class="step" href="assets.html">资产库</a>
+      <span style="color:#555">›</span>
+      <a class="step on" href="episodes.html">分集视频</a>
+    </div>
+    <div class="tb-right">
+      <div class="credit">✦ <span id="credits"></span></div>
+      <button class="bell" aria-label="通知"></button>
+      <div class="avatar"></div>
+    </div>
+  </header>
+
+  <div class="page">
+    <div class="toolbar">
+      <div style="display:flex;align-items:center;gap:10px">
+        <b>共 3 集</b>
+        <input class="search" placeholder="输入集名，按回车进行搜索" />
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="icon-round" title="刷新">↻</button>
+        <button class="icon-round" id="add-ep" title="新增">＋</button>
+      </div>
+    </div>
+    <div class="ep-wrap" id="eps"></div>
+  </div>
+</div>
+
+<div class="style-mask" id="oc-mask">
+  <div class="oc-sheet" role="dialog" aria-modal="true" aria-labelledby="oc-title">
+    <div class="oc-head">
+      <div>
+        <h2 id="oc-title">一键成片</h2>
+        <p id="oc-desc"></p>
+      </div>
+      <button class="style-close" id="oc-close" type="button" aria-label="关闭">✕</button>
+    </div>
+    <div class="oc-body">
+      <div class="oc-pair">
+        <div class="oc-field">
+          <div class="label">模型</div>
+          <select id="oc-model">
+            <option value="v25">解说剧 V 2.5</option>
+            <option value="v20">解说剧 V 2.0</option>
+          </select>
+        </div>
+        <div class="oc-field">
+          <div class="label">分辨率</div>
+          <select id="oc-res">
+            <option value="480P">480P</option>
+            <option value="720P">720P</option>
+            <option value="1080P">1080P</option>
+          </select>
+        </div>
+      </div>
+      <div class="oc-v20" id="oc-v20">
+        <div class="oc-field" id="oc-speed-field">
+          <div class="label">语速 <span class="hint">支持 1.0–1.5，默认 1.3</span></div>
+          <input id="oc-speed" type="number" min="1" max="1.5" step="0.1" />
+          <div class="oc-err" id="oc-speed-err"></div>
+        </div>
+        <div class="oc-pair">
+          <div class="oc-field">
+            <div class="label">是否对口型</div>
+            <div class="oc-switch-row"><span class="hint">默认关</span><button class="oc-switch" id="oc-lip" type="button" aria-label="是否对口型"></button></div>
+          </div>
+          <div class="oc-field">
+            <div class="label">是否添加字幕</div>
+            <div class="oc-switch-row"><span class="hint">默认关</span><button class="oc-switch" id="oc-sub" type="button" aria-label="是否添加字幕"></button></div>
+          </div>
+        </div>
+        <div class="oc-field">
+          <div class="label">上传音频 <span class="hint">可选 · mp3 / wav / m4a，≤100MB</span></div>
+          <button class="oc-upload" id="oc-upload" type="button"><b>点击上传音频</b><br />不上传则使用系统配音</button>
+          <div class="oc-file" id="oc-file">
+            <span>本集旁白.mp3 · 8.4 MB · 01:12</span>
+            <div class="ops">
+              <button type="button" id="oc-play">试听</button>
+              <button type="button" id="oc-reup">重传</button>
+              <button type="button" id="oc-del">删除</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="oc-foot">
+      <span class="oc-tip" id="oc-tip"></span>
+      <button class="btn" id="oc-cancel" type="button">取消</button>
+      <button class="btn purple" id="oc-ok" type="button"></button>
+    </div>
+  </div>
+</div>
+
+<div class="style-mask" id="ds-mask">
+  <div class="oc-sheet" role="dialog" aria-modal="true" aria-labelledby="ds-title">
+    <div class="oc-head">
+      <div>
+        <h2 id="ds-title">确认生成导演级分镜？</h2>
+        <p>请选择分辨率。系统将基于剧本生成导演级分镜内容。</p>
+      </div>
+      <button class="style-close" id="ds-close" type="button" aria-label="关闭">✕</button>
+    </div>
+    <div class="oc-body">
+      <div class="oc-field">
+        <div class="label">分辨率</div>
+        <select id="ds-res">
+          <option value="480P">480P</option>
+          <option value="720P">720P</option>
+          <option value="1080P">1080P</option>
+        </select>
+      </div>
+      <div class="ds-credit" id="ds-credit"></div>
+    </div>
+    <div class="oc-foot">
+      <button class="btn" id="ds-cancel" type="button">取消</button>
+      <button class="btn purple" id="ds-ok" type="button">确认生成</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script>
+  var D = ReplicaData;
+  var promoClosed = false;
+  var RATE = { "480P": 2, "720P": 3, "1080P": 5 };
+  var EP_SEC = 60;
+  var AUDIO_SEC = 72;
+  var creditsEl = document.getElementById("credits");
+  var epsEl = document.getElementById("eps");
+  creditsEl.textContent = ReplicaUI.credits();
+
+  function directorBtn() {
+    return '<div class="comment-promo is-on">' +
+        '<span class="promo-halo" aria-hidden="true"></span>' +
+        '<button class="btn" type="button" data-act="director">导演级分镜</button>' +
+        '<div class="promo-bubble' + (promoClosed ? "" : " show") + '" role="status">' +
+          "<span>解说剧导演级分镜 V 2.5<br>焕新上线，成片效果全面升级</span>" +
+          '<button type="button" class="promo-x" aria-label="关闭提示">✕</button>' +
+          '<i class="promo-arrow"></i>' +
+        "</div>" +
+      "</div>";
+  }
+
+  function actsHtml(ep) {
+    if (ep.status === "ready") {
+      return '<div class="ep-status">解析完成，开始制作视频</div><div class="ep-acts"><a class="btn" href="workspace.html">编辑</a></div>';
+    }
+    if (ep.status === "done") {
+      return '<div class="ep-status">已成片</div><div class="ep-acts"><a class="btn" href="workspace.html">进入编辑</a></div>';
+    }
+    if (ep.status === "running") {
+      return '<div class="ep-running"><span>' + (ep.task === "ds" ? "导演级分镜生成中" : "一键成片生成中") + '</span><span class="bar"><i style="width:' + ep.pct + '%"></i></span><span>' + ep.pct + "%</span></div>";
+    }
+    return '<div class="ep-acts">' +
+        '<button class="btn oneclick" type="button" data-act="oneclick">' +
+          '<svg viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M7 .8 2.9 6.7h2.3L4.8 11.2 9.1 5H6.6L7 .8Z" fill="currentColor"/></svg>' +
+          "一键成片" +
+        "</button>" +
+        directorBtn() +
+      "</div>";
+  }
+
+  function render() {
+    epsEl.innerHTML = D.episodes.map(function (ep) {
+      var ready = ep.status === "ready" || ep.status === "done";
+      var idle = ep.status === "parse";
+      return '<article class="ep-item' + (idle ? " has-promo" : "") + '" data-id="' + ep.id + '" data-ready="' + ready + '">' +
+        '<div class="ep-no">' + ep.no + "</div>" +
+        '<div class="ep-cover">' + (ready ? "☰" : "◷") + "</div>" +
+        "<div><h3>" + ep.title + "</h3>" +
+        '<div class="ep-meta"><span>' + ep.roles + " 角色</span><span>" + ep.scenes + " 场景</span><span>" + ep.props + " 道具</span>" +
+        (ep.shots ? "<span>" + ep.shots + " 片段</span>" : "") + "</div>" +
+        actsHtml(ep) +
+        "</div></article>";
+    }).join("");
+  }
+
+  var oc = {
+    ep: null,
+    mask: document.getElementById("oc-mask"),
+    desc: document.getElementById("oc-desc"),
+    model: document.getElementById("oc-model"),
+    res: document.getElementById("oc-res"),
+    v20: document.getElementById("oc-v20"),
+    speed: document.getElementById("oc-speed"),
+    speedField: document.getElementById("oc-speed-field"),
+    speedErr: document.getElementById("oc-speed-err"),
+    lip: document.getElementById("oc-lip"),
+    sub: document.getElementById("oc-sub"),
+    upload: document.getElementById("oc-upload"),
+    file: document.getElementById("oc-file"),
+    tip: document.getElementById("oc-tip"),
+    ok: document.getElementById("oc-ok"),
+    hasAudio: false
+  };
+
+  function ocIsV20() { return oc.model.value === "v20"; }
+
+  function ocSeconds() {
+    if (!ocIsV20()) return EP_SEC;
+    if (oc.hasAudio) return AUDIO_SEC;
+    var s = parseFloat(oc.speed.value);
+    return Math.round(EP_SEC * 1.3 / (s >= 1 && s <= 1.5 ? s : 1.3));
+  }
+
+  function ocCost() { return ocSeconds() * RATE[oc.res.value]; }
+
+  function ocRefresh() {
+    var v20 = ocIsV20();
+    oc.v20.classList.toggle("hide", !v20);
+    var s = parseFloat(oc.speed.value);
+    var speedOk = !v20 || oc.hasAudio || (s >= 1 && s <= 1.5);
+    oc.speed.classList.toggle("bad", !speedOk);
+    oc.speedErr.textContent = speedOk ? "" : "语速需在 1.0–1.5 之间";
+    oc.speedField.classList.toggle("disabled", oc.hasAudio);
+    oc.upload.style.display = oc.hasAudio ? "none" : "";
+    oc.file.classList.toggle("show", oc.hasAudio);
+
+    var cost = ocCost();
+    var enough = D.credits >= cost;
+    oc.ok.textContent = "确认生成 · " + cost.toLocaleString("en-US") + " 积分";
+    oc.ok.disabled = !speedOk || !enough;
+    oc.tip.classList.toggle("bad", !enough);
+    oc.tip.textContent = enough
+      ? "预计 " + ocSeconds() + " 秒 × " + RATE[oc.res.value] + " 积分/秒" + (v20 && oc.hasAudio ? "（按音频时长）" : "")
+      : "积分不足，请先充值";
+  }
+
+  function ocOpen(ep) {
+    oc.ep = ep;
+    oc.desc.textContent = ep.title + " · 确认后自动拆段并全量出片。整集重做请复制本集。";
+    oc.model.value = "v25";
+    oc.res.value = "480P";
+    oc.speed.value = "1.3";
+    oc.lip.classList.remove("on");
+    oc.sub.classList.remove("on");
+    oc.hasAudio = false;
+    ocRefresh();
+    oc.mask.classList.add("open");
+  }
+
+  function ocClose() {
+    oc.mask.classList.remove("open");
+    oc.ep = null;
+  }
+
+  function ocSubmit() {
+    var ep = oc.ep;
+    if (!ep || oc.ok.disabled || ep.status !== "parse") return;
+    oc.ok.disabled = true;
+    D.credits -= ocCost();
+    creditsEl.textContent = ReplicaUI.credits();
+    ocClose();
+    ReplicaUI.toast("已提交一键成片，预扣积分，结束后按实际成功秒数多退少补");
+    runTask(ep, "oc", "done", "已成片");
+  }
+
+  function runTask(ep, task, doneStatus, doneMsg) {
+    ep.status = "running";
+    ep.task = task;
+    ep.pct = 0;
+    render();
+    var timer = setInterval(function () {
+      ep.pct = Math.min(100, ep.pct + 10);
+      if (ep.pct >= 100) {
+        clearInterval(timer);
+        ep.status = doneStatus;
+        ReplicaUI.toast(ep.title.split("：")[0] + " " + doneMsg);
+      }
+      render();
+    }, 800);
+  }
+
+  var DS_COST = { "480P": 40, "720P": 60, "1080P": 100 };
+  var ds = {
+    ep: null,
+    mask: document.getElementById("ds-mask"),
+    res: document.getElementById("ds-res"),
+    credit: document.getElementById("ds-credit"),
+    ok: document.getElementById("ds-ok")
+  };
+
+  function dsCost() { return DS_COST[ds.res.value]; }
+
+  function dsRefresh() {
+    var cost = dsCost();
+    var enough = D.credits >= cost;
+    ds.credit.innerHTML = enough
+      ? "预计消耗 <b>" + cost + " 积分</b>，将根据所选分辨率计算；具体扣减以实际解析结果为准。"
+      : "预计消耗 <b>" + cost + " 积分</b>，当前积分不足，请先充值。";
+    ds.ok.disabled = !enough;
+  }
+
+  function dsOpen(ep) {
+    ds.ep = ep;
+    ds.res.value = "480P";
+    dsRefresh();
+    ds.mask.classList.add("open");
+  }
+
+  function dsClose() {
+    ds.mask.classList.remove("open");
+    ds.ep = null;
+  }
+
+  function dsSubmit() {
+    var ep = ds.ep;
+    if (!ep || ds.ok.disabled || ep.status !== "parse") return;
+    ds.ok.disabled = true;
+    D.credits -= dsCost();
+    creditsEl.textContent = ReplicaUI.credits();
+    dsClose();
+    ReplicaUI.toast("已提交导演级分镜任务");
+    runTask(ep, "ds", "ready", "导演级分镜已生成");
+  }
+
+  ds.res.onchange = dsRefresh;
+  ds.ok.onclick = dsSubmit;
+  document.getElementById("ds-close").onclick = dsClose;
+  document.getElementById("ds-cancel").onclick = dsClose;
+  ds.mask.onclick = function (e) { if (e.target === ds.mask) dsClose(); };
+
+  document.getElementById("oc-close").onclick = ocClose;
+  document.getElementById("oc-cancel").onclick = ocClose;
+  oc.mask.onclick = function (e) { if (e.target === oc.mask) ocClose(); };
+  oc.ok.onclick = ocSubmit;
+  oc.model.onchange = ocRefresh;
+  oc.res.onchange = ocRefresh;
+  oc.speed.oninput = ocRefresh;
+  oc.lip.onclick = function () { oc.lip.classList.toggle("on"); };
+  oc.sub.onclick = function () { oc.sub.classList.toggle("on"); };
+  oc.upload.onclick = function () { oc.hasAudio = true; ocRefresh(); };
+  document.getElementById("oc-reup").onclick = function () { ReplicaUI.toast("演示：重新选择音频文件"); };
+  document.getElementById("oc-play").onclick = function () { ReplicaUI.toast("演示：试听本集旁白.mp3"); };
+  document.getElementById("oc-del").onclick = function () { oc.hasAudio = false; ocRefresh(); };
+
+  render();
+
+  epsEl.onclick = function (e) {
+    var close = e.target.closest(".promo-x");
+    if (close) {
+      e.preventDefault();
+      e.stopPropagation();
+      promoClosed = true;
+      close.closest(".promo-bubble").classList.remove("show");
+      return;
+    }
+    var card = e.target.closest(".ep-item");
+    if (!card) return;
+    var act = e.target.closest("[data-act]");
+    if (act) {
+      var ep = D.episodes.filter(function (x) { return x.id === card.dataset.id; })[0];
+      if (act.getAttribute("data-act") === "oneclick") ocOpen(ep);
+      else if (act.getAttribute("data-act") === "director") dsOpen(ep);
+      return;
+    }
+    if (e.target.closest("a")) return;
+    if (card.dataset.ready === "true") location.href = "workspace.html";
+  };
+  document.getElementById("add-ep").onclick = function () { ReplicaUI.toast("演示：新增集"); };
+</script>
+</body>
+</html>

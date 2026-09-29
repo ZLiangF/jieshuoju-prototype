@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>资产库 · 离婚后（3集）</title>
+  <link rel="stylesheet" href="css/product.css" />
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="tb-left">
+      <a class="tb-back" href="index.html">‹ 离婚后（3集）</a>
+    </div>
+    <div class="tb-center steps">
+      <a class="step" href="outline.html">剧本大纲</a>
+      <span style="color:#555">›</span>
+      <a class="step on" href="assets.html">资产库</a>
+      <span style="color:#555">›</span>
+      <a class="step" href="episodes.html">分集视频</a>
+    </div>
+    <div class="tb-right">
+      <div class="credit">✦ <span id="credits"></span></div>
+      <button class="bell" aria-label="通知"></button>
+      <div class="avatar"></div>
+    </div>
+  </header>
+
+  <div class="page">
+    <div class="toolbar">
+      <select class="search">
+        <option>集数筛选</option>
+        <option>第1集</option>
+        <option>第2集</option>
+        <option>第3集</option>
+      </select>
+      <div style="display:flex;gap:8px">
+        <button class="btn" id="add">＋</button>
+        <button class="btn" id="upload-asset">上传资产</button>
+        <button class="btn purple" id="gen-all">全量生成</button>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="on" data-tab="char">全部角色 5</button>
+      <button data-tab="scene">全部场景 3</button>
+      <button data-tab="prop">全部道具 3</button>
+    </div>
+    <div id="grid" class="char-grid"></div>
+  </div>
+
+  <footer class="footer-bar">
+    <span class="hint">角色、场景和道具设定会应用到整部剧集中，建议调整完毕后再继续哦</span>
+    <div style="display:flex;gap:8px">
+      <a class="btn" href="outline.html">上一步</a>
+      <a class="btn primary" href="episodes.html">下一步</a>
+    </div>
+  </footer>
+</div>
+
+<div class="look-stage" id="look-stage">
+  <div class="look-nav">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="tb-back" id="look-back">‹ 返回</button>
+      <div class="pills" id="char-pills"></div>
+    </div>
+    <button class="icon-round" id="look-close">×</button>
+  </div>
+  <div class="look-head">
+    <div>
+      <h2 id="look-name">萧铭</h2>
+      <p id="look-desc"></p>
+    </div>
+    <button class="btn" id="add-look">＋ 新增形象</button>
+  </div>
+  <div class="look-board" id="look-board"></div>
+  <div class="look-tools">
+    <button class="icon-round" title="切换布局">◇</button>
+    <button class="icon-round" title="适应画布">&lt;&gt;</button>
+  </div>
+  <div class="look-minimap"></div>
+  <div class="look-zoom">
+    <button>−</button>
+    <button>＋</button>
+    <button>◎</button>
+  </div>
+</div>
+
+<div class="look-dialog" id="look-dialog">
+  <div class="look-sheet">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h3 id="look-dialog-title">新增形象</h3>
+      <button class="icon-round" id="look-dialog-x">×</button>
+    </div>
+    <div class="look-grid">
+      <div class="look-col">
+        <label>形象名称</label>
+        <input class="look-field" id="f-look-name" placeholder="请输入形象名称" />
+        <label>出现集数</label>
+        <select class="look-field" id="f-look-eps">
+          <option>1,2,3</option>
+          <option>1</option>
+          <option>2</option>
+          <option>3</option>
+          <option>1,2</option>
+          <option>2,3</option>
+        </select>
+        <label>参考图</label>
+        <div class="radio-row">
+          <label><input type="radio" name="ref" checked /> 参考主形象</label>
+          <label><input type="radio" name="ref" /> 参考当前图</label>
+        </div>
+        <div class="ref-slot" id="f-ref"><span>＋</span></div>
+        <label>文本音色</label>
+        <textarea class="look-area" id="f-voice" placeholder="请输入文本音色描述"></textarea>
+        <label>音频音色</label>
+        <button class="btn" id="upload-audio" type="button">上传参考音频</button>
+      </div>
+      <div class="look-col">
+        <label>形象描述</label>
+        <textarea class="look-area tall" id="f-prompt" placeholder="请输入形象描述"></textarea>
+      </div>
+      <div class="look-preview">
+        <div class="stage" id="f-preview"><span style="color:#6c6876">暂无预览</span></div>
+        <div class="acts">
+          <button class="btn" id="local-upload">本地上传</button>
+          <button class="btn">资产库</button>
+        </div>
+      </div>
+    </div>
+    <div class="look-foot">
+      <div class="left">
+        <button class="mini">Glimage 2 中 ▾</button>
+        <button class="mini">1K ▾</button>
+        <button class="btn" id="rewrite">AI改写</button>
+        <button class="btn purple" id="gen-look">生成形象</button>
+        <span style="color:#8d8996">资产库匹配</span>
+        <span class="switch"></span>
+        <span style="color:#8d8996">开启图片反推</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn" id="look-cancel">取消</button>
+        <button class="btn primary" id="look-save">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="look-dialog" id="role-dialog">
+  <div class="look-sheet role-sheet">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h3>新增角色</h3>
+      <button class="icon-round" id="role-x">×</button>
+    </div>
+    <label>角色名称*</label>
+    <input class="look-field" id="role-name" placeholder="请输入角色名称" />
+    <label>角色描述*</label>
+    <textarea class="look-area" id="role-desc" placeholder="请输入角色描述"></textarea>
+    <label>音色描述*</label>
+    <textarea class="look-area" id="role-voice" placeholder="请输入音色描述"></textarea>
+    <div class="look-foot">
+      <span></span>
+      <div style="display:flex;gap:8px">
+        <button class="btn" id="role-cancel">取消</button>
+        <button class="btn primary" id="role-save">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="look-dialog" id="plain-dialog">
+  <div class="look-sheet role-sheet">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h3 id="plain-title">编辑资产</h3>
+      <button class="icon-round" id="plain-x">×</button>
+    </div>
+    <div class="ref-slot" style="width:120px;height:120px;margin:8px 0 16px" id="plain-img"></div>
+    <label>名称</label>
+    <input class="look-field" id="plain-name" />
+    <label>描述</label>
+    <textarea class="look-area" id="plain-desc" placeholder="请输入描述"></textarea>
+    <div class="look-foot">
+      <button class="btn purple" id="plain-gen">生成</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn" id="plain-cancel">取消</button>
+        <button class="btn primary" id="plain-save">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script>
+  var D = ReplicaData;
+  document.getElementById("credits").textContent = ReplicaUI.credits();
+  var tab = "char";
+  var currentChar = D.characters[0];
+  var editingLook = null;
+
+  function listForTab() {
+    return tab === "char" ? D.characters : tab === "scene" ? D.scenes : D.props;
+  }
+
+  function render() {
+    document.getElementById("grid").innerHTML = listForTab().map(function (a, i) {
+      var looks = a.looksList ? a.looksList.length : a.looks;
+      var lookText = tab === "char" ? "共 " + looks + " 个形象" : tab === "scene" ? "共 1 个场景图" : "共 1 个道具";
+      return '<article class="char-card" data-i="' + i + '"><img src="' + a.image + '"><div class="edit">' +
+        (tab === "char" ? "编辑形象" : "编辑") + "</div><div><h3>" + a.name +
+        (a.tag ? ' <span class="tag">' + a.tag + "</span>" : "") + "</h3>" +
+        '<div class="looks">' + lookText + "</div>" +
+        (a.desc ? "<p>" + a.desc + "</p>" : "") + "</div></article>";
+    }).join("");
+  }
+
+  function renderPills() {
+    document.getElementById("char-pills").innerHTML = D.characters.map(function (c) {
+      return '<button type="button" data-id="' + c.id + '" class="' + (c.id === currentChar.id ? "on" : "") + '">' + c.name + "</button>";
+    }).join("");
+  }
+
+  function renderBoard() {
+    var looks = currentChar.looksList || [];
+    document.getElementById("look-name").textContent = currentChar.name;
+    document.getElementById("look-desc").textContent = currentChar.desc || "";
+    document.getElementById("look-board").innerHTML = looks.map(function (look, i) {
+      var imgs = [look.image, look.image, look.image].map(function (src, n) {
+        var pos = n === 0 ? "top" : n === 1 ? "center top" : "right top";
+        return '<img src="' + src + '" style="object-position:' + pos + '">';
+      }).join("");
+      return (i ? '<div class="look-line"></div>' : "") +
+        '<article class="look-node" data-look="' + i + '"><div class="views">' + imgs + "</div><h4>" + look.name +
+        "</h4><div class=\"eps\">出现集数：" + look.eps + '</div><button class="plus" data-add="1">＋</button></article>';
+    }).join("");
+  }
+
+  function openStage(char) {
+    currentChar = char;
+    renderPills();
+    renderBoard();
+    document.getElementById("look-stage").classList.add("open");
+  }
+
+  function closeStage() {
+    document.getElementById("look-stage").classList.remove("open");
+  }
+
+  function fillLookForm(look) {
+    editingLook = look;
+    document.getElementById("look-dialog-title").textContent = look ? "编辑形象" : "新增形象";
+    document.getElementById("f-look-name").value = look ? look.name : "";
+    document.getElementById("f-look-eps").value = look ? look.eps : "1,2,3";
+    document.getElementById("f-voice").value = currentChar.voice || "";
+    document.getElementById("f-prompt").value = look ? look.prompt : "";
+    var ref = document.getElementById("f-ref");
+    var preview = document.getElementById("f-preview");
+    if (look) {
+      ref.innerHTML = '<img src="' + look.image + '">';
+      preview.innerHTML = '<img src="' + look.image + '">';
+    } else {
+      ref.innerHTML = "<span>＋</span>";
+      preview.innerHTML = '<span style="color:#6c6876">暂无预览</span>';
+    }
+    document.getElementById("look-dialog").classList.add("open");
+  }
+
+  function closeLookDialog() {
+    document.getElementById("look-dialog").classList.remove("open");
+  }
+
+  document.getElementById("grid").onclick = function (e) {
+    var card = e.target.closest(".char-card");
+    if (!card) return;
+    var item = listForTab()[Number(card.dataset.i)];
+    if (tab === "char") { openStage(item); return; }
+    document.getElementById("plain-title").textContent = tab === "scene" ? "编辑场景" : "编辑道具";
+    document.getElementById("plain-name").value = item.name;
+    document.getElementById("plain-desc").value = item.desc || "";
+    document.getElementById("plain-img").innerHTML = '<img src="' + item.image + '">';
+    document.getElementById("plain-dialog").classList.add("open");
+  };
+
+  document.querySelector(".tabs").onclick = function (e) {
+    var b = e.target.closest("[data-tab]");
+    if (!b) return;
+    tab = b.dataset.tab;
+    document.querySelectorAll(".tabs button").forEach(function (x) { x.classList.toggle("on", x === b); });
+    render();
+  };
+
+  document.getElementById("char-pills").onclick = function (e) {
+    var b = e.target.closest("[data-id]");
+    if (!b) return;
+    currentChar = D.characters.find(function (c) { return c.id === b.dataset.id; });
+    renderPills();
+    renderBoard();
+  };
+
+  document.getElementById("look-board").onclick = function (e) {
+    if (e.target.closest(".plus") || e.target.closest("[data-add]")) {
+      fillLookForm(null);
+      return;
+    }
+    var node = e.target.closest(".look-node");
+    if (!node) return;
+    fillLookForm(currentChar.looksList[Number(node.dataset.look)]);
+  };
+
+  document.getElementById("add-look").onclick = function () { fillLookForm(null); };
+  document.getElementById("look-back").onclick = closeStage;
+  document.getElementById("look-close").onclick = closeStage;
+  document.getElementById("look-dialog-x").onclick = closeLookDialog;
+  document.getElementById("look-cancel").onclick = closeLookDialog;
+  document.getElementById("look-save").onclick = function () {
+    closeLookDialog();
+    ReplicaUI.toast(editingLook ? "形象已保存" : "已新增形象");
+  };
+  document.getElementById("gen-look").onclick = function () { ReplicaUI.toast("演示：开始生成形象"); };
+  document.getElementById("rewrite").onclick = function () {
+    var box = document.getElementById("f-prompt");
+    if (box.value) box.value = box.value.replace(/。/g, "，神态自然，光影干净。");
+    ReplicaUI.toast("已改写描述");
+  };
+  document.getElementById("upload-audio").onclick = function () { ReplicaUI.toast("演示：上传参考音频"); };
+  document.getElementById("local-upload").onclick = function () { ReplicaUI.toast("演示：本地上传"); };
+
+  document.getElementById("add").onclick = function () {
+    document.getElementById("role-name").value = "";
+    document.getElementById("role-desc").value = "";
+    document.getElementById("role-voice").value = "";
+    document.getElementById("role-dialog").classList.add("open");
+  };
+  function closeRole() { document.getElementById("role-dialog").classList.remove("open"); }
+  document.getElementById("role-x").onclick = closeRole;
+  document.getElementById("role-cancel").onclick = closeRole;
+  document.getElementById("role-save").onclick = function () {
+    var name = document.getElementById("role-name").value.trim();
+    if (!name) { ReplicaUI.toast("请填写角色名称"); return; }
+    closeRole();
+    ReplicaUI.toast("已新增角色");
+  };
+
+  function closePlain() { document.getElementById("plain-dialog").classList.remove("open"); }
+  document.getElementById("plain-x").onclick = closePlain;
+  document.getElementById("plain-cancel").onclick = closePlain;
+  document.getElementById("plain-save").onclick = function () { closePlain(); ReplicaUI.toast("已保存"); };
+  document.getElementById("plain-gen").onclick = function () { ReplicaUI.toast("演示：开始生成"); };
+
+  document.getElementById("upload-asset").onclick = function () { ReplicaUI.toast("演示：上传资产"); };
+  document.getElementById("gen-all").onclick = function () { ReplicaUI.toast("演示：全量生成资产"); };
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    if (document.getElementById("look-dialog").classList.contains("open")) closeLookDialog();
+    else if (document.getElementById("role-dialog").classList.contains("open")) closeRole();
+    else if (document.getElementById("plain-dialog").classList.contains("open")) closePlain();
+    else closeStage();
+  });
+
+  render();
+</script>
+</body>
+</html>

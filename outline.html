@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>剧本大纲 · 离婚后（3集）</title>
+  <link rel="stylesheet" href="css/product.css" />
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="tb-left">
+      <a class="tb-back" href="index.html">‹ 离婚后（3集）</a>
+    </div>
+    <div class="tb-center steps">
+      <a class="step on" href="outline.html">剧本大纲</a>
+      <span style="color:#555">›</span>
+      <a class="step" href="assets.html">资产库</a>
+      <span style="color:#555">›</span>
+      <a class="step" href="episodes.html">分集视频</a>
+    </div>
+    <div class="tb-right">
+      <div class="credit">✦ <span id="credits"></span></div>
+      <button class="bell" aria-label="通知"></button>
+      <div class="avatar"></div>
+    </div>
+  </header>
+
+  <div class="page">
+    <div class="meta-row">
+      <div>视频风格<b>真人写实电影风格高清</b></div>
+      <div>视频比例<b>9:16</b></div>
+      <div>场景比例<b>16:9</b></div>
+      <div>当前版本<b>原剧本 / 国内</b></div>
+    </div>
+
+    <div class="block-title">剧本摘要</div>
+    <section class="card">
+      <h3>故事梗概</h3>
+      <p id="summary"></p>
+      <h3>题材类型</h3>
+      <p id="genre"></p>
+      <h3>情感基调</h3>
+      <p id="tone"></p>
+      <h3>时代背景</h3>
+      <p id="era"></p>
+    </section>
+
+    <div class="block-title">人物关系</div>
+    <section class="card">
+      <ul class="people" id="people"></ul>
+    </section>
+
+    <div class="block-title">剧本内容</div>
+    <section class="card">
+      <div class="script-head">
+        <div style="font-weight:650">分集剧本</div>
+        <button class="btn" id="toggle-scripts" type="button">一键展开</button>
+      </div>
+      <p style="color:#8a8694;margin-bottom:10px">点击分集可展开查看剧本内容，支持一键展开或收起。</p>
+      <div id="scripts"></div>
+    </section>
+  </div>
+
+  <footer class="footer-bar">
+    <span class="hint">剧本内容整理完毕，可以进行下一步了</span>
+    <a class="btn primary" href="assets.html">下一步</a>
+  </footer>
+</div>
+<script src="js/data.js"></script>
+<script>
+  var D = ReplicaData;
+  document.getElementById("credits").textContent = ReplicaUI.credits();
+  document.getElementById("summary").textContent = D.outline.summary;
+  document.getElementById("genre").textContent = D.outline.genre;
+  document.getElementById("tone").textContent = D.outline.tone;
+  document.getElementById("era").textContent = D.outline.era;
+  document.getElementById("people").innerHTML = D.outline.people.map(function (p) {
+    return "<li><b>" + p.name + "</b>" + (p.tag ? '<span class="tag">' + p.tag + "</span> " : "") + p.desc + "</li>";
+  }).join("");
+  document.getElementById("scripts").innerHTML = D.outline.scripts.map(function (s, i) {
+    return '<details class="script"' + (i === 0 ? " open" : "") + "><summary>" + (i + 1) + "、" + s.title + "</summary><p>" + s.body + "</p></details>";
+  }).join("");
+  document.getElementById("toggle-scripts").onclick = function () {
+    var items = document.querySelectorAll("#scripts details");
+    var open = this.textContent === "一键展开";
+    items.forEach(function (el) { el.open = open; });
+    this.textContent = open ? "一键收起" : "一键展开";
+  };
+</script>
+</body>
+</html>

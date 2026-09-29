@@ -1,1315 +1,512 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>解说剧一键成片 · 原型</title>
-  <style>
-    :root {
-      --bg: #0b0c10;
-      --top: #111218;
-      --card: #1a1b22;
-      --card-hover: #20222b;
-      --line: #2a2c36;
-      --text: #f2f3f7;
-      --muted: #8b8e99;
-      --muted-2: #6b6e7a;
-      --purple: #7c5cff;
-      --purple-2: #9b7dff;
-      --purple-soft: rgba(124, 92, 255, 0.16);
-      --danger: #ff5d6c;
-    }
-
-    * { box-sizing: border-box; }
-
-    html, body {
-      margin: 0;
-      min-width: 1440px;
-      color: var(--text);
-      background: var(--bg);
-      font-family: Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
-    }
-
-    button, select, input { font: inherit; color: inherit; }
-    button { border: 0; cursor: pointer; background: none; }
-
-    .proto-bar {
-      position: sticky;
-      top: 0;
-      z-index: 80;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      height: 46px;
-      padding: 0 20px;
-      background: #16141f;
-      border-bottom: 1px solid #2c2840;
-    }
-
-    .proto-bar b { font-size: 13px; margin-right: 8px; }
-    .proto-bar span { color: var(--muted); font-size: 12px; margin-left: auto; }
-
-    .proto-tab {
-      height: 28px;
-      padding: 0 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      color: #c9c6d4;
-      background: #2a2638;
-    }
-
-    .proto-tab.active {
-      color: #fff;
-      background: var(--purple);
-    }
-
-    .topbar {
-      height: 64px;
-      padding: 0 28px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid #1d1f27;
-      background: var(--top);
-    }
-
-    .top-left, .tabs, .top-right, .user {
-      display: flex;
-      align-items: center;
-    }
-
-    .back {
-      width: 28px;
-      height: 28px;
-      margin-right: 10px;
-      border-radius: 50%;
-      color: #c8cad3;
-    }
-
-    .project-name { font-size: 15px; font-weight: 600; }
-
-    .tabs { gap: 36px; }
-
-    .tab {
-      position: relative;
-      height: 64px;
-      padding: 0 4px;
-      color: var(--muted);
-      font-size: 15px;
-    }
-
-    .tab.active { color: #fff; font-weight: 600; }
-
-    .tab.active::after {
-      content: "";
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      height: 2px;
-      background: var(--purple);
-    }
-
-    .tab-icon {
-      display: inline-grid;
-      place-items: center;
-      width: 18px;
-      height: 18px;
-      margin-right: 6px;
-      border-radius: 50%;
-      background: var(--purple);
-      color: #fff;
-      font-size: 11px;
-      vertical-align: -2px;
-    }
-
-    .credits {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      height: 32px;
-      padding: 0 12px;
-      border-radius: 16px;
-      background: #23242d;
-      font-size: 13px;
-    }
-
-    .plus {
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      background: #3b3d48;
-      display: grid;
-      place-items: center;
-      font-size: 12px;
-    }
-
-    .sale {
-      margin-left: 10px;
-      padding: 3px 8px;
-      border-radius: 4px;
-      background: #3a2410;
-      color: #f0b46a;
-      font-size: 12px;
-    }
-
-    .bell, .avatar {
-      width: 32px;
-      height: 32px;
-      margin-left: 12px;
-      border-radius: 50%;
-      background: #2a2c36;
-    }
-
-    .avatar {
-      display: grid;
-      place-items: center;
-      background: linear-gradient(145deg, #7ee0c8, #2aa88e);
-      color: #08372e;
-      font-size: 12px;
-      font-weight: 800;
-    }
-
-    .page { padding: 22px 28px 40px; }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-    }
-
-    .card {
-      position: relative;
-      display: flex;
-      gap: 14px;
-      min-height: 148px;
-      padding: 14px;
-      border: 1px solid transparent;
-      border-radius: 10px;
-      background: var(--card);
-    }
-
-    .card:hover { background: var(--card-hover); z-index: 5; }
-
-    .card.selected {
-      border-color: var(--purple);
-      box-shadow: 0 0 0 1px rgba(124, 92, 255, 0.35);
-    }
-
-    .index {
-      width: 18px;
-      padding-top: 4px;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .thumb {
-      width: 92px;
-      min-height: 140px;
-      border-radius: 8px;
-      background: #121318;
-      display: grid;
-      place-items: center;
-      color: #4b4e5a;
-      flex: none;
-    }
-
-    .body {
-      flex: 1;
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .title-row {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 8px;
-    }
-
-    .title {
-      margin: 2px 0 0;
-      font-size: 15px;
-      font-weight: 600;
-      line-height: 1.4;
-    }
-
-    .card-ops {
-      display: none;
-      gap: 6px;
-      color: var(--muted);
-    }
-
-    .card.selected .card-ops,
-    .card:hover .card-ops { display: flex; }
-
-    .meta {
-      display: flex;
-      gap: 14px;
-      margin-top: 8px;
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .actions {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-top: auto;
-      padding-top: 14px;
-    }
-
-    .btn {
-      height: 28px;
-      padding: 0 8px;
-      border-radius: 6px;
-      font-size: 12px;
-      white-space: nowrap;
-    }
-
-    .btn-ghost {
-      flex: 1;
-      min-width: 0;
-      border: 1px solid #3a3d48;
-      color: #d6d8e0;
-      background: transparent;
-    }
-
-    .btn-oneclick {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 0 12px;
-      font-weight: 600;
-      letter-spacing: .2px;
-      color: #ede7ff;
-      background: linear-gradient(135deg, rgba(124, 92, 255, 0.3), rgba(155, 125, 255, 0.14));
-      border: 1px solid rgba(124, 92, 255, 0.55);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-      transition: background .16s, border-color .16s, box-shadow .16s, transform .16s;
-    }
-
-    .btn-oneclick:hover:not(:disabled) {
-      color: #fff;
-      background: linear-gradient(135deg, #7c5cff, #9b7dff);
-      border-color: var(--purple-2);
-      box-shadow: 0 4px 14px rgba(124, 92, 255, 0.35);
-      transform: translateY(-1px);
-    }
-
-    .tip-wrap {
-      position: relative;
-      flex: 0 0 auto;
-      display: inline-flex;
-    }
-
-    .tip {
-      position: absolute;
-      left: 50%;
-      bottom: calc(100% + 9px);
-      z-index: 20;
-      padding: 6px 10px;
-      border: 1px solid rgba(124, 92, 255, 0.4);
-      border-radius: 6px;
-      color: #ece6ff;
-      background: #241f33;
-      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
-      font-size: 11px;
-      line-height: 1.4;
-      white-space: nowrap;
-      opacity: 0;
-      transform: translateX(-50%) translateY(4px);
-      transition: opacity .16s, transform .16s;
-      pointer-events: none;
-    }
-
-    .tip::after {
-      content: "";
-      position: absolute;
-      left: 50%;
-      bottom: -4px;
-      width: 7px;
-      height: 7px;
-      margin-left: -4px;
-      transform: rotate(45deg);
-      border-right: 1px solid rgba(124, 92, 255, 0.4);
-      border-bottom: 1px solid rgba(124, 92, 255, 0.4);
-      background: #241f33;
-    }
-
-    .tip-wrap:hover .tip {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
-
-    .btn-oneclick svg,
-    .btn-enter svg {
-      width: 12px;
-      height: 12px;
-      flex: none;
-    }
-
-    .btn-enter {
-      flex: 0 0 auto;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 0 10px;
-      color: #c8e6d3;
-      background: rgba(62, 170, 89, 0.14);
-      border: 1px solid rgba(62, 170, 89, 0.42);
-    }
-
-    .btn-enter:hover {
-      color: #fff;
-      background: rgba(62, 170, 89, 0.28);
-    }
-
-    .btn-ghost:disabled {
-      opacity: .4;
-      cursor: not-allowed;
-    }
-
-    .done-badge,
-    .fail-badge,
-    .block-badge {
-      display: inline-block;
-      margin-left: 6px;
-      padding: 1px 6px;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: 500;
-      vertical-align: 1px;
-    }
-
-    .done-badge {
-      background: rgba(62, 170, 89, 0.16);
-      color: #7dcea0;
-    }
-
-    .fail-badge {
-      background: rgba(255, 93, 108, 0.14);
-      color: #ff8a96;
-    }
-
-    .block-badge {
-      background: rgba(240, 180, 106, 0.14);
-      color: #e8b56a;
-    }
-
-    .btn-oneclick:disabled {
-      opacity: .4;
-      cursor: not-allowed;
-      transform: none;
-      box-shadow: none;
-    }
-
-    .btn-retry {
-      flex: 0 0 auto;
-      display: inline-flex;
-      align-items: center;
-      height: 28px;
-      padding: 0 10px;
-      border-radius: 6px;
-      color: #ffd0d4;
-      background: rgba(255, 93, 108, 0.14);
-      border: 1px solid rgba(255, 93, 108, 0.4);
-      font-size: 12px;
-    }
-
-    .mask {
-      display: none;
-      position: fixed;
-      inset: 0;
-      z-index: 90;
-      background: rgba(0, 0, 0, 0.58);
-      align-items: center;
-      justify-content: center;
-      padding: 32px;
-    }
-
-    .mask.show { display: flex; }
-
-    .modal {
-      width: 560px;
-      border: 1px solid #2d2f3a;
-      border-radius: 14px;
-      background: #1c1d25;
-      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
-    }
-
-    .modal-head {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      padding: 20px 22px 0;
-    }
-
-    .modal-head h2 {
-      margin: 0;
-      font-size: 18px;
-    }
-
-    .modal-head p {
-      margin: 6px 0 0;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.5;
-    }
-
-    .close {
-      width: 28px;
-      height: 28px;
-      border-radius: 6px;
-      color: var(--muted);
-    }
-
-    .modal-body { padding: 18px 22px 8px; }
-
-    .field { margin-bottom: 16px; }
-
-    .label {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 8px;
-      font-size: 13px;
-    }
-
-    .hint { color: var(--muted-2); font-size: 12px; font-weight: 400; }
-
-    .seg {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      padding: 3px;
-      border-radius: 8px;
-      background: #14151b;
-    }
-
-    .seg button {
-      height: 34px;
-      border-radius: 6px;
-      color: var(--muted);
-    }
-
-    .seg button.on {
-      color: #fff;
-      background: var(--purple);
-    }
-
-    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-
-    select, .num {
-      width: 100%;
-      height: 36px;
-      padding: 0 10px;
-      border: 1px solid #32343e;
-      border-radius: 8px;
-      background: #14151b;
-    }
-
-    .switch-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      height: 36px;
-    }
-
-    .switch {
-      width: 40px;
-      height: 22px;
-      padding: 2px;
-      border-radius: 99px;
-      background: #3a3d48;
-    }
-
-    .switch.on { background: var(--purple); }
-
-    .knob {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: #fff;
-      transition: transform .18s;
-    }
-
-    .switch.on .knob { transform: translateX(18px); }
-
-    .upload {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 84px;
-      border: 1px dashed #3d4050;
-      border-radius: 10px;
-      color: var(--muted);
-      font-size: 13px;
-      background: #14151b;
-      text-align: center;
-      line-height: 1.6;
-    }
-
-    .upload b { color: var(--purple-2); font-weight: 600; }
-
-    .file {
-      display: none;
-      align-items: center;
-      justify-content: space-between;
-      height: 44px;
-      padding: 0 12px;
-      border-radius: 8px;
-      background: #14151b;
-      border: 1px solid #32343e;
-      font-size: 13px;
-    }
-
-    .file.show { display: flex; }
-
-    .del { color: var(--danger); font-size: 12px; }
-
-    .modal-foot {
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-      padding: 16px 22px 20px;
-      border-top: 1px solid var(--line);
-    }
-
-    .btn-cancel {
-      height: 36px;
-      padding: 0 16px;
-      border-radius: 8px;
-      background: #2a2c36;
-      color: #d6d8e0;
-    }
-
-    .btn-ok {
-      height: 36px;
-      padding: 0 18px;
-      border-radius: 8px;
-      background: var(--purple);
-      color: #fff;
-      font-weight: 600;
-    }
-
-    .disabled { opacity: .45; pointer-events: none; }
-
-    .console { display: none; min-height: calc(100vh - 46px); }
-    .console.show { display: block; }
-    .app.hide { display: none; }
-
-    .cc-top {
-      height: 56px;
-      padding: 0 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid #1d1f27;
-      background: #0f1016;
-    }
-
-    .cc-back {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      margin-right: 14px;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .cc-title { font-size: 15px; font-weight: 600; }
-    .cc-modes { display: flex; gap: 8px; }
-
-    .cc-mode {
-      height: 32px;
-      padding: 0 14px;
-      border-radius: 8px;
-      background: #1c1d26;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .cc-mode.on { color: #fff; background: #2a2c38; }
-
-    .cc-body {
-      display: grid;
-      grid-template-columns: 268px minmax(0, 1fr) 320px;
-      height: calc(100vh - 46px - 56px - 132px);
-    }
-
-    .cc-side, .cc-main, .cc-preview { min-height: 0; }
-    .cc-side { border-right: 1px solid #1d1f27; background: #101118; padding: 12px 14px; overflow: auto; }
-    .cc-preview { border-left: 1px solid #1d1f27; background: #0c0d12; padding: 16px; display: flex; flex-direction: column; }
-
-    .side-title {
-      margin: 2px 0 10px;
-      font-size: 14px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .add-icon {
-      width: 22px;
-      height: 22px;
-      border: 1px solid #3a3d48;
-      border-radius: 6px;
-      color: #c8cad3;
-      background: #16171e;
-      display: grid;
-      place-items: center;
-      font-size: 16px;
-      line-height: 1;
-    }
-    .side-search {
-      height: 32px;
-      margin-bottom: 10px;
-      padding: 0 10px;
-      border: 1px solid #2a2c36;
-      border-radius: 8px;
-      background: #16171e;
-      color: var(--muted);
-      font-size: 12px;
-      display: flex;
-      align-items: center;
-    }
-
-    .side-tabs { display: flex; gap: 16px; margin-bottom: 14px; font-size: 13px; color: var(--muted); }
-    .side-tabs .on { color: #fff; border-bottom: 2px solid var(--purple); padding-bottom: 4px; }
-    .side-block { margin-bottom: 16px; }
-    .side-block h4 { margin: 0 0 8px; font-size: 12px; color: var(--muted); font-weight: 500; }
-
-    .char-card { margin-bottom: 10px; }
-    .char-name { margin: 6px 0 0; font-size: 12px; color: #c8cad3; }
-    .asset-row { display: flex; gap: 6px; }
-    .asset-ph {
-      width: 58px;
-      height: 72px;
-      border-radius: 6px;
-      background: linear-gradient(180deg, #2e2740, #16141d);
-      border: 1px solid #2a2c36;
-    }
-    .asset-ph.wide { width: 100%; height: 72px; background: linear-gradient(180deg, #243044, #12151c); }
-    .asset-ph.sq { width: 58px; height: 58px; }
-
-    .cc-main { display: flex; flex-direction: column; padding: 12px 16px 10px; background: #0e0f14; }
-
-    .seg-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 8px;
-      font-size: 13px;
-    }
-
-    .seg-left { display: flex; align-items: center; gap: 8px; }
-    .seg-chip {
-      height: 22px;
-      padding: 0 8px;
-      border-radius: 4px;
-      background: #2a2438;
-      color: #d8ccff;
-      font-size: 12px;
-    }
-
-    .seg-meta { color: var(--muted); font-size: 12px; }
-    .seg-tools { display: flex; gap: 8px; }
-    .ghost-mini {
-      height: 26px;
-      padding: 0 10px;
-      border: 1px solid #32343e;
-      border-radius: 6px;
-      color: #c8cad3;
-      font-size: 12px;
-      background: #16171e;
-    }
-
-    .prompt-box {
-      flex: 1;
-      overflow: auto;
-      padding: 14px 16px;
-      border: 1px solid #262833;
-      border-radius: 10px;
-      background: #14151c;
-      color: #d5d7e0;
-      font-size: 13px;
-      line-height: 1.8;
-    }
-
-    .tag-c, .tag-s, .tag-p {
-      display: inline-block;
-      padding: 0 6px;
-      border-radius: 4px;
-      font-size: 12px;
-    }
-    .tag-c { color: #8fd0ff; background: rgba(80, 160, 230, 0.14); }
-    .tag-s { color: #f0b46a; background: rgba(240, 180, 106, 0.14); }
-    .tag-p { color: #c9a6ff; background: rgba(180, 130, 255, 0.14); }
-
-    .cc-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-top: 10px;
-    }
-
-    .cc-bar-left, .cc-bar-right { display: flex; align-items: center; gap: 8px; }
-
-    .pill {
-      height: 30px;
-      padding: 0 10px;
-      border: 1px solid #32343e;
-      border-radius: 8px;
-      background: #1a1b22;
-      color: #e6e7ee;
-      font-size: 12px;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .model-wrap { position: relative; }
-    .model-menu {
-      display: none;
-      position: absolute;
-      left: 0;
-      bottom: calc(100% + 6px);
-      z-index: 30;
-      width: 210px;
-      padding: 6px;
-      border: 1px solid #32343e;
-      border-radius: 10px;
-      background: #1c1d26;
-      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
-    }
-
-    .model-menu.show { display: block; }
-    .model-item {
-      width: 100%;
-      height: 34px;
-      padding: 0 10px;
-      border-radius: 7px;
-      text-align: left;
-      color: #d6d8e0;
-      font-size: 12px;
-    }
-    .model-item:hover { background: #2a2c38; }
-    .model-item.on { color: #fff; background: rgba(124, 92, 255, 0.2); }
-    .model-item small { display: block; color: #8d8799; font-size: 10px; }
-
-    .sw {
-      width: 34px;
-      height: 18px;
-      padding: 2px;
-      border-radius: 99px;
-      background: var(--purple);
-    }
-    .sw i {
-      display: block;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: #fff;
-      margin-left: auto;
-    }
-
-    .ai {
-      height: 30px;
-      padding: 0 12px;
-      border-radius: 8px;
-      color: #d8ccff;
-      background: var(--purple-soft);
-      font-size: 12px;
-    }
-
-    .gen {
-      height: 30px;
-      padding: 0 14px;
-      border-radius: 8px;
-      background: #f3f4f8;
-      color: #111;
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .player {
-      flex: 1;
-      border-radius: 12px;
-      background: #101218;
-      border: 1px solid #22242d;
-      display: grid;
-      place-items: center;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .empty-video { text-align: center; }
-    .empty-video span { display: block; margin-top: 8px; }
-
-    .timeline {
-      height: 132px;
-      padding: 10px 16px 12px;
-      border-top: 1px solid #1d1f27;
-      background: #101118;
-    }
-
-    .tl-head { display: flex; gap: 16px; margin-bottom: 8px; font-size: 12px; color: var(--muted); }
-    .tl-head .on { color: #fff; }
-    .clips { display: flex; align-items: stretch; gap: 8px; overflow: auto; }
-
-    .clip {
-      width: 88px;
-      flex: none;
-      border: 1px solid #2a2c36;
-      border-radius: 8px;
-      overflow: hidden;
-      background: #16171e;
-    }
-    .clip.on { border-color: #4c8dff; }
-    .clip-ph { height: 58px; background: #1a1c24; display: grid; place-items: center; color: #4b4e5a; }
-    .clip p { margin: 4px 6px 6px; font-size: 11px; color: var(--muted); }
-
-    .clip-add {
-      width: 36px;
-      flex: none;
-      border: 1px dashed #3a3d48;
-      border-radius: 8px;
-      background: #14151c;
-      color: #9aa0ad;
-      font-size: 20px;
-      display: grid;
-      place-items: center;
-    }
-
-    .clip-add:hover {
-      color: #fff;
-      border-color: var(--purple);
-      background: rgba(124, 92, 255, 0.12);
-    }
-  </style>
+  <title>创作 · 跳跃视界</title>
+  <link rel="stylesheet" href="css/product.css?v=7" />
 </head>
-<body>
-  <div class="proto-bar">
-    <b>原型切换</b>
-    <button class="proto-tab active" id="tabList" type="button">1. 分集视频 · 增加一键成片</button>
-    <button class="proto-tab" id="tabModal" type="button">2. 一键成片配置弹窗</button>
-    <button class="proto-tab" id="tabConsole" type="button">3. 编辑 · 模型可选</button>
-    <span>hover「一键成片」看提示　第4集：资产未完成　第5集：已分镜　第7集：部分失败　第13集：已成片</span>
+<body class="home">
+  <header class="topbar">
+    <div class="tb-left">
+      <a class="logo" href="index.html">
+        <span class="mark"></span>
+        <span><b>跳跃视界</b><small>tiaoyue.com</small></span>
+      </a>
+    </div>
+    <div class="tb-right">
+      <button class="step">领取权益</button>
+      <button class="step">商务合作</button>
+      <div class="credit">✦ <span id="credits"></span></div>
+      <button class="step">使用手册</button>
+      <button class="bell" aria-label="通知">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6Z"/><path d="M10 19a2 2 0 0 0 4 0"/></svg>
+      </button>
+      <div class="avatar"></div>
+    </div>
+  </header>
+
+  <nav class="rail">
+    <button class="rail-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8.5Z"/></svg><span>首页</span></button>
+    <button class="rail-item on"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M13 3l2.2 5.3L20.5 10l-5.3 1.7L13 17l-2.2-5.3L5.5 10l5.3-1.7L13 3Z"/></svg><span>创作</span></button>
+    <button class="rail-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4.5" width="16" height="15" rx="2.5"/></svg><span>画布</span></button>
+    <button class="rail-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 5h8l4 4v10H6z"/></svg><span>剧本</span></button>
+    <button class="rail-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6.5A1.5 1.5 0 0 1 5.5 5h4l2 2.5h7A1.5 1.5 0 0 1 20 9v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18V6.5Z"/></svg><span>资产</span></button>
+    <button class="rail-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3.5 20 8v8l-8 4.5L4 16V8l8-4.5Z"/></svg><span>空间</span></button>
+    <button class="rail-item"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="8.5" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/></svg><span>团队</span></button>
+  </nav>
+
+  <main class="home-main">
+    <section class="home-hero">
+      <div class="switcher">
+        <button class="on">影视</button>
+        <button>短视频</button>
+        <button>视频转绘</button>
+      </div>
+      <h1>输入剧本，AI自动逐集制作，一键交付整部剧</h1>
+
+      <div class="upload-card" id="empty-card">
+        <div class="source-tabs" id="source-tabs">
+          <button class="on" type="button" data-source="file">上传文件</button>
+          <button type="button" data-source="paste">粘贴文本</button>
+          <button type="button" data-source="ai">AI 生成剧本</button>
+        </div>
+
+        <div class="upload-pane on" data-pane="file">
+          <div class="file-ico">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+              <path d="M7 3.5A2.5 2.5 0 0 1 9.5 1h9L25 7.5V24a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 7 24V3.5Z" fill="#eceaf2"/>
+              <path d="M18.5 1 25 7.5h-4.5A2 2 0 0 1 18.5 5.5V1Z" fill="#c8c4d2"/>
+              <text x="14" y="18" text-anchor="middle" fill="#6b6574" font-size="6" font-weight="700">TXT</text>
+            </svg>
+          </div>
+          <div class="lead">拖拽剧本到这里，或选择上传方式</div>
+          <div class="sub">支持 txt / pdf / doc / docx，最长约 10 万字</div>
+          <div style="display:flex;gap:10px;margin-top:8px">
+            <button class="btn primary" id="upload" type="button">上传剧本</button>
+            <button class="btn" id="sample" type="button">载入示例</button>
+          </div>
+        </div>
+
+        <div class="upload-pane" data-pane="paste">
+          <textarea id="paste-text" placeholder="在此粘贴完整剧本… 支持对白短剧、漫剧分镜稿或解说旁白体。"></textarea>
+          <div class="sub">粘贴后进入创作设定，再点风格库选择画风</div>
+          <button class="btn primary" id="confirm-paste" type="button">确认粘贴</button>
+        </div>
+
+        <div class="upload-pane" data-pane="ai">
+          <textarea id="ai-text" placeholder="故事设定、主角特征、剧情脉络、结局… 例如：外卖员隐姓埋名三年，前妻为攀附权贵逼他离婚。"></textarea>
+          <div class="sub">先写故事构想，再在风格库里选择画面风格</div>
+          <button class="btn primary" id="confirm-ai" type="button">生成剧本</button>
+        </div>
+      </div>
+
+      <div class="creator" id="filled-card">
+        <div class="up-ok">
+          <div class="doc">
+            <svg width="42" height="42" viewBox="0 0 42 42" fill="none">
+              <path d="M7 4.5A2.5 2.5 0 0 1 9.5 2h15L35 12.5v25a2.5 2.5 0 0 1-2.5 2.5h-23A2.5 2.5 0 0 1 7 37.5v-33Z" fill="#eceaf0"/>
+              <path d="M24.5 2 35 12.5h-8a2.5 2.5 0 0 1-2.5-2.5V2Z" fill="#cfccd8"/>
+            </svg>
+            <button class="close" id="remove-file" type="button">✕</button>
+          </div>
+          <div class="ttl" id="ok-title">上传成功</div>
+          <div class="sub" id="ok-sub">删除当前文件后可重新上传</div>
+        </div>
+
+        <div class="form-card">
+          <div class="group">
+            <label>文件名称</label>
+            <div class="control"><input id="f-name" value="离婚后（3集）" /></div>
+          </div>
+          <div class="group">
+            <label>选择项目</label>
+            <div class="control">
+              <select id="f-project">
+                <option>AI内部团队验证-重庆使用-测试项目A</option>
+                <option>技术部研发中心</option>
+                <option>新建项目…</option>
+              </select>
+            </div>
+          </div>
+          <div class="group row-2">
+            <div>
+              <label>分类</label>
+              <div class="control">
+                <select id="f-cat">
+                  <option value="cn" selected>国内</option>
+                  <option value="os">海外</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label>风格库</label>
+              <button class="style-field" id="open-style" type="button">
+                <span class="thumb sc sc-live-hd" id="style-thumb"></span>
+                <span class="name" id="style-name">真人写实电影风格高清</span>
+                <span class="map" id="style-map">短剧</span>
+                <span class="chev">›</span>
+              </button>
+            </div>
+          </div>
+          <div class="group row-3">
+            <div>
+              <label>视频比例</label>
+              <div class="control">
+                <select id="f-ratio"><option>9:16</option><option>16:9</option><option>1:1</option></select>
+              </div>
+            </div>
+            <div>
+              <label>场景比例</label>
+              <div class="control">
+                <select id="f-scene"><option>16:9</option><option>9:16</option></select>
+              </div>
+            </div>
+            <div>
+              <label>生成质量</label>
+              <div class="control">
+                <select id="f-quality"><option>4K</option><option>2K</option><option>1080P</option></select>
+                <span class="credit-hint">17 积分/集</span>
+              </div>
+            </div>
+          </div>
+          <div class="style-preview show" id="style-preview">
+            <div class="cover sc sc-live-hd" id="preview-cover"></div>
+            <div>
+              <div class="ttl" id="preview-title">真人写实电影风格高清</div>
+              <div class="desc" id="preview-desc">真实演员感，电影布光，可实拍服化道。角色、场景、道具将按同一风格生成。</div>
+            </div>
+          </div>
+          <div class="cta">
+            <button class="btn primary" id="start-create" type="button">立即创作 ✦ 17</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="home-projects">
+      <h2>我的影视项目 <a href="episodes.html">全部</a></h2>
+      <div class="strip">
+        <a class="proj" href="outline.html">
+          <div class="thumb" style="display:flex;background:#fff"><img src="media/characters/xiaoming.png" style="width:50%;object-fit:cover;object-position:top"><img src="media/characters/heyi.png" style="width:50%;object-fit:cover;object-position:top"></div>
+          <div class="proj-title">离婚后（3集）</div>
+          <div class="proj-mid">短剧 · 国内 | 真人写实电影风格高清</div>
+          <div class="proj-sub">3 集 · 2026-09-24 10:48</div>
+        </a>
+        <a class="proj" href="outline.html">
+          <div class="thumb"><img src="media/characters/hezhi.png"></div>
+          <div class="proj-title">The Girl in His Varsity Jacket</div>
+          <div class="proj-mid">短剧 · 海外 | 影视质感</div>
+          <div class="proj-sub">2 集 · 2026-09-21 15:50</div>
+        </a>
+        <a class="proj" href="assets.html">
+          <div class="thumb" style="display:grid;place-items:center;color:#666">✦</div>
+          <div class="proj-title">云朵镇大冒险</div>
+          <div class="proj-mid">漫剧 · 国内 | 3D卡通风格</div>
+          <div class="proj-sub">1 集 · 2026-09-24 11:14</div>
+        </a>
+        <a class="proj" href="workspace.html">
+          <div class="thumb"><img src="media/characters/gushen.png"></div>
+          <div class="proj-title">我本明珠（解说）</div>
+          <div class="proj-mid">解说剧 · 国内 | 真人古风</div>
+          <div class="proj-sub">可一键成片 · 2026-09-18</div>
+        </a>
+      </div>
+    </section>
+  </main>
+  <button class="fab" id="new-project" type="button" aria-label="新建项目">＋</button>
+
+  <div class="flow-mask" id="mask">
+    <div style="text-align:center">
+      <div class="spin" style="margin:0 auto"></div>
+      <h2 id="flow-title" style="margin:16px 0 8px;font-size:16px">正在解析剧本</h2>
+      <p id="flow-sub" style="color:#8a8694">离婚后（3集）</p>
+    </div>
   </div>
 
-  <div class="app" id="listView">
-    <header class="topbar">
-      <div class="top-left">
-        <button class="back" type="button">‹</button>
-        <div class="project-name">定稿《我本明珠...》</div>
-      </div>
-      <nav class="tabs">
-        <button class="tab" type="button">剧本大纲</button>
-        <button class="tab" type="button">资产库</button>
-        <button class="tab active" type="button"><span class="tab-icon">●</span>分集视频</button>
-      </nav>
-      <div class="top-right">
-        <div class="credits"><span class="plus">+</span> 98987</div>
-        <div class="sale">限时折扣</div>
-        <div class="bell"></div>
-        <div class="avatar">YL</div>
-      </div>
-    </header>
-
-    <main class="page">
-      <section class="grid" id="grid"></section>
-    </main>
-  </div>
-
-  <div class="mask" id="mask">
-    <div class="modal" role="dialog" aria-modal="true">
-      <div class="modal-head">
+  <div class="style-mask" id="style-mask">
+    <div class="style-sheet" role="dialog" aria-modal="true" aria-labelledby="style-title">
+      <div class="style-head">
         <div>
-          <h2>一键成片</h2>
-          <p id="modalDesc">第13集：顾清璃被封永安公主 · 确认后自动拆段并全量出片。整集重做请复制本集。</p>
+          <h2 id="style-title">风格库</h2>
+          <p>切换短剧 / 漫剧 / 解说剧后选择画面风格，角色、场景、道具将按同一风格生成。</p>
         </div>
-        <button class="close" id="closeBtn" type="button">✕</button>
+        <button class="style-close" id="style-close" type="button">✕</button>
       </div>
-      <div class="modal-body">
-        <div class="pair">
-          <div class="field">
-            <div class="label">分辨率</div>
-            <select id="res">
-              <option>480P</option>
-              <option selected>720P</option>
-              <option>1080P</option>
-            </select>
-          </div>
-          <div class="field" id="speedField">
-            <div class="label">语速 <span class="hint">支持 1.0–1.5，默认 1.3</span></div>
-            <input class="num" id="speed" type="number" min="1" max="1.5" step="0.1" value="1.3" />
-          </div>
-        </div>
-        <div class="pair">
-          <div class="field">
-            <div class="label">是否对口型</div>
-            <div class="switch-row">
-              <span class="hint">默认关</span>
-              <button class="switch" id="lip" type="button"><div class="knob"></div></button>
-            </div>
-          </div>
-          <div class="field">
-            <div class="label">是否添加字幕</div>
-            <div class="switch-row">
-              <span class="hint">默认关</span>
-              <button class="switch" id="subtitle" type="button"><div class="knob"></div></button>
+      <div class="style-filters">
+        <div class="filter-tabs" id="lib-types">
+          <button class="on" type="button" data-type="short">短剧</button>
+          <button type="button" data-type="comic">漫剧</button>
+          <div class="comment-promo is-on" id="comment-promo">
+            <span class="promo-halo" aria-hidden="true"></span>
+            <button type="button" data-type="comment">解说剧</button>
+            <div class="promo-bubble" id="comment-bubble" role="status">
+              <span>解说剧导演级分镜 V 2.5<br>焕新上线，成片效果全面升级</span>
+              <button type="button" class="promo-x" id="comment-bubble-close" aria-label="关闭提示">✕</button>
+              <i class="promo-arrow"></i>
             </div>
           </div>
         </div>
-        <div class="field">
-          <div class="label">上传音频 <span class="hint">可选 · mp3 / wav / m4a，≤100MB</span></div>
-          <button class="upload" id="uploadBtn" type="button">
-            <div><b>点击上传音频</b><br />不上传则使用系统配音</div>
-          </button>
-          <div class="file" id="fileRow">
-            <span>本集旁白.mp3 · 8.4 MB</span>
-            <button class="del" id="delFile" type="button">删除</button>
-          </div>
-        </div>
       </div>
-      <div class="modal-foot">
-        <button class="btn-cancel" id="cancelBtn" type="button">取消</button>
-        <button class="btn-ok" id="okBtn" type="button">确认生成 · 180 积分</button>
+      <div class="style-grid" id="style-grid"></div>
+      <div class="style-foot">
+        <div class="pick" id="style-pick">已选 <b>真人写实电影风格高清</b></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn" id="style-cancel" type="button">取消</button>
+          <button class="btn primary" id="style-ok" type="button">确认选择</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <section class="console" id="consoleView">
-    <header class="cc-top">
-      <div class="top-left">
-        <button class="cc-back" id="backList" type="button">‹ 返回全集</button>
-        <div class="cc-title">第13集：顾清璃被封永安公主</div>
-      </div>
-      <div class="cc-modes">
-        <button class="cc-mode on" type="button">编辑</button>
-        <button class="cc-mode" type="button">分镜列表</button>
-        <button class="cc-mode" type="button">导出</button>
-      </div>
-      <div class="top-right">
-        <div class="credits"><span class="plus">+</span> 98987</div>
-        <div class="sale">限时折扣</div>
-        <div class="avatar">YL</div>
-      </div>
-    </header>
-
-    <div class="cc-body">
-      <aside class="cc-side">
-        <div class="side-title">资产库 <button class="add-icon" type="button" title="添加资产">+</button></div>
-        <div class="side-search">搜索资产</div>
-        <div class="side-tabs">
-          <span class="on">资产 6</span>
-          <span>当前片段 3</span>
-          <span>素材 0</span>
-        </div>
-        <div class="side-block">
-          <h4>角色</h4>
-          <div class="char-card">
-            <div class="asset-row">
-              <div class="asset-ph"></div>
-              <div class="asset-ph"></div>
-              <div class="asset-ph"></div>
-            </div>
-            <div class="char-name">顾清璃 · 宫装</div>
-          </div>
-          <div class="char-card">
-            <div class="asset-row">
-              <div class="asset-ph"></div>
-              <div class="asset-ph"></div>
-            </div>
-            <div class="char-name">赵世轩 · 朝服</div>
-          </div>
-        </div>
-        <div class="side-block">
-          <h4>场景</h4>
-          <div class="asset-ph wide"></div>
-          <div class="char-name">永安宫侧殿</div>
-        </div>
-        <div class="side-block">
-          <h4>道具</h4>
-          <div class="asset-row">
-            <div class="asset-ph sq"></div>
-            <div class="asset-ph sq"></div>
-            <div class="asset-ph sq"></div>
-          </div>
-        </div>
-      </aside>
-
-      <section class="cc-main">
-        <div class="seg-head">
-          <div class="seg-left">
-            <span class="seg-chip">1-1</span>
-            <span>永安宫侧殿</span>
-            <span class="seg-meta">4–15s</span>
-          </div>
-          <div class="seg-tools">
-            <button class="ghost-mini" type="button">版本历史</button>
-            <button class="ghost-mini" type="button">脚本预览</button>
-            <button class="ghost-mini" type="button">编辑</button>
-          </div>
-        </div>
-        <div class="prompt-box" contenteditable="true">
-          【全局设定】真人电影风格，写实光影，宫廷夜色，画面不要出现文字、字幕、水印。
-          <br /><br />
-          夜色中的<span class="tag-s">永安宫侧殿</span>，烛火摇曳。<span class="tag-c">顾清璃-宫装</span>立于殿中，手持<span class="tag-p">白玉诏书</span>，神情冷静。镜头由殿门缓缓推近，停在她抬眼望向殿外的一刻。
-          <br /><br />
-          中景：侍从退下，殿内只余她一人。侧光勾出轮廓，远处夜空星稀。最后定格在诏书微微收紧的指节。
-        </div>
-        <div class="cc-bar">
-          <div class="cc-bar-left">
-            <div class="model-wrap">
-              <button class="pill" id="modelBtn" type="button">Seedance 2.0 ▾</button>
-              <div class="model-menu" id="modelMenu">
-                <button class="model-item on" type="button" data-model="seedance">Seedance 2.0</button>
-                <button class="model-item" type="button" data-model="commentary">解说剧专属 V 2.0</button>
-              </div>
-            </div>
-            <select class="pill" id="resSelect" aria-label="分辨率">
-              <option>480P</option>
-              <option selected>720P</option>
-              <option>1080P</option>
-            </select>
-            <select class="pill" id="durSelect" aria-label="秒数">
-              <option>5s</option>
-              <option selected>10s</option>
-              <option>15s</option>
-              <option>30s</option>
-            </select>
-          </div>
-          <div class="cc-bar-right">
-            <span class="hint">自动匹配素材</span>
-            <span class="sw"><i></i></span>
-            <button class="ai" type="button">✦ AI 改写</button>
-            <span class="tip-wrap">
-              <button class="gen" type="button">生成视频 +150</button>
-              <span class="tip" id="genTip">按当前片段生成视频</span>
-            </span>
-          </div>
-        </div>
-      </section>
-
-      <aside class="cc-preview">
-        <div class="player">
-          <div class="empty-video">▣<span>暂无视频</span></div>
-        </div>
-      </aside>
-    </div>
-
-    <div class="timeline">
-      <div class="tl-head"><span class="on">全部片段</span><span>1-1 永安宫侧殿</span></div>
-      <div class="clips">
-        <button class="clip-add" type="button" title="新增片段">+</button>
-        <div class="clip on"><div class="clip-ph">▣</div><p>1-1-1 · 00:10</p></div>
-        <div class="clip"><div class="clip-ph">▣</div><p>1-1-2 · 00:13</p></div>
-        <div class="clip"><div class="clip-ph">▣</div><p>1-1-3 · 00:10</p></div>
-        <div class="clip"><div class="clip-ph">▣</div><p>1-1-4 · 00:15</p></div>
-        <div class="clip"><div class="clip-ph">▣</div><p>1-1-5 · 00:08</p></div>
-        <div class="clip"><div class="clip-ph">▣</div><p>1-1-6 · 00:10</p></div>
-        <div class="clip"><div class="clip-ph">▣</div><p>1-1-7 · 00:12</p></div>
+  <div class="style-mask" id="custom-mask">
+    <div class="custom-sheet" role="dialog" aria-modal="true">
+      <h3>自定义风格</h3>
+      <label>风格名称</label>
+      <input id="custom-name" placeholder="例如：霓虹都市夜戏" />
+      <label>提示词描述</label>
+      <textarea id="custom-prompt" placeholder="描述画面质感、色彩、材质、光影和禁忌。将用于角色、场景、道具与视频生成。"></textarea>
+      <div class="custom-acts">
+        <button class="btn" id="custom-cancel" type="button">取消</button>
+        <button class="btn primary" id="custom-ok" type="button">确认</button>
       </div>
     </div>
-  </section>
+  </div>
 
+  <script src="js/data.js?v=4"></script>
   <script>
-    const episodes = [
-      ["3", "第3集：赵世轩当众反悔婚", "4", "3", "2"],
-      ["4", "第4集：赵世轩当众反悔婚", "4", "3", "2", false, "blocked"],
-      ["5", "第5集：顾清璃被封永安公主", "5", "4", "3", false, "storyboard"],
-      ["6", "第6集：顾清璃被封永安公主", "5", "4", "3"],
-      ["7", "第7集：顾清璃被封永安公主", "5", "4", "2", false, "partial"],
-      ["8", "第8集：顾清璃入宫请安", "6", "5", "3"],
-      ["13", "第13集：顾清璃被封永安公主", "5", "4", "3", true, "done"],
-      ["14", "第14集：顾清璃夜探旧案", "4", "3", "2"],
-      ["15", "第15集：赵世轩当殿对质", "5", "4", "3"]
-    ];
+    document.getElementById("credits").textContent = ReplicaUI.credits();
 
-    const grid = document.getElementById("grid");
-    const mask = document.getElementById("mask");
-    const listView = document.getElementById("listView");
-    const consoleView = document.getElementById("consoleView");
-    const tabList = document.getElementById("tabList");
-    const tabModal = document.getElementById("tabModal");
-    const tabConsole = document.getElementById("tabConsole");
-    const modalDesc = document.getElementById("modalDesc");
-    const protoTabs = [tabList, tabModal, tabConsole];
+    var state = {
+      source: "file",
+      region: "cn",
+      type: "short",
+      styleId: "live-hd",
+      pickType: "short",
+      pickId: "live-hd"
+    };
 
-    function setTab(active) {
-      protoTabs.forEach((tab) => tab.classList.toggle("active", tab === active));
+    var typeMap = { short: "短剧", comic: "漫剧", comment: "解说剧" };
+    var commentPromoOn = true;
+    var commentBubbleClosed = false;
+
+    function hideCommentBubble() {
+      document.getElementById("comment-bubble").classList.remove("show");
     }
 
-    function showList() {
-      listView.classList.remove("hide");
-      consoleView.classList.remove("show");
-      mask.classList.remove("show");
-      setTab(tabList);
-    }
-
-    function showConsole() {
-      listView.classList.add("hide");
-      consoleView.classList.add("show");
-      mask.classList.remove("show");
-      setTab(tabConsole);
-    }
-    const lip = document.getElementById("lip");
-    const subtitle = document.getElementById("subtitle");
-    const uploadBtn = document.getElementById("uploadBtn");
-    const fileRow = document.getElementById("fileRow");
-    const speedField = document.getElementById("speedField");
-
-    function cardHtml(item) {
-      const [index, title, role, scene, prop, selected, status] = item;
-      const done = status === "done";
-      const blocked = status === "blocked";
-      const partial = status === "partial";
-      const storyboard = status === "storyboard";
-      const badge = done
-        ? '<span class="done-badge">已成片</span>'
-        : partial
-          ? '<span class="fail-badge">2 个片段失败</span>'
-          : storyboard
-            ? '<span class="block-badge">已生成分镜</span>'
-          : blocked
-            ? '<span class="block-badge">资产未完成</span>'
-            : "";
-      const tipText = blocked
-        ? "请先完成本集角色、场景、道具生成"
-        : "当前是解说剧一键全量生成视频";
-      const oneClickBtn = `
-        <span class="tip-wrap">
-          <button class="btn btn-oneclick js-open" type="button"${blocked ? " disabled" : ""}>
-            <svg viewBox="0 0 12 12" fill="none" aria-hidden="true">
-              <path d="M7 .8 2.9 6.7h2.3L4.8 11.2 9.1 5H6.6L7 .8Z" fill="currentColor"/>
-            </svg>
-            一键成片
-          </button>
-          <span class="tip">${tipText}</span>
-        </span>`;
-      const storyboardBtns = `
-        <button class="btn btn-ghost" type="button"${storyboard ? " disabled" : ""}>✦ 专业分镜</button>
-        <button class="btn btn-ghost" type="button"${storyboard ? " disabled" : ""}>导演级分镜</button>`;
-
-      let action = "";
-      if (done) {
-        action = `<button class="btn btn-enter js-enter" type="button">进入编辑</button>`;
-      } else if (partial) {
-        action = `<button class="btn btn-retry js-enter" type="button">重试失败片段</button>`;
+    function showCommentPromo() {
+      document.getElementById("comment-promo").classList.toggle("is-on", commentPromoOn);
+      if (commentPromoOn && !commentBubbleClosed) {
+        document.getElementById("comment-bubble").classList.add("show");
       } else {
-        action = oneClickBtn + storyboardBtns;
+        hideCommentBubble();
       }
-      return `
-        <article class="card${selected ? " selected" : ""}" data-title="${title}">
-          <div class="index">${index}</div>
-          <div class="thumb">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-              <rect x="3" y="6" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.6"/>
-              <path d="M8 6V4M16 6V4M3 10h18" stroke="currentColor" stroke-width="1.6"/>
-            </svg>
-          </div>
-          <div class="body">
-            <div class="title-row">
-              <div class="title">${title}${badge}</div>
-              <div class="card-ops">
-                <span title="仅复制本集剧本和当前集资产">❐</span><span>🗑</span>
-              </div>
-            </div>
-            <div class="meta">
-              <span>角色 ${role}</span>
-              <span>场景 ${scene}</span>
-              <span>道具 ${prop}</span>
-            </div>
-            <div class="actions">${action}</div>
-          </div>
-        </article>`;
     }
 
-    grid.innerHTML = episodes.map(cardHtml).join("");
-
-    function openModal(title) {
-      listView.classList.remove("hide");
-      consoleView.classList.remove("show");
-      modalDesc.textContent = (title || "第13集：顾清璃被封永安公主") + " · 确认后自动拆段并全量出片。整集重做请复制本集。";
-      mask.classList.add("show");
-      setTab(tabModal);
+    function findStyle(id) {
+      return ReplicaData.styles.filter(function (s) { return s.id === id; })[0];
     }
 
-    function closeModal() {
-      showList();
+    function filterStyles(type) {
+      return ReplicaData.styles.filter(function (s) {
+        return s.types.indexOf(type) > -1;
+      });
     }
 
-    grid.addEventListener("click", (e) => {
-      if (e.target.closest(".js-enter")) {
-        showConsole();
+    function showFilled(kind) {
+      state.source = kind || state.source;
+      document.body.classList.add("is-filled");
+      var titles = {
+        file: ["上传成功", "离婚后（3集）.txt · 删除后可重新上传"],
+        paste: ["已粘贴文本", "18,420 字 · 预估 3 集 · 可删除后重贴"],
+        ai: ["AI 已生成剧本", "可删除重写，再点风格库选择画风"]
+      };
+      var pack = titles[state.source] || titles.file;
+      document.getElementById("ok-title").textContent = pack[0];
+      document.getElementById("ok-sub").textContent = pack[1];
+      if (state.source === "ai") document.getElementById("f-name").value = "AI生成剧本（3集）";
+      if (state.source === "paste") document.getElementById("f-name").value = "粘贴剧本（3集）";
+      if (state.source === "file") document.getElementById("f-name").value = "离婚后（3集）";
+    }
+
+    function showEmpty() {
+      document.body.classList.remove("is-filled");
+    }
+
+    function setSource(source) {
+      state.source = source;
+      document.querySelectorAll("#source-tabs button").forEach(function (btn) {
+        btn.classList.toggle("on", btn.getAttribute("data-source") === source);
+      });
+      document.querySelectorAll("[data-pane]").forEach(function (pane) {
+        pane.classList.toggle("on", pane.getAttribute("data-pane") === source);
+      });
+    }
+
+    function syncStyleField() {
+      var style = findStyle(state.styleId);
+      document.getElementById("f-cat").value = state.region;
+      if (!style) {
+        document.getElementById("style-name").textContent = "请选择风格";
+        document.getElementById("style-map").textContent = "";
+        document.getElementById("style-preview").classList.remove("show");
         return;
       }
-      const btn = e.target.closest(".js-open");
-      if (!btn) return;
-      const card = btn.closest(".card");
-      openModal(card.dataset.title);
-    });
-
-    tabList.addEventListener("click", showList);
-    tabModal.addEventListener("click", () => openModal());
-    tabConsole.addEventListener("click", showConsole);
-    document.getElementById("backList").addEventListener("click", showList);
-    document.getElementById("closeBtn").addEventListener("click", closeModal);
-    document.getElementById("cancelBtn").addEventListener("click", closeModal);
-    mask.addEventListener("click", (e) => { if (e.target === mask) closeModal(); });
-
-    document.getElementById("okBtn").addEventListener("click", showConsole);
-
-    lip.addEventListener("click", () => lip.classList.toggle("on"));
-    subtitle.addEventListener("click", () => subtitle.classList.toggle("on"));
-
-    uploadBtn.addEventListener("click", () => {
-      uploadBtn.style.display = "none";
-      fileRow.classList.add("show");
-      speedField.classList.add("disabled");
-    });
-
-    document.getElementById("delFile").addEventListener("click", () => {
-      fileRow.classList.remove("show");
-      uploadBtn.style.display = "flex";
-      speedField.classList.remove("disabled");
-    });
-
-    const modelBtn = document.getElementById("modelBtn");
-    const modelMenu = document.getElementById("modelMenu");
-    const durSelect = document.getElementById("durSelect");
-    const genTip = document.getElementById("genTip");
-
-    function setModel(key, label) {
-      modelBtn.textContent = label + " ▾";
-      modelMenu.querySelectorAll(".model-item").forEach((item) => {
-        item.classList.toggle("on", item.dataset.model === key);
+      document.getElementById("style-name").textContent = style.name;
+      document.getElementById("style-map").textContent = typeMap[state.type];
+      ["style-thumb", "preview-cover"].forEach(function (id) {
+        var el = document.getElementById(id);
+        el.className = (id === "style-thumb" ? "thumb sc " : "cover sc ") + style.cover;
       });
-      const exclusive = key === "commentary";
-      durSelect.style.display = exclusive ? "none" : "inline-flex";
-      genTip.textContent = exclusive
-        ? "当前是解说剧一键全量生成视频"
-        : "按当前片段生成视频";
+      document.getElementById("preview-title").textContent = style.name + " · " + typeMap[state.type];
+      document.getElementById("preview-desc").textContent = style.desc + "。角色、场景、道具将按同一风格生成。";
+      document.getElementById("style-preview").classList.add("show");
     }
 
-    modelBtn.addEventListener("click", (e) => {
+    function renderLibrary() {
+      var grid = document.getElementById("style-grid");
+      var list = filterStyles(state.pickType);
+      var html = list.map(function (s) {
+        return '<button class="style-card' + (s.id === state.pickId ? " on" : "") + '" type="button" data-id="' + s.id + '">' +
+          '<div class="cover sc ' + s.cover + '">' + (s.badge ? '<span class="badge">' + s.badge + "</span>" : "") + "</div>" +
+          '<div class="meta"><div class="ttl">' + s.name + "</div>" +
+          '<div class="sub">' + s.map + " · " + s.desc + "</div></div></button>";
+      }).join("");
+      html += '<button class="style-card custom" type="button" data-id="custom"><div class="plus">+</div>自定义风格</button>';
+      grid.innerHTML = html;
+      var picked = findStyle(state.pickId);
+      document.getElementById("style-pick").innerHTML = picked
+        ? "已选 <b>" + picked.name + "</b> · " + typeMap[state.pickType]
+        : "请选择一个风格";
+    }
+
+    function openLibrary() {
+      state.pickType = state.type;
+      state.pickId = state.styleId;
+      document.querySelectorAll("#lib-types button[data-type]").forEach(function (btn) {
+        btn.classList.toggle("on", btn.getAttribute("data-type") === state.pickType);
+      });
+      renderLibrary();
+      document.getElementById("style-mask").classList.add("open");
+      showCommentPromo();
+    }
+
+    function closeLibrary() {
+      document.getElementById("style-mask").classList.remove("open");
+    }
+
+    function applyPick() {
+      if (!state.pickId || state.pickId === "custom") {
+        ReplicaUI.toast("请先选择一个风格");
+        return;
+      }
+      state.type = state.pickType;
+      state.styleId = state.pickId;
+      syncStyleField();
+      closeLibrary();
+    }
+
+    function startCreate() {
+      if (!state.styleId) {
+        ReplicaUI.toast("请先选择风格");
+        return;
+      }
+      var style = findStyle(state.styleId);
+      var mask = document.getElementById("mask");
+      var title = document.getElementById("flow-title");
+      var sub = document.getElementById("flow-sub");
+      mask.classList.add("open");
+      var name = document.getElementById("f-name").value;
+      var steps = [
+        ["正在解析剧本", name],
+        ["正在套用风格", typeMap[state.type] + " · " + style.name],
+        ["正在生成剧本大纲", "故事梗概 / 人物关系 / 分集结构"],
+        ["大纲已就绪", "进入确认"]
+      ];
+      var i = 0;
+      title.textContent = steps[0][0];
+      sub.textContent = steps[0][1];
+      var t = setInterval(function () {
+        i += 1;
+        if (i >= steps.length) {
+          clearInterval(t);
+          location.href = "outline.html";
+          return;
+        }
+        title.textContent = steps[i][0];
+        sub.textContent = steps[i][1];
+      }, 700);
+    }
+
+    document.querySelectorAll("#source-tabs button").forEach(function (btn) {
+      btn.onclick = function () { setSource(btn.getAttribute("data-source")); };
+    });
+    document.getElementById("upload").onclick = function () { showFilled("file"); };
+    document.getElementById("sample").onclick = function () { showFilled("file"); };
+    document.getElementById("confirm-paste").onclick = function () {
+      if (!document.getElementById("paste-text").value.trim()) {
+        document.getElementById("paste-text").value = "1-1 墓地 日 外  出场：萧铭、贺芷\n萧铭穿着外卖服将电动车停在路边…";
+      }
+      showFilled("paste");
+    };
+    document.getElementById("confirm-ai").onclick = function () { showFilled("ai"); };
+    document.getElementById("remove-file").onclick = showEmpty;
+    document.getElementById("new-project").onclick = showEmpty;
+    document.getElementById("start-create").onclick = startCreate;
+
+    document.getElementById("f-cat").onchange = function () {
+      state.region = this.value;
+    };
+
+    document.getElementById("open-style").onclick = openLibrary;
+    document.getElementById("style-close").onclick = closeLibrary;
+    document.getElementById("style-cancel").onclick = closeLibrary;
+    document.getElementById("style-ok").onclick = applyPick;
+    document.getElementById("style-mask").addEventListener("click", function (e) {
+      if (e.target === this) closeLibrary();
+    });
+
+    document.querySelectorAll("#lib-types button[data-type]").forEach(function (btn) {
+      btn.onclick = function () {
+        state.pickType = btn.getAttribute("data-type");
+        document.querySelectorAll("#lib-types button[data-type]").forEach(function (b) {
+          b.classList.toggle("on", b === btn);
+        });
+        var list = filterStyles(state.pickType);
+        if (!list.some(function (s) { return s.id === state.pickId; })) {
+          state.pickId = list[0] ? list[0].id : "";
+        }
+        renderLibrary();
+      };
+    });
+    document.getElementById("comment-bubble-close").onclick = function (e) {
       e.stopPropagation();
-      modelMenu.classList.toggle("show");
+      commentBubbleClosed = true;
+      hideCommentBubble();
+    };
+
+    document.getElementById("style-grid").addEventListener("click", function (e) {
+      var card = e.target.closest("[data-id]");
+      if (!card) return;
+      if (card.getAttribute("data-id") === "custom") {
+        document.getElementById("custom-mask").classList.add("open");
+        return;
+      }
+      state.pickId = card.getAttribute("data-id");
+      renderLibrary();
     });
 
-    modelMenu.addEventListener("click", (e) => {
-      const item = e.target.closest(".model-item");
-      if (!item) return;
-      setModel(item.dataset.model, item.textContent.trim());
-      modelMenu.classList.remove("show");
+    document.getElementById("custom-cancel").onclick = function () {
+      document.getElementById("custom-mask").classList.remove("open");
+    };
+    document.getElementById("custom-ok").onclick = function () {
+      var name = document.getElementById("custom-name").value.trim() || "自定义风格";
+      var desc = document.getElementById("custom-prompt").value.trim() || "按自定义提示词生成角色、场景与道具";
+      var id = "custom-" + Date.now();
+      ReplicaData.styles.push({
+        id: id,
+        name: name,
+        map: "自定义",
+        desc: desc,
+        types: [state.pickType],
+        regions: ["cn", "os"],
+        cover: "sc-custom"
+      });
+      state.pickId = id;
+      document.getElementById("custom-mask").classList.remove("open");
+      renderLibrary();
+      ReplicaUI.toast("已加入风格库");
+    };
+
+    var drop = document.getElementById("empty-card");
+    drop.addEventListener("dragover", function (e) { e.preventDefault(); });
+    drop.addEventListener("drop", function (e) {
+      e.preventDefault();
+      showFilled("file");
     });
 
-    document.addEventListener("click", () => modelMenu.classList.remove("show"));
-    setModel("commentary", "解说剧专属 V 2.0");
+    syncStyleField();
+    if (/[?&]filled=1/.test(location.search)) showFilled("file");
   </script>
 </body>
 </html>

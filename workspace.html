@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>创作 · 第1集：墓地贺芷提离婚协议</title>
+  <link rel="stylesheet" href="css/product.css" />
+</head>
+<body class="ws-page">
+<div class="app">
+  <header class="topbar">
+    <div class="tb-left">
+      <a class="tb-back" href="episodes.html">‹ 返回全集</a>
+      <b>第1集：墓地贺芷提离婚协议</b>
+    </div>
+    <div class="tb-center">
+      <a class="step" href="episodes.html">中控台</a>
+      <button class="step on" data-act="list">分镜列表</button>
+      <button class="step" data-act="export" disabled style="opacity:.45">导出</button>
+    </div>
+    <div class="tb-right">
+      <div class="credit">✦ <span id="credits"></span></div>
+      <div class="avatar"></div>
+    </div>
+  </header>
+
+  <main class="ws">
+    <aside class="panel assets">
+      <div class="assets-head">
+        <h3>资产库</h3>
+        <button class="icon-round" data-act="add">+</button>
+      </div>
+      <div class="search-row"><input id="asset-search" placeholder="搜索资产" /></div>
+      <div class="asset-tabs">
+        <button class="on" data-tab="all" id="tab-all">资产 (12)</button>
+        <button data-tab="clip" id="tab-clip">当前片段 (0)</button>
+        <button data-tab="material" id="tab-material">素材 (0)</button>
+      </div>
+      <div class="asset-scroll" id="asset-scroll"></div>
+    </aside>
+
+    <section class="panel editor">
+      <div class="shot-head">
+        <div class="left">
+          <b id="shot-title">片段 1</b>
+          <span class="chip" id="shot-scene">场 1-1 墓地</span>
+          <span class="chip">片段时长建议 4–15s</span>
+        </div>
+        <button class="chip" data-act="full">全屏编辑</button>
+      </div>
+      <div class="prompt-box">
+        <textarea id="prompt"></textarea>
+      </div>
+      <div class="shot-foot">
+        <div class="model-wrap" style="position:relative">
+          <button class="model-btn" data-act="toggle-model"><span id="model-name">Seedance 2.0</span> ▾</button>
+          <div class="model-menu" id="model-menu" style="display:none;position:absolute;left:0;bottom:36px;width:220px;background:#1e1e22;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:6px;z-index:8"></div>
+        </div>
+        <button class="mini">720P ▾</button>
+        <label class="mini"> <input id="dur" value="10" /> s</label>
+        <span class="switch" title="匹配资产"></span>
+        <span style="color:#cfcdd5">匹配资产</span>
+        <button class="mini" data-act="rewrite">AI改写</button>
+        <button class="gen-btn" id="gen-btn" data-act="generate">生成视频 <span id="gen-cost">150</span></button>
+        <button class="icon-round" data-act="timer" title="定时生成">⏱</button>
+      </div>
+    </section>
+
+    <section class="panel player">
+      <div class="stage" id="stage">暂无视频</div>
+      <div class="player-bar"><span id="time-label">00:00 / 00:10</span></div>
+    </section>
+
+    <section class="panel timeline">
+      <div class="tl-head">
+        <div style="display:flex;gap:10px;align-items:center">
+          <button class="chip on">全部片段</button>
+          <button class="chip">1-1 墓地 日 外 18</button>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="chip" disabled>播放预览</button>
+          <button class="chip">多选</button>
+        </div>
+      </div>
+      <div class="tl-track" id="tl-track"></div>
+    </section>
+  </main>
+</div>
+
+<div class="drawer" id="list-drawer">
+  <div class="drawer-panel">
+    <div style="display:flex;justify-content:space-between;margin-bottom:12px">
+      <h3>分镜列表 · 第 1 集</h3>
+      <button class="icon-round" data-act="close-list">×</button>
+    </div>
+    <div id="shot-list"></div>
+  </div>
+</div>
+<div class="modal-mask" id="export-modal">
+  <div class="modal">
+    <h3>导出</h3>
+    <p style="color:#8a8694;margin-bottom:12px">当前集还没有可导出的成片。</p>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn" data-act="close-export">取消</button>
+      <button class="btn primary" data-act="close-export">合成全集</button>
+    </div>
+  </div>
+</div>
+<div class="toast-wrap"></div>
+<script src="js/data.js"></script>
+<script src="js/workspace.js"></script>
+</body>
+</html>
