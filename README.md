@@ -36,6 +36,8 @@ python3 -m http.server 8765    # 然后打开 http://127.0.0.1:8765/
 
 ## 协作方式
 
+完整流程和可直接复制给 AI 的提示词见 [协作指南.md](./协作指南.md)。简要步骤：
+
 1. 修改前先拉取最新版本（GitHub Desktop 点 `Fetch origin` / `Pull origin`）
 2. 修改页面
 3. 填写修改说明后 `Commit`，再 `Push origin`
