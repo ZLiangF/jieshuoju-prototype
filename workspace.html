@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>创作 · 第1集：墓地贺芷提离婚协议</title>
-  <link rel="stylesheet" href="css/product.css" />
+  <link rel="stylesheet" href="css/product.css?v=17" />
 </head>
 <body class="ws-page">
 <div class="app">
@@ -54,15 +54,26 @@
       <div class="shot-foot">
         <div class="model-wrap" style="position:relative">
           <button class="model-btn" data-act="toggle-model"><span id="model-name">Seedance 2.0</span> ▾</button>
-          <div class="model-menu" id="model-menu" style="display:none;position:absolute;left:0;bottom:36px;width:220px;background:#1e1e22;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:6px;z-index:8"></div>
+          <div class="model-menu" id="model-menu"></div>
         </div>
-        <button class="mini">720P ▾</button>
+        <div class="model-wrap" style="position:relative">
+          <button class="mini" id="resolution-btn" data-act="toggle-resolution"><span id="resolution-name">720P</span> ▾</button>
+          <div class="resolution-menu" id="resolution-menu">
+            <button type="button" data-resolution="480P">480P</button>
+            <button type="button" data-resolution="720P">720P</button>
+            <button type="button" data-resolution="1080P">1080P</button>
+          </div>
+        </div>
         <label class="mini"> <input id="dur" value="10" /> s</label>
         <span class="switch" title="匹配资产"></span>
         <span style="color:#cfcdd5">匹配资产</span>
         <button class="mini" data-act="rewrite">AI改写</button>
         <button class="gen-btn" id="gen-btn" data-act="generate">生成视频 <span id="gen-cost">150</span></button>
         <button class="icon-round" data-act="timer" title="定时生成">⏱</button>
+      </div>
+      <div class="draft-hint" id="draft-hint">
+        <span class="draft-tag">样片</span>
+        <span>先生成低成本 480P Draft，满意后可基于样片升级为 720P / 1080P 正片</span>
       </div>
     </section>
 
@@ -87,6 +98,36 @@
   </main>
 </div>
 
+<div class="modal-mask" id="upgrade-modal">
+  <div class="modal upgrade-modal" role="dialog" aria-modal="true" aria-labelledby="upgrade-title">
+    <div class="upgrade-head">
+      <div>
+        <span class="draft-tag">STEP 2</span>
+        <h3 id="upgrade-title">基于样片生成正片</h3>
+        <p>画面内容与运镜沿用当前 Draft，选择目标分辨率后独立提交。</p>
+      </div>
+      <button class="icon-round" data-act="close-upgrade" aria-label="关闭">×</button>
+    </div>
+    <div class="upgrade-options">
+      <button class="upgrade-option on" type="button" data-upgrade-res="720P">
+        <span><b>720P</b><small>高清 · 推荐</small></span><strong>150 积分</strong>
+      </button>
+      <button class="upgrade-option" type="button" data-upgrade-res="1080P">
+        <span><b>1080P</b><small>全高清</small></span><strong>240 积分</strong>
+      </button>
+    </div>
+    <div class="billing-note">
+      <b>两步任务独立计费</b>
+      <span>本次仅按目标分辨率计费。Draft 视频不计入输入视频时长；如 Step 1 使用了输入视频，将按 Step 1 的输入视频时长确定 token 用量与单价。</span>
+    </div>
+    <div class="upgrade-foot">
+      <span id="upgrade-summary">将生成 720P 正片</span>
+      <button class="btn" data-act="close-upgrade">取消</button>
+      <button class="btn purple" id="upgrade-submit" data-act="submit-upgrade">生成正片 · 150 积分</button>
+    </div>
+  </div>
+</div>
+
 <div class="drawer" id="list-drawer">
   <div class="drawer-panel">
     <div style="display:flex;justify-content:space-between;margin-bottom:12px">
@@ -108,6 +149,6 @@
 </div>
 <div class="toast-wrap"></div>
 <script src="js/data.js"></script>
-<script src="js/workspace.js"></script>
+<script src="js/workspace.js?v=17"></script>
 </body>
 </html>

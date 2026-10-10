@@ -117,8 +117,8 @@ window.ReplicaData = {
   ],
   models: [
     { id: "seedance-2.0", name: "Seedance 2.0", cost: 150 },
+    { id: "seedance-2.5-draft", name: "Seedance 2.5", tag: "样片", cost: 60, draft: true, resolution: "480P" },
     { id: "seedance-2.5", name: "Seedance 2.5", tag: "推荐", cost: 180 },
-    { id: "seedance-2.5-pro", name: "Seedance 2.5 超能版", tag: "超能", cost: 220 },
     { id: "wan-3", name: "Wan 3.0", cost: 160 }
   ],
   shots: [

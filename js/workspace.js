@@ -1,10 +1,24 @@
 (function () {
   var D = ReplicaData;
-  var state = { shotId: D.shots[0].id, tab: "all", query: "", modelOpen: false, generating: false };
+  var state = {
+    shotId: D.shots[0].id,
+    tab: "all",
+    query: "",
+    selectedModel: "seedance-2.0",
+    resolution: "720P",
+    modelOpen: false,
+    resolutionOpen: false,
+    generating: null,
+    upgrading: null,
+    upgradeRes: "720P",
+    videos: {}
+  };
+  var upgradeCost = { "720P": 150, "1080P": 240 };
 
   function $(s, r) { return (r || document).querySelector(s); }
   function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
   function shot() { return D.shots.find(function (x) { return x.id === state.shotId; }); }
+  function model() { return D.models.find(function (x) { return x.id === state.selectedModel; }); }
   function allAssets() { return D.characters.concat(D.scenes, D.props); }
   function byId(id) { return allAssets().find(function (a) { return a.id === id; }); }
 
@@ -36,33 +50,72 @@
 
   function renderEditor() {
     var s = shot();
+    var m = model();
+    var video = state.videos[s.id];
     $("#shot-title").textContent = "片段 " + s.no;
     $("#shot-scene").textContent = s.scene;
     $("#prompt").value = D.prompt;
     $("#dur").value = s.duration;
     $("#time-label").textContent = "00:00 / 00:" + String(s.duration).padStart(2, "0");
     $("#model-menu").innerHTML = D.models.map(function (m) {
-      return '<button type="button" data-model="' + m.id + '" style="width:100%;height:34px;border-radius:8px;display:flex;justify-content:space-between;padding:0 10px;align-items:center">' + m.name + "<span>" + m.cost + "</span></button>";
+      var tag = m.tag ? '<span class="model-tag' + (m.draft ? "" : " normal") + '">' + m.tag + "</span>" : "";
+      var sub = m.draft ? "480P 低成本预览 · 可升级正片" : "正式视频生成";
+      return '<button class="model-option' + (m.id === state.selectedModel ? " on" : "") + '" type="button" data-model="' + m.id + '">' +
+        '<span><span class="model-title">' + m.name + tag + '</span><small>' + sub + '</small></span>' +
+        '<span class="cost">' + m.cost + " 积分</span></button>";
     }).join("");
-    $("#model-menu").style.display = state.modelOpen ? "block" : "none";
-    $("#gen-btn").textContent = state.generating ? "生成中…" : "生成视频 150";
-    $("#stage").innerHTML = state.generating ? '<div class="spin"></div><div style="margin-top:8px">片段生成中</div>' : "暂无视频";
+    $("#model-menu").classList.toggle("open", state.modelOpen);
+    $("#resolution-menu").classList.toggle("open", state.resolutionOpen);
+    $("#model-name").innerHTML = m.name + (m.draft ? ' <span class="draft-tag">样片</span>' : "");
+    $("#resolution-name").textContent = state.resolution;
+    $$("#resolution-menu button").forEach(function (b) {
+      b.disabled = !!m.draft && b.dataset.resolution !== "480P";
+      b.classList.toggle("on", b.dataset.resolution === state.resolution);
+    });
+    $("#resolution-btn").title = m.draft ? "样片模式固定生成 480P" : "选择生成分辨率";
+    $("#draft-hint").classList.toggle("show", !!m.draft);
+    $("#gen-btn").innerHTML = state.generating === s.id
+      ? "生成中…"
+      : (m.draft ? '生成样片 <span id="gen-cost">' + m.cost + "</span>" : '生成视频 <span id="gen-cost">' + m.cost + "</span>");
+    $("#gen-btn").disabled = !!state.generating || !!state.upgrading;
+
+    if (state.generating === s.id) {
+      $("#stage").innerHTML = '<div class="stage-loading"><div class="spin"></div><div style="margin-top:8px">' + (m.draft ? "480P 样片生成中" : "片段生成中") + "</div></div>";
+    } else if (state.upgrading === s.id) {
+      $("#stage").innerHTML = '<div class="stage-loading"><div class="spin"></div><div style="margin-top:8px">正在基于样片生成 ' + state.upgradeRes + " 正片</div></div>";
+    } else if (video) {
+      $("#stage").innerHTML = '<img class="video-frame" src="media/scenes/cemetery.png" alt="片段视频">' +
+        (video.kind === "draft"
+          ? '<button class="upgrade-trigger" data-act="upgrade">✦ 生成正片</button><span class="draft-watermark">Seedance 2.5 · 样片 480P</span>'
+          : '<span class="player-status"><i></i>Seedance 2.5 正片 · ' + video.resolution + "</span>");
+    } else {
+      $("#stage").textContent = "暂无视频";
+    }
   }
 
   function renderTimeline() {
     $("#tl-track").innerHTML = D.shots.map(function (s) {
-      return '<button class="tcard' + (s.id === state.shotId ? " on" : "") + '" data-shot="' + s.id + '"><span class="num">' + s.no + '</span><div class="clock"></div><span class="dur">00:' + String(s.duration).padStart(2, "0") + "</span></button>";
+      var v = state.videos[s.id];
+      var label = v ? (v.kind === "draft" ? "样片" : v.resolution) : "未生成";
+      return '<button class="tcard' + (s.id === state.shotId ? " on" : "") + '" data-shot="' + s.id + '"><span class="num">' + s.no + '</span><span class="state' + (v && v.kind === "draft" ? " draft" : "") + '">' + label + '</span><div class="clock"></div><span class="dur">00:' + String(s.duration).padStart(2, "0") + "</span></button>";
     }).join("");
     $("#shot-list").innerHTML = D.shots.map(function (s) {
-      return '<div class="shot-row" data-shot="' + s.id + '" style="padding:8px 0;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.06)"><b>片段 ' + s.no + "</b> · " + s.title + " · " + s.duration + "s</div>";
+      var v = state.videos[s.id];
+      var label = v ? (v.kind === "draft" ? "样片 · 480P" : "正片 · " + v.resolution) : "未生成";
+      return '<button type="button" class="shot-row' + (s.id === state.shotId ? " on" : "") + '" data-shot="' + s.id + '">' +
+        '<span class="shot-no">' + s.no + '</span><span><b>' + s.title + '</b><small>' + s.scene + " · " + s.duration + 's</small></span>' +
+        '<span class="shot-state' + (v && v.kind === "draft" ? " draft" : "") + '">' + label + "</span></button>";
     }).join("");
   }
 
   function renderAll() { renderAssets(); renderEditor(); renderTimeline(); }
 
   document.addEventListener("click", function (e) {
-    var t = e.target.closest("[data-act],[data-shot],[data-tab],[data-asset],[data-model]");
-    if (!e.target.closest(".model-wrap")) state.modelOpen = false;
+    var t = e.target.closest("[data-act],[data-shot],[data-tab],[data-asset],[data-model],[data-resolution],[data-upgrade-res]");
+    if (!e.target.closest(".model-wrap")) {
+      state.modelOpen = false;
+      state.resolutionOpen = false;
+    }
     if (!t) { renderEditor(); return; }
     if (t.dataset.shot) { state.shotId = t.dataset.shot; $("#list-drawer").classList.remove("open"); renderAll(); return; }
     if (t.dataset.tab) {
@@ -72,10 +125,24 @@
     }
     if (t.dataset.asset) { ReplicaUI.toast("已选中 " + byId(t.dataset.asset).name); return; }
     if (t.dataset.model) {
-      var m = D.models.find(function (x) { return x.id === t.dataset.model; });
-      $("#model-name").textContent = m.name;
-      $("#gen-cost").textContent = m.cost;
-      state.modelOpen = false; renderEditor(); return;
+      state.selectedModel = t.dataset.model;
+      state.resolution = model().draft ? "480P" : "720P";
+      state.modelOpen = false;
+      renderEditor();
+      return;
+    }
+    if (t.dataset.resolution) {
+      if (!t.disabled) state.resolution = t.dataset.resolution;
+      state.resolutionOpen = false;
+      renderEditor();
+      return;
+    }
+    if (t.dataset.upgradeRes) {
+      state.upgradeRes = t.dataset.upgradeRes;
+      $$(".upgrade-option").forEach(function (b) { b.classList.toggle("on", b.dataset.upgradeRes === state.upgradeRes); });
+      $("#upgrade-summary").textContent = "将生成 " + state.upgradeRes + " 正片";
+      $("#upgrade-submit").textContent = "生成正片 · " + upgradeCost[state.upgradeRes] + " 积分";
+      return;
     }
     var act = t.getAttribute("data-act");
     if (act === "list") $("#list-drawer").classList.add("open");
@@ -83,20 +150,67 @@
     if (act === "export") ReplicaUI.toast("当前集还没有可导出的成片");
     if (act === "close-export") $("#export-modal").classList.remove("open");
     if (act === "add") ReplicaUI.toast("演示：新增素材");
-    if (act === "toggle-model") { state.modelOpen = !state.modelOpen; renderEditor(); }
+    if (act === "toggle-model") {
+      state.modelOpen = !state.modelOpen;
+      state.resolutionOpen = false;
+      renderEditor();
+    }
+    if (act === "toggle-resolution") {
+      state.resolutionOpen = !state.resolutionOpen;
+      state.modelOpen = false;
+      renderEditor();
+    }
     if (act === "rewrite") ReplicaUI.toast("演示：AI 改写提示词");
     if (act === "timer") ReplicaUI.toast("演示：定时生成");
     if (act === "full") ReplicaUI.toast("演示：全屏编辑");
-    if (act === "generate") {
-      state.generating = true; renderEditor();
-      ReplicaUI.toast("已提交生成 · 150 积分");
+    if (act === "upgrade") {
+      state.upgradeRes = "720P";
+      $$(".upgrade-option").forEach(function (b) { b.classList.toggle("on", b.dataset.upgradeRes === "720P"); });
+      $("#upgrade-summary").textContent = "将生成 720P 正片";
+      $("#upgrade-submit").textContent = "生成正片 · " + upgradeCost["720P"] + " 积分";
+      $("#upgrade-modal").classList.add("open");
+    }
+    if (act === "close-upgrade") $("#upgrade-modal").classList.remove("open");
+    if (act === "submit-upgrade") {
+      var upgradingShot = state.shotId;
+      $("#upgrade-modal").classList.remove("open");
+      state.upgrading = upgradingShot;
+      D.credits -= upgradeCost[state.upgradeRes];
+      $("#credits").textContent = ReplicaUI.credits();
+      renderAll();
+      ReplicaUI.toast("Step 2 已提交 · " + state.upgradeRes + " 正片独立计费");
       setTimeout(function () {
-        state.generating = false;
-        $("#stage").innerHTML = '<img src="media/scenes/cemetery.png" style="width:100%;height:100%;object-fit:cover">';
-        ReplicaUI.toast("片段 " + shot().no + " 生成完成");
+        state.videos[upgradingShot] = { kind: "final", resolution: state.upgradeRes, model: "seedance-2.5" };
+        state.upgrading = null;
+        renderAll();
+        ReplicaUI.toast("正片生成完成 · " + state.upgradeRes);
+      }, 1800);
+    }
+    if (act === "generate") {
+      var generatingShot = state.shotId;
+      var generatingModel = model();
+      var generatingResolution = state.resolution;
+      state.generating = generatingShot;
+      D.credits -= generatingModel.cost;
+      $("#credits").textContent = ReplicaUI.credits();
+      renderAll();
+      ReplicaUI.toast(generatingModel.draft ? "Step 1 已提交 · 480P 样片独立计费" : "已提交生成 · " + generatingModel.cost + " 积分");
+      setTimeout(function () {
+        state.videos[generatingShot] = {
+          kind: generatingModel.draft ? "draft" : "final",
+          resolution: generatingResolution,
+          model: generatingModel.id
+        };
+        state.generating = null;
+        renderAll();
+        ReplicaUI.toast(generatingModel.draft ? "480P 样片生成完成，可继续生成正片" : "片段生成完成");
       }, 1800);
     }
   });
+
+  $("#upgrade-modal").onclick = function (e) {
+    if (e.target === this) this.classList.remove("open");
+  };
   $("#asset-search").oninput = function () { state.query = this.value; renderAssets(); };
   renderAll();
 })();
