@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>创作 · 跳跃视界</title>
-  <link rel="stylesheet" href="css/product.css?v=7" />
+  <link rel="stylesheet" href="css/product.css?v=8" />
 </head>
 <body class="home">
   <header class="topbar">
@@ -150,6 +150,13 @@
               <div class="desc" id="preview-desc">真实演员感，电影布光，可实拍服化道。角色、场景、道具将按同一风格生成。</div>
             </div>
           </div>
+          <div class="auto-row">
+            <div>
+              <b>全自动</b>
+              <small>剧本、资产、分集视频依次流式生成；每步完成 5 秒无操作自动进入下一步</small>
+            </div>
+            <button class="oc-switch on" id="auto-switch" type="button" role="switch" aria-checked="true" aria-label="全自动"></button>
+          </div>
           <div class="cta">
             <button class="btn primary" id="start-create" type="button">立即创作 ✦ 17</button>
           </div>
@@ -194,6 +201,29 @@
       <div class="spin" style="margin:0 auto"></div>
       <h2 id="flow-title" style="margin:16px 0 8px;font-size:16px">正在解析剧本</h2>
       <p id="flow-sub" style="color:#8a8694">离婚后（3集）</p>
+    </div>
+  </div>
+
+  <div class="auto-mask" id="auto-mask">
+    <div class="auto-sheet" role="dialog" aria-modal="true" aria-labelledby="auto-title">
+      <div class="auto-head">
+        <div>
+          <h2 id="auto-title">全自动创作中</h2>
+          <p id="auto-name">离婚后（3集）</p>
+        </div>
+        <button class="style-close" id="auto-close" type="button" aria-label="关闭">✕</button>
+      </div>
+      <div class="auto-steps" id="auto-steps">
+        <div class="auto-step" data-step="0"><i>1</i><span>剧本</span></div>
+        <div class="auto-step" data-step="1"><i>2</i><span>资产</span></div>
+        <div class="auto-step" data-step="2"><i>3</i><span>分集视频</span></div>
+      </div>
+      <div class="auto-body" id="auto-body"></div>
+      <div class="auto-foot">
+        <span id="auto-tip"></span>
+        <button class="btn" id="auto-pause" type="button">暂停检查</button>
+        <button class="btn purple" id="auto-next" type="button">进入下一步</button>
+      </div>
     </div>
   </div>
 
@@ -377,9 +407,227 @@
       closeLibrary();
     }
 
+    var auto = { on: true, step: -1, run: 0, timers: [], tick: null, left: 0, waiting: false, finished: false };
+    var autoStepNames = ["剧本", "资产", "分集视频"];
+    var autoStages = [runAutoScript, runAutoAssets, runAutoVideos];
+
+    function $id(id) { return document.getElementById(id); }
+
+    function autoLater(fn, ms) {
+      var run = auto.run;
+      auto.timers.push(setTimeout(function () { if (run === auto.run) fn(); }, ms));
+    }
+
+    function clearAuto() {
+      auto.timers.forEach(clearTimeout);
+      auto.timers = [];
+      clearInterval(auto.tick);
+      auto.waiting = false;
+    }
+
+    function autoScroll() {
+      var body = $id("auto-body");
+      body.scrollTop = body.scrollHeight;
+    }
+
+    function renderAutoSteps() {
+      document.querySelectorAll(".auto-step").forEach(function (el) {
+        var i = Number(el.getAttribute("data-step"));
+        el.classList.toggle("on", i === auto.step && !auto.finished);
+        el.classList.toggle("done", i < auto.step || auto.finished);
+      });
+    }
+
+    function setAutoFoot(mode) {
+      var tip = $id("auto-tip");
+      var pause = $id("auto-pause");
+      var next = $id("auto-next");
+      pause.style.display = mode === "waiting" ? "" : "none";
+      next.style.display = mode === "running" ? "none" : "";
+      if (mode === "running") tip.textContent = "正在流式生成" + autoStepNames[auto.step] + "…";
+      if (mode === "waiting") {
+        tip.innerHTML = "<b>" + auto.left + "</b> 秒后自动进入" + autoStepNames[auto.step + 1] + "生成 · 任意操作将重新计时";
+        next.textContent = "进入" + autoStepNames[auto.step + 1];
+      }
+      if (mode === "paused") {
+        tip.textContent = "已暂停，检查完成后可手动进入下一步";
+        next.textContent = "进入" + autoStepNames[auto.step + 1];
+      }
+      if (mode === "done") {
+        tip.textContent = "全部完成：剧本 3 集 · 资产 11 个 · 分集视频 3 集（1080P）";
+        next.textContent = "查看分集成片";
+      }
+    }
+
+    function typeText(el, text, done) {
+      var i = 0;
+      (function tick() {
+        i = Math.min(text.length, i + 4);
+        el.textContent = text.slice(0, i);
+        autoScroll();
+        if (i < text.length) autoLater(tick, 30);
+        else done();
+      })();
+    }
+
+    function runAutoScript(done) {
+      var outline = ReplicaData.outline;
+      var blocks = [{ title: "故事梗概", body: outline.summary }].concat(outline.scripts);
+      var box = $id("auto-body");
+      box.innerHTML = '<div class="auto-script"></div>';
+      var wrap = box.firstChild;
+      (function next(i) {
+        if (i >= blocks.length) { done(); return; }
+        var h = document.createElement("h4");
+        var p = document.createElement("p");
+        h.textContent = blocks[i].title;
+        wrap.appendChild(h);
+        wrap.appendChild(p);
+        typeText(p, blocks[i].body, function () { autoLater(function () { next(i + 1); }, 200); });
+      })(0);
+    }
+
+    function runAutoAssets(done) {
+      var D = ReplicaData;
+      var items = D.characters.map(function (c) { return { kind: "角色", name: c.name + "-" + c.look, image: c.image }; })
+        .concat(D.scenes.map(function (s) { return { kind: "场景", name: s.name, image: s.image, wide: true }; }))
+        .concat(D.props.map(function (p) { return { kind: "道具", name: p.name, image: p.image, wide: true }; }));
+      $id("auto-body").innerHTML = '<div class="auto-grid">' + items.map(function (a, i) {
+        return '<div class="auto-card' + (a.wide ? " wide" : "") + '" data-i="' + i + '"><div class="auto-thumb"><span>排队中</span></div>' +
+          '<div class="auto-meta"><small>' + a.kind + "</small><b>" + a.name + "</b></div></div>";
+      }).join("") + "</div>";
+      (function next(i) {
+        if (i >= items.length) { done(); return; }
+        var card = document.querySelector('.auto-card[data-i="' + i + '"]');
+        var thumb = card.querySelector(".auto-thumb");
+        thumb.innerHTML = '<div class="spin"></div><span>图片生成中</span>';
+        card.scrollIntoView({ block: "nearest" });
+        autoLater(function () {
+          thumb.innerHTML = '<img src="' + items[i].image + '" alt="">';
+          card.classList.add("done");
+          next(i + 1);
+        }, 450);
+      })(0);
+    }
+
+    function runAutoVideos(done) {
+      var shotCounts = [6, 4, 5];
+      var covers = ["media/scenes/cemetery.png", "media/scenes/office.png", "media/scenes/rain.png"];
+      var eps = ReplicaData.episodes;
+      $id("auto-body").innerHTML = '<div class="auto-eps">' + eps.map(function (ep, i) {
+        return '<div class="auto-ep" data-i="' + i + '"><div class="auto-ep-cover"><img src="' + covers[i] + '" alt=""></div>' +
+          '<div class="auto-ep-main"><b>' + ep.title + '</b><div class="auto-bar"><i></i></div>' +
+          '<small class="auto-ep-state">排队中 · ' + shotCounts[i] + " 个片段</small></div></div>";
+      }).join("") + "</div>";
+      (function nextEp(i) {
+        if (i >= eps.length) { done(); return; }
+        var row = document.querySelector('.auto-ep[data-i="' + i + '"]');
+        var bar = row.querySelector(".auto-bar i");
+        var stateEl = row.querySelector(".auto-ep-state");
+        var total = shotCounts[i];
+        row.classList.add("on");
+        row.scrollIntoView({ block: "nearest" });
+        (function nextShot(k) {
+          if (k > total) {
+            stateEl.textContent = "正在合成成片（字幕 / 配音 / BGM）…";
+            autoLater(function () {
+              row.classList.remove("on");
+              row.classList.add("done");
+              stateEl.textContent = "成片完成 · 1080P · " + total + " 个片段";
+              nextEp(i + 1);
+            }, 700);
+            return;
+          }
+          stateEl.textContent = "视频片段 " + k + " / " + total + " 生成中";
+          autoLater(function () {
+            bar.style.width = Math.round(k / total * 90) + "%";
+            nextShot(k + 1);
+          }, 380);
+        })(1);
+      })(0);
+    }
+
+    function goAutoStep(i) {
+      clearInterval(auto.tick);
+      auto.waiting = false;
+      auto.step = i;
+      renderAutoSteps();
+      setAutoFoot("running");
+      autoStages[i](function () {
+        if (i < autoStages.length - 1) startAutoCountdown();
+        else finishAuto();
+      });
+    }
+
+    function startAutoCountdown() {
+      clearInterval(auto.tick);
+      auto.waiting = true;
+      auto.left = 5;
+      setAutoFoot("waiting");
+      auto.tick = setInterval(function () {
+        auto.left -= 1;
+        if (auto.left <= 0) goAutoStep(auto.step + 1);
+        else setAutoFoot("waiting");
+      }, 1000);
+    }
+
+    function finishAuto() {
+      auto.finished = true;
+      renderAutoSteps();
+      $id("auto-title").textContent = "全自动创作完成";
+      setAutoFoot("done");
+      ReplicaUI.toast("剧本、资产图片与分集视频已全部生成");
+    }
+
+    function startAuto(name) {
+      auto.run += 1;
+      clearAuto();
+      auto.finished = false;
+      $id("auto-title").textContent = "全自动创作中";
+      $id("auto-name").textContent = name + " · " + typeMap[state.type] + " · " + findStyle(state.styleId).name;
+      $id("auto-mask").classList.add("open");
+      goAutoStep(0);
+    }
+
+    function closeAuto() {
+      auto.run += 1;
+      clearAuto();
+      $id("auto-mask").classList.remove("open");
+    }
+
+    function onAutoActivity(e) {
+      if (!auto.waiting) return;
+      if (e.target.closest && e.target.closest("#auto-pause,#auto-next,#auto-close")) return;
+      startAutoCountdown();
+    }
+
+    $id("auto-switch").onclick = function () {
+      auto.on = !auto.on;
+      this.classList.toggle("on", auto.on);
+      this.setAttribute("aria-checked", String(auto.on));
+    };
+    $id("auto-close").onclick = closeAuto;
+    $id("auto-pause").onclick = function () {
+      clearInterval(auto.tick);
+      auto.waiting = false;
+      setAutoFoot("paused");
+    };
+    $id("auto-next").onclick = function () {
+      if (auto.finished) { location.href = "episodes.html"; return; }
+      goAutoStep(auto.step + 1);
+    };
+    ["click", "wheel", "touchstart"].forEach(function (type) {
+      $id("auto-mask").addEventListener(type, onAutoActivity, { passive: true });
+    });
+    document.addEventListener("keydown", onAutoActivity);
+
     function startCreate() {
       if (!state.styleId) {
         ReplicaUI.toast("请先选择风格");
+        return;
+      }
+      if (auto.on) {
+        startAuto(document.getElementById("f-name").value);
         return;
       }
       var style = findStyle(state.styleId);

@@ -10,10 +10,10 @@
     resolutionOpen: false,
     generating: null,
     upgrading: null,
-    upgradeRes: "720P",
     videos: {}
   };
-  var upgradeCost = { "720P": 150, "1080P": 240 };
+  var finalResolution = "1080P";
+  var finalCost = 240;
 
   function $(s, r) { return (r || document).querySelector(s); }
   function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -82,11 +82,11 @@
     if (state.generating === s.id) {
       $("#stage").innerHTML = '<div class="stage-loading"><div class="spin"></div><div style="margin-top:8px">' + (m.draft ? "480P 样片生成中" : "片段生成中") + "</div></div>";
     } else if (state.upgrading === s.id) {
-      $("#stage").innerHTML = '<div class="stage-loading"><div class="spin"></div><div style="margin-top:8px">正在基于样片生成 ' + state.upgradeRes + " 正片</div></div>";
+      $("#stage").innerHTML = '<div class="stage-loading"><div class="spin"></div><div style="margin-top:8px">正在基于样片生成 ' + finalResolution + " 正片</div></div>";
     } else if (video) {
       $("#stage").innerHTML = '<img class="video-frame" src="media/scenes/cemetery.png" alt="片段视频">' +
         (video.kind === "draft"
-          ? '<button class="upgrade-trigger" data-act="upgrade">✦ 生成正片</button><span class="draft-watermark">Seedance 2.5 · 样片 480P</span>'
+          ? '<button class="upgrade-trigger" data-act="upgrade">✦ 生成 1080P 正片</button><span class="draft-watermark">Seedance 2.5 · 样片 480P</span>'
           : '<span class="player-status"><i></i>Seedance 2.5 正片 · ' + video.resolution + "</span>");
     } else {
       $("#stage").textContent = "暂无视频";
@@ -111,7 +111,7 @@
   function renderAll() { renderAssets(); renderEditor(); renderTimeline(); }
 
   document.addEventListener("click", function (e) {
-    var t = e.target.closest("[data-act],[data-shot],[data-tab],[data-asset],[data-model],[data-resolution],[data-upgrade-res]");
+    var t = e.target.closest("[data-act],[data-shot],[data-tab],[data-asset],[data-model],[data-resolution]");
     if (!e.target.closest(".model-wrap")) {
       state.modelOpen = false;
       state.resolutionOpen = false;
@@ -137,13 +137,6 @@
       renderEditor();
       return;
     }
-    if (t.dataset.upgradeRes) {
-      state.upgradeRes = t.dataset.upgradeRes;
-      $$(".upgrade-option").forEach(function (b) { b.classList.toggle("on", b.dataset.upgradeRes === state.upgradeRes); });
-      $("#upgrade-summary").textContent = "将生成 " + state.upgradeRes + " 正片";
-      $("#upgrade-submit").textContent = "生成正片 · " + upgradeCost[state.upgradeRes] + " 积分";
-      return;
-    }
     var act = t.getAttribute("data-act");
     if (act === "list") $("#list-drawer").classList.add("open");
     if (act === "close-list") $("#list-drawer").classList.remove("open");
@@ -164,26 +157,17 @@
     if (act === "timer") ReplicaUI.toast("演示：定时生成");
     if (act === "full") ReplicaUI.toast("演示：全屏编辑");
     if (act === "upgrade") {
-      state.upgradeRes = "720P";
-      $$(".upgrade-option").forEach(function (b) { b.classList.toggle("on", b.dataset.upgradeRes === "720P"); });
-      $("#upgrade-summary").textContent = "将生成 720P 正片";
-      $("#upgrade-submit").textContent = "生成正片 · " + upgradeCost["720P"] + " 积分";
-      $("#upgrade-modal").classList.add("open");
-    }
-    if (act === "close-upgrade") $("#upgrade-modal").classList.remove("open");
-    if (act === "submit-upgrade") {
       var upgradingShot = state.shotId;
-      $("#upgrade-modal").classList.remove("open");
       state.upgrading = upgradingShot;
-      D.credits -= upgradeCost[state.upgradeRes];
+      D.credits -= finalCost;
       $("#credits").textContent = ReplicaUI.credits();
       renderAll();
-      ReplicaUI.toast("Step 2 已提交 · " + state.upgradeRes + " 正片独立计费");
+      ReplicaUI.toast("Step 2 已提交 · " + finalResolution + " 正片独立计费");
       setTimeout(function () {
-        state.videos[upgradingShot] = { kind: "final", resolution: state.upgradeRes, model: "seedance-2.5" };
+        state.videos[upgradingShot] = { kind: "final", resolution: finalResolution, model: "seedance-2.5" };
         state.upgrading = null;
         renderAll();
-        ReplicaUI.toast("正片生成完成 · " + state.upgradeRes);
+        ReplicaUI.toast("正片生成完成 · " + finalResolution);
       }, 1800);
     }
     if (act === "generate") {
@@ -208,9 +192,6 @@
     }
   });
 
-  $("#upgrade-modal").onclick = function (e) {
-    if (e.target === this) this.classList.remove("open");
-  };
   $("#asset-search").oninput = function () { state.query = this.value; renderAssets(); };
   renderAll();
 })();

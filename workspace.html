@@ -73,7 +73,7 @@
       </div>
       <div class="draft-hint" id="draft-hint">
         <span class="draft-tag">样片</span>
-        <span>先生成低成本 480P Draft，满意后可基于样片升级为 720P / 1080P 正片</span>
+        <span>先生成低成本 480P Draft，满意后可直接生成 1080P 正片</span>
       </div>
     </section>
 
@@ -96,36 +96,6 @@
       <div class="tl-track" id="tl-track"></div>
     </section>
   </main>
-</div>
-
-<div class="modal-mask" id="upgrade-modal">
-  <div class="modal upgrade-modal" role="dialog" aria-modal="true" aria-labelledby="upgrade-title">
-    <div class="upgrade-head">
-      <div>
-        <span class="draft-tag">STEP 2</span>
-        <h3 id="upgrade-title">基于样片生成正片</h3>
-        <p>画面内容与运镜沿用当前 Draft，选择目标分辨率后独立提交。</p>
-      </div>
-      <button class="icon-round" data-act="close-upgrade" aria-label="关闭">×</button>
-    </div>
-    <div class="upgrade-options">
-      <button class="upgrade-option on" type="button" data-upgrade-res="720P">
-        <span><b>720P</b><small>高清 · 推荐</small></span><strong>150 积分</strong>
-      </button>
-      <button class="upgrade-option" type="button" data-upgrade-res="1080P">
-        <span><b>1080P</b><small>全高清</small></span><strong>240 积分</strong>
-      </button>
-    </div>
-    <div class="billing-note">
-      <b>两步任务独立计费</b>
-      <span>本次仅按目标分辨率计费。Draft 视频不计入输入视频时长；如 Step 1 使用了输入视频，将按 Step 1 的输入视频时长确定 token 用量与单价。</span>
-    </div>
-    <div class="upgrade-foot">
-      <span id="upgrade-summary">将生成 720P 正片</span>
-      <button class="btn" data-act="close-upgrade">取消</button>
-      <button class="btn purple" id="upgrade-submit" data-act="submit-upgrade">生成正片 · 150 积分</button>
-    </div>
-  </div>
 </div>
 
 <div class="drawer" id="list-drawer">
