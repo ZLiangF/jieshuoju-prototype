@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>资产库 · 离婚后（15集）</title>
-  <link rel="stylesheet" href="css/product.css?v=95" />
+  <link rel="stylesheet" href="css/product.css?v=106" />
 </head>
 <body class="asset-page">
 <div class="app">
@@ -123,14 +123,24 @@
               <span id="editor-char-desc"></span>
             </div>
           </div>
-          <div class="look-view-switch" id="look-view-switch" aria-label="形象展示模式">
+          <div class="look-library-tools">
+            <button type="button" id="look-multi" class="look-tool" aria-pressed="false" title="多选未生成形象" aria-label="多选未生成形象">
+              <svg viewBox="0 0 14 14" aria-hidden="true"><rect x="1.5" y="1.5" width="11" height="11" rx="2.5"/><path d="M4 7.2 6.1 9.2 10 4.8"/></svg>
+            </button>
+            <div class="look-view-switch" id="look-view-switch" aria-label="形象展示模式">
             <button type="button" class="on" data-look-view="flat" title="平铺展示" aria-label="平铺展示">
               <svg viewBox="0 0 14 14" aria-hidden="true"><rect x="1.5" y="1.5" width="4.5" height="4.5" rx="1"/><rect x="8" y="1.5" width="4.5" height="4.5" rx="1"/><rect x="1.5" y="8" width="4.5" height="4.5" rx="1"/><rect x="8" y="8" width="4.5" height="4.5" rx="1"/></svg>
             </button>
             <button type="button" data-look-view="structure" title="结构图展示" aria-label="结构图展示">
               <svg viewBox="0 0 14 14" aria-hidden="true"><rect x="4.5" y="1" width="5" height="3.5" rx="1"/><rect x="1" y="9.5" width="4.5" height="3.5" rx="1"/><rect x="8.5" y="9.5" width="4.5" height="3.5" rx="1"/><path d="M7 4.5v2.2M3.25 9.5V7.2h7.5v2.3" fill="none" stroke="currentColor"/></svg>
             </button>
+            </div>
           </div>
+        </div>
+        <div class="look-multi-bar" id="look-multi-bar" hidden>
+          <span id="look-picked">已选 0</span>
+          <button type="button" id="look-select-rest">全选剩余</button>
+          <button type="button" class="btn purple" id="look-gen-selected">生成所选</button>
         </div>
         <div class="look-library-body" id="look-library"></div>
       </section>
@@ -237,7 +247,6 @@
                 </button>
                 <div class="gen-type-menu" id="type-menu" hidden role="listbox" aria-label="生成类型"></div>
               </div>
-              <button type="button" id="voice-toggle">配置音色</button>
             </div>
             <div class="composer-submit">
               <span class="draft-hint">已保存</span>
@@ -431,6 +440,8 @@
   var currentChar = D.characters[0];
   var editingLook = null;
   var lookViewMode = "flat";
+  var lookMultiOn = false;
+  var selectedLooks = {};
   var previewRailOpen = false;
   var previewRailTab = "history";
   var previewRailSrc = "";
@@ -564,9 +575,14 @@
       : '<img src="' + (showSheet ? a.sheet : a.image) + '" alt="' + a.name + '">';
     var key = kind + ":" + row.i;
     var picked = multiOn && !!selectedAssets[key];
-    var check = multiOn ? '<span class="asset-check' + (picked ? " is-on" : "") + '" aria-hidden="true"></span>' : "";
+    var check = multiOn
+      ? '<span class="asset-check card-pick' + (picked ? " is-on" : "") + '" role="checkbox" aria-checked="' + (picked ? "true" : "false") + '" aria-label="选择' + (kind === "char" ? "角色" : "资产") + '"></span>'
+      : "";
+    var genBtn = kind === "char" && pending
+      ? '<button type="button" class="card-gen" data-gen-char="' + row.i + '" title="生成该角色全部未完成形象">生成</button>'
+      : "";
     return '<article class="char-card asset-card asset-' + kind + " is-" + state + (picked ? " is-picked" : "") + '" data-kind="' + kind + '" data-i="' + row.i + '" data-key="' + key + '">' +
-      '<div class="' + mediaClass + '">' + visual + check +
+      '<div class="' + mediaClass + '">' + visual + genBtn + check +
       '<div class="edit"><span>直接编辑</span></div>' +
       '<span class="asset-flag ' + flagState + '">' + flagIcon + flagText + "</span></div>" +
       '<div class="asset-card-info"><div class="asset-card-title"><h3>' + a.name +
@@ -765,12 +781,14 @@
     var parentText = !flat ? ""
       : (!parent && primary === look) ? "主" + assetWord()
       : "上级：" + lookShortName(parent || primary);
-    return '<article class="look-library-card ' + (editingLook === look ? "on " : "") + state +
+    var checked = editorKind === "char" && lookMultiOn && !!selectedLooks[look.id];
+    var check = editorKind === "char" && lookMultiOn ? '<span class="asset-check look-pick' + (checked ? " is-on" : "") + '" role="checkbox" aria-checked="' + (checked ? "true" : "false") + '" aria-label="选择形象"></span>' : "";
+    return '<article class="look-library-card ' + (editingLook === look ? "on " : "") + state + (checked ? " is-look-picked" : "") +
       '" data-look-index="' + index + '" tabindex="0">' +
       '<div class="look-card-image' + (state === "pending" ? " is-empty" : "") + '">' +
       (state === "pending"
         ? '<span class="look-card-empty" aria-hidden="true">' + (editorKind === "char" ? EMPTY_PERSON_ICON : EMPTY_IMAGE_ICON) + "</span>"
-        : '<img src="' + look.image + '" alt="' + shortName + '">') +
+        : '<img src="' + look.image + '" alt="' + shortName + '">') + check +
       '<button type="button" class="look-card-eps' + (chip.compact ? " is-compact" : "") + '" data-look-eps="' + index + '" title="' + chip.title + '">' + chip.html + "</button>" +
       '<span class="look-state-tag ' + state + '">' + lookStateIcon(state) + lookStateText(state) + "</span></div>" +
       '<div class="look-card-info"><strong>' + shortName + '</strong>' +
@@ -809,12 +827,14 @@
       var thumb = state === "pending"
         ? '<span class="look-tree-avatar">' + (editorKind === "char" ? EMPTY_PERSON_ICON : EMPTY_IMAGE_ICON) + "</span>"
         : '<img src="' + look.image + '" alt="">';
+      var checked = editorKind === "char" && lookMultiOn && !!selectedLooks[look.id];
+      var check = editorKind === "char" && lookMultiOn ? '<span class="asset-check look-tree-check look-pick' + (checked ? " is-on" : "") + '" role="checkbox" aria-checked="' + (checked ? "true" : "false") + '" aria-label="选择形象"></span>' : "";
       html += '<div class="look-tree-node">' +
-        '<div class="look-tree-row' + (editingLook === look ? " on" : "") + '">' +
+        '<div class="look-tree-row' + (editingLook === look ? " on" : "") + (checked ? " is-look-picked" : "") + '">' +
         (childCount
           ? '<button type="button" class="look-tree-toggle' + (open ? " is-open" : "") + '" data-toggle-look="' + look.id + '" aria-label="展开子' + assetWord() + '">›</button>'
           : '<span class="look-tree-toggle is-leaf"></span>') +
-        '<button type="button" class="look-tree-main" data-look-index="' + index + '">' + thumb +
+        '<button type="button" class="look-tree-main" data-look-index="' + index + '">' + check + thumb +
         '<span class="look-tree-copy"><strong>' + lookShortName(look) + '</strong><small>' +
         '<i class="state ' + state + '">' + lookStateText(state) + "</i><i>" + chipText + "</i>" +
         (childCount ? "<i>" + childCount + " 个子" + assetWord() + "</i>" : "") +
@@ -876,6 +896,58 @@
     }
     library.dataset.char = currentChar.id;
     library.scrollTop = libraryScroll;
+    syncLookMulti();
+  }
+
+  function pendingLooksOf(item) {
+    return (item.looksList || []).filter(function (look, index) {
+      var state = item === currentChar ? lookVisualState(look, index) : (isLookRevealed(item, look) ? "ready" : "pending");
+      return state === "pending" || state === "failed";
+    });
+  }
+
+  function syncLookMulti() {
+    var button = document.getElementById("look-multi");
+    var bar = document.getElementById("look-multi-bar");
+    var show = editorKind === "char";
+    button.hidden = !show;
+    if (!show) lookMultiOn = false;
+    button.classList.toggle("on", lookMultiOn);
+    button.setAttribute("aria-pressed", lookMultiOn ? "true" : "false");
+    button.title = lookMultiOn ? "取消多选" : "多选未生成形象";
+    var pending = pendingLooksOf(currentChar);
+    var picked = pending.filter(function (look) { return selectedLooks[look.id]; }).length;
+    bar.hidden = !lookMultiOn;
+    if (bar.hidden) return;
+    var allPicked = pending.length > 0 && picked === pending.length;
+    document.getElementById("look-picked").textContent = "已选 " + picked;
+    var selectRest = document.getElementById("look-select-rest");
+    selectRest.textContent = allPicked ? "取消全选" : "全选剩余";
+    selectRest.disabled = !pending.length;
+    var gen = document.getElementById("look-gen-selected");
+    gen.textContent = picked ? "生成所选 " + picked : "生成所选";
+    gen.disabled = !picked;
+  }
+
+  function revealItemLooks(item, filter) {
+    var looks = item.looksList || [];
+    var count = 0;
+    if (!looks.length) {
+      if (!revealedAssets[item.id] && (!filter || filter(null))) {
+        revealedAssets[item.id] = true;
+        count = 1;
+      }
+      return count;
+    }
+    looks.forEach(function (look) {
+      if (isLookRevealed(item, look)) return;
+      if (filter && !filter(look)) return;
+      revealedAssets[item.id] = true;
+      revealedLooks[item.id + "/" + look.id] = true;
+      if (look.status === "pending") delete look.status;
+      count++;
+    });
+    return count;
   }
 
   function emptyLookBoardHtml() {
@@ -946,6 +1018,10 @@
   }
 
   function fillLookForm(look) {
+    if (!document.getElementById("look-dialog").classList.contains("open")) {
+      lookMultiOn = false;
+      selectedLooks = {};
+    }
     ensureEditorLooks(currentChar);
     editingLook = look;
     lookDirty = false;
@@ -1155,6 +1231,8 @@
     closeEpisodeUi();
     closeReferenceDialog();
     closeVoiceDialog(false);
+    lookMultiOn = false;
+    selectedLooks = {};
     document.body.classList.remove("asset-editor-page-open");
     document.getElementById("look-dialog").classList.remove("open");
   }
@@ -1237,6 +1315,25 @@
   }
 
   document.getElementById("grid").onclick = function (e) {
+    var pickBox = e.target.closest(".card-pick");
+    if (pickBox) {
+      var pickCard = pickBox.closest(".char-card");
+      var pickKey = pickCard.dataset.key;
+      if (selectedAssets[pickKey]) delete selectedAssets[pickKey];
+      else selectedAssets[pickKey] = true;
+      if (Object.keys(selectedAssets).length) multiOn = true;
+      render();
+      return;
+    }
+    var gen = e.target.closest("[data-gen-char]");
+    if (gen) {
+      var item = D.characters[Number(gen.dataset.genChar)];
+      var generated = item ? revealItemLooks(item) : 0;
+      render();
+      if (item && document.getElementById("look-dialog").classList.contains("open") && currentChar === item) fillLookForm(editingLook);
+      ReplicaUI.toast(generated ? "已生成「" + item.name + "」的 " + generated + " 个形象" : "该角色没有待生成的形象");
+      return;
+    }
     var card = e.target.closest(".char-card");
     if (!card) return;
     if (multiOn) {
@@ -1334,6 +1431,17 @@
       openCreateDialog("child");
       return;
     }
+    var lookPick = e.target.closest(".look-pick");
+    if (lookPick) {
+      var pickHost = lookPick.closest("[data-look-index]");
+      var pickLook = pickHost && (currentChar.looksList || [])[Number(pickHost.dataset.lookIndex)];
+      if (pickLook) {
+        if (selectedLooks[pickLook.id]) delete selectedLooks[pickLook.id];
+        else selectedLooks[pickLook.id] = true;
+        renderLookLibrary();
+      }
+      return;
+    }
     var voiceButton = e.target.closest("[data-look-voice]");
     if (voiceButton) {
       newLookParentId = "";
@@ -1344,15 +1452,23 @@
     }
     var lookCard = e.target.closest("[data-look-index]");
     if (!lookCard) return;
+    var pickedLook = (currentChar.looksList || [])[Number(lookCard.dataset.lookIndex)];
+    if (lookMultiOn && editorKind === "char" && pickedLook) {
+      if (selectedLooks[pickedLook.id]) delete selectedLooks[pickedLook.id];
+      else selectedLooks[pickedLook.id] = true;
+      renderLookLibrary();
+      return;
+    }
     newLookParentId = "";
     stashLookDraft();
-    fillLookForm((currentChar.looksList || [])[Number(lookCard.dataset.lookIndex)]);
+    fillLookForm(pickedLook);
   };
 
   document.getElementById("editor-role-switch").onclick = function (e) {
     var button = e.target.closest("[data-editor-char]");
     if (!button || button.classList.contains("on")) return;
     stashLookDraft();
+    selectedLooks = {};
     currentChar = editorItems().find(function (char) { return char.id === button.dataset.editorChar; });
     ensureEditorLooks(currentChar);
     var looks = currentChar.looksList || [];
@@ -1519,7 +1635,25 @@
   }
   document.getElementById("use-reference-image").onchange = syncReferenceMode;
   document.getElementById("use-main-image").onchange = syncReferenceMode;
-  document.getElementById("voice-toggle").onclick = openVoiceDialog;
+  document.getElementById("look-multi").onclick = function () {
+    lookMultiOn = !lookMultiOn;
+    if (!lookMultiOn) selectedLooks = {};
+    renderLookLibrary();
+  };
+  document.getElementById("look-select-rest").onclick = function () {
+    var pending = pendingLooksOf(currentChar);
+    var allPicked = pending.length > 0 && pending.every(function (look) { return selectedLooks[look.id]; });
+    selectedLooks = {};
+    if (!allPicked) pending.forEach(function (look) { selectedLooks[look.id] = true; });
+    renderLookLibrary();
+  };
+  document.getElementById("look-gen-selected").onclick = function () {
+    var count = revealItemLooks(currentChar, function (look) { return look && selectedLooks[look.id]; });
+    selectedLooks = {};
+    render();
+    fillLookForm(editingLook);
+    ReplicaUI.toast(count ? "已生成所选 " + count + " 个形象" : "没有待生成的形象");
+  };
   document.getElementById("voice-dialog-x").onclick = function () { closeVoiceDialog(true); };
   document.getElementById("voice-cancel").onclick = function () { closeVoiceDialog(true); };
   document.getElementById("voice-save").onclick = function () {
@@ -2114,6 +2248,11 @@
     else if (!document.getElementById("episode-detail").hidden) closeEpisodeDetail();
     else if (document.getElementById("reference-dialog").classList.contains("open")) closeReferenceDialog();
     else if (document.getElementById("voice-dialog").classList.contains("open")) closeVoiceDialog(true);
+    else if (document.getElementById("look-dialog").classList.contains("open") && lookMultiOn) {
+      lookMultiOn = false;
+      selectedLooks = {};
+      renderLookLibrary();
+    }
     else if (document.getElementById("look-dialog").classList.contains("open")) closeLookDialog();
     else if (document.getElementById("role-dialog").classList.contains("open")) closeRole();
     else if (document.getElementById("plain-dialog").classList.contains("open")) closePlain();
