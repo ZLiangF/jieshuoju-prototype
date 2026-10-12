@@ -92,7 +92,7 @@
         <div class="form-card">
           <div class="group">
             <label>文件名称</label>
-            <div class="control"><input id="f-name" value="离婚后（3集）" /></div>
+            <div class="control"><input id="f-name" value="离婚后（15集）" /></div>
           </div>
           <div class="group">
             <label>选择项目</label>
@@ -171,7 +171,7 @@
       <div class="strip">
         <a class="proj" href="outline.html">
           <div class="thumb" style="display:flex;background:#fff"><img src="media/characters/xiaoming.png" style="width:50%;object-fit:cover;object-position:top"><img src="media/characters/heyi.png" style="width:50%;object-fit:cover;object-position:top"></div>
-          <div class="proj-title">离婚后（3集）</div>
+          <div class="proj-title">离婚后（15集）</div>
           <div class="proj-mid">短剧 · 国内 | 真人写实电影风格高清</div>
           <div class="proj-sub">3 集 · 2026-09-24 10:48</div>
         </a>
@@ -268,7 +268,7 @@
     <div style="text-align:center">
       <div class="spin" style="margin:0 auto"></div>
       <h2 id="flow-title" style="margin:16px 0 8px;font-size:16px">正在解析剧本</h2>
-      <p id="flow-sub" style="color:#8a8694">离婚后（3集）</p>
+      <p id="flow-sub" style="color:#8a8694">离婚后（15集）</p>
     </div>
   </div>
 
@@ -277,7 +277,7 @@
       <div class="auto-head">
         <div>
           <h2 id="auto-title">全自动创作中</h2>
-          <p id="auto-name">离婚后（3集）</p>
+          <p id="auto-name">离婚后（15集）</p>
         </div>
         <button class="style-close" id="auto-close" type="button" aria-label="关闭">✕</button>
       </div>
@@ -389,14 +389,14 @@
       document.body.classList.add("is-filled");
       document.body.classList.remove("is-pasting");
       var titles = {
-        file: ["上传成功", "离婚后（3集）.txt · 删除后可重新上传"],
+        file: ["上传成功", "离婚后（15集）.txt · 删除后可重新上传"],
         paste: ["已粘贴文本", "18,420 字 · 预估 3 集 · 可删除后重贴"]
       };
       var pack = titles[state.source] || titles.file;
       document.getElementById("ok-title").textContent = pack[0];
       document.getElementById("ok-sub").textContent = pack[1];
       if (state.source === "paste") document.getElementById("f-name").value = "粘贴剧本（3集）";
-      if (state.source === "file") document.getElementById("f-name").value = "离婚后（3集）";
+      if (state.source === "file") document.getElementById("f-name").value = "离婚后（15集）";
     }
 
     function showEmpty() {

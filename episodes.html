@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>分集视频 · 离婚后（3集）</title>
-  <link rel="stylesheet" href="css/product.css?v=19" />
+  <title>分集视频 · 离婚后（15集）</title>
+  <link rel="stylesheet" href="css/product.css?v=45" />
 </head>
 <body>
 <div class="app">
   <header class="topbar">
     <div class="tb-left">
-      <a class="tb-back" href="index.html">‹ 离婚后（3集）</a>
+      <a class="tb-back" href="index.html">‹ 离婚后（15集）</a>
     </div>
     <div class="tb-center steps">
       <a class="step" href="outline.html">剧本大纲</a>
@@ -29,7 +29,7 @@
   <div class="page">
     <div class="toolbar">
       <div style="display:flex;align-items:center;gap:10px">
-        <b>共 3 集</b>
+        <b id="ep-count">共 0 集</b>
         <input class="search" placeholder="输入集名，按回车进行搜索" />
       </div>
       <div style="display:flex;gap:8px">
@@ -133,7 +133,7 @@
   </div>
 </div>
 
-<script src="js/data.js"></script>
+<script src="js/data.js?v=25"></script>
 <script>
   var D = ReplicaData;
   var promoClosed = false;
@@ -144,19 +144,21 @@
   var epsEl = document.getElementById("eps");
   creditsEl.textContent = ReplicaUI.credits();
 
-  function directorBtn() {
+  function directorBtn(showPromo) {
     return '<div class="comment-promo is-on">' +
         '<span class="promo-halo" aria-hidden="true"></span>' +
         '<button class="btn" type="button" data-act="director">导演级分镜</button>' +
-        '<div class="promo-bubble' + (promoClosed ? "" : " show") + '" role="status">' +
-          "<span>解说剧导演级分镜 V 2.5<br>焕新上线，成片效果全面升级</span>" +
-          '<button type="button" class="promo-x" aria-label="关闭提示">✕</button>' +
-          '<i class="promo-arrow"></i>' +
-        "</div>" +
+        (showPromo
+          ? '<div class="promo-bubble' + (promoClosed ? "" : " show") + '" role="status">' +
+              "<span>解说剧导演级分镜 V 2.5<br>焕新上线，成片效果全面升级</span>" +
+              '<button type="button" class="promo-x" aria-label="关闭提示">✕</button>' +
+              '<i class="promo-arrow"></i>' +
+            "</div>"
+          : "") +
       "</div>";
   }
 
-  function actsHtml(ep) {
+  function actsHtml(ep, showPromo) {
     if (ep.status === "ready") {
       return '<div class="ep-status">解析完成，开始制作视频</div><div class="ep-acts"><a class="btn" href="workspace.html">编辑</a></div>';
     }
@@ -171,21 +173,25 @@
           '<svg viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M7 .8 2.9 6.7h2.3L4.8 11.2 9.1 5H6.6L7 .8Z" fill="currentColor"/></svg>' +
           "一键成片" +
         "</button>" +
-        directorBtn() +
+        directorBtn(showPromo) +
       "</div>";
   }
 
   function render() {
+    var promoUsed = false;
+    document.getElementById("ep-count").textContent = "共 " + D.episodes.length + " 集";
     epsEl.innerHTML = D.episodes.map(function (ep) {
       var ready = ep.status === "ready" || ep.status === "done";
       var idle = ep.status === "parse";
-      return '<article class="ep-item' + (idle ? " has-promo" : "") + '" data-id="' + ep.id + '" data-ready="' + ready + '">' +
+      var showPromo = idle && !promoUsed;
+      if (showPromo) promoUsed = true;
+      return '<article class="ep-item' + (showPromo ? " has-promo" : "") + '" data-id="' + ep.id + '" data-ready="' + ready + '">' +
         '<div class="ep-no">' + ep.no + "</div>" +
         '<div class="ep-cover">' + (ready ? "☰" : "◷") + "</div>" +
         "<div><h3>" + ep.title + "</h3>" +
         '<div class="ep-meta"><span>' + ep.roles + " 角色</span><span>" + ep.scenes + " 场景</span><span>" + ep.props + " 道具</span>" +
         (ep.shots ? "<span>" + ep.shots + " 片段</span>" : "") + "</div>" +
-        actsHtml(ep) +
+        actsHtml(ep, showPromo) +
         "</div></article>";
     }).join("");
   }
