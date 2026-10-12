@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>资产库 · 离婚后（15集）</title>
-  <link rel="stylesheet" href="css/product.css?v=94" />
+  <link rel="stylesheet" href="css/product.css?v=95" />
 </head>
 <body class="asset-page">
 <div class="app">
@@ -31,6 +31,7 @@
       <div class="asset-command-top">
         <div class="asset-heading">
           <h2>已识别总资产 <span class="asset-total-tail"><b id="asset-total"></b>个</span></h2>
+          <span class="asset-progress" id="asset-progress"></span>
         </div>
         <div class="asset-tools">
           <label class="asset-query">
@@ -455,6 +456,7 @@
   var multiOn = false;
   var selectedAssets = {};
   var revealedAssets = {};
+  var revealedLooks = {};
   var FIRST_REVEAL = {
     xiaoming: true, hezhi: true, cuiguihua: true, sucheng: true,
     cemetery: true, meeting: true, banquet: true, rainst: true, xmoffice: true,
@@ -473,8 +475,42 @@
       .filter(function (row) { return inEpisode(row.item); });
   }
 
+  function isLookRevealed(item, look) {
+    if (!revealedAssets[item.id]) return false;
+    if (!look || D.characters.indexOf(item) === -1) return true;
+    return !!revealedLooks[item.id + "/" + look.id];
+  }
+
+  function assetLookStats(a) {
+    var looks = D.characters.indexOf(a) !== -1 ? (a.looksList || []) : [];
+    if (!looks.length) return { total: 1, done: revealedAssets[a.id] ? 1 : 0 };
+    var done = looks.filter(function (look) { return isLookRevealed(a, look); }).length;
+    return { total: looks.length, done: done };
+  }
+
   function assetState(a) {
-    return revealedAssets[a.id] ? "ready" : "pending";
+    var stats = assetLookStats(a);
+    if (!stats.done) return "pending";
+    return stats.done < stats.total ? "partial" : "ready";
+  }
+
+  function renderProgress() {
+    var roles = 0, scenes = 0, props = 0, subLooks = 0;
+    rowsOf("char").forEach(function (row) {
+      var stats = assetLookStats(row.item);
+      if (!stats.done) { roles++; subLooks += stats.total - 1; }
+      else subLooks += stats.total - stats.done;
+    });
+    rowsOf("scene").forEach(function (row) { if (assetState(row.item) === "pending") scenes++; });
+    rowsOf("prop").forEach(function (row) { if (assetState(row.item) === "pending") props++; });
+    var parts = [];
+    if (roles) parts.push("角色 <b>" + roles + "</b>");
+    if (subLooks) parts.push("子形象 <b>" + subLooks + "</b>");
+    if (scenes) parts.push("场景 <b>" + scenes + "</b>");
+    if (props) parts.push("道具 <b>" + props + "</b>");
+    var el = document.getElementById("asset-progress");
+    el.classList.toggle("is-done", !parts.length);
+    el.innerHTML = parts.length ? "待生成 " + parts.join('<i aria-hidden="true">·</i>') : "已全部生成";
   }
 
   function renderTabCounts() {
@@ -485,6 +521,7 @@
     document.getElementById("count-scene").textContent = scenes;
     document.getElementById("count-prop").textContent = props;
     document.getElementById("asset-total").textContent = chars + scenes + props;
+    renderProgress();
   }
 
   function visibleAssets() {
@@ -500,10 +537,13 @@
     var a = row.item;
     var kind = row.kind;
     var state = assetState(a);
-    var looks = a.looksList ? a.looksList.length : (a.looks || 1);
-    var pending = a.pendingLooks || (state === "partial" ? 1 : 0);
+    var lookStats = assetLookStats(a);
+    var looks = kind === "char" ? lookStats.total : 1;
+    var pending = lookStats.total - lookStats.done;
     var showSheet = kind === "char" && a.sheet && state !== "pending";
-    var lookText = kind === "char" ? "共 " + looks + " 个形象" : kind === "scene" ? "共 1 个场景图" : "共 1 个道具";
+    var lookText = kind === "char"
+      ? (looks > 1 ? "已生成 " + lookStats.done + "/" + looks + " 个形象" : "共 1 个形象")
+      : kind === "scene" ? "共 1 个场景图" : "共 1 个道具";
     var generatingLooks = (a.looksList || []).filter(function (look) { return look.status === "generating"; }).length;
     var flagText = state === "generating" ? "生成中"
       : generatingLooks ? generatingLooks + "个形象生成中"
@@ -603,16 +643,14 @@
     if (!look) return "";
     if (look.sheet) return look.sheet;
     if (currentChar.sheet && (!currentChar.look || look.name.indexOf(currentChar.look) !== -1)) return currentChar.sheet;
+    if (isLookRevealed(currentChar, look)) return look.image || currentChar.image || "";
     return "";
   }
 
   function lookVisualState(look, index) {
     if (look && (look.status === "generating" || look.status === "failed" || look.status === "pending")) return look.status;
-    var state = currentChar.status || "ready";
-    if (state === "generating" || state === "failed") return state;
-    if (!sheetForLook(look)) return "pending";
-    if (state === "pending") return "pending";
-    return state === "partial" ? "ready" : state;
+    if (!isLookRevealed(currentChar, look)) return "pending";
+    return sheetForLook(look) ? "ready" : "pending";
   }
 
   function lookStateText(state) {
@@ -1930,7 +1968,7 @@
   }
 
   function entryState(entry) {
-    return revealedAssets[entry.item.id] ? "ready" : "pending";
+    return isLookRevealed(entry.item, entry.look) ? "ready" : "pending";
   }
 
   function generationTargets(mode) {
@@ -1967,12 +2005,17 @@
     var onlyFirst = mode === "all" && !assetImageStats().generated;
     var ids = {};
     eachAssetImage(function (entry) {
-      if (revealedAssets[entry.item.id]) return;
+      if (entryState(entry) === "ready") return;
       if (mode === "selected" && !selectedAssets[entry.kind + ":" + entry.index]) return;
       if (onlyFirst && !FIRST_REVEAL[entry.item.id]) return;
+      if (onlyFirst && entry.look && entry.item.looksList.length > 1 && !lookHasImage(entry.item, entry.look)) return;
+      revealedAssets[entry.item.id] = true;
+      if (entry.look) {
+        revealedLooks[entry.item.id + "/" + entry.look.id] = true;
+        if (entry.look.status === "pending") delete entry.look.status;
+      }
       ids[entry.item.id] = true;
     });
-    Object.keys(ids).forEach(function (id) { revealedAssets[id] = true; });
     render();
     return Object.keys(ids).length;
   }

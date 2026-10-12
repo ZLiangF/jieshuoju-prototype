@@ -3330,6 +3330,21 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   line-height: 24px;
   text-align: center;
 }
+.asset-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 12px;
+  background: rgba(255,178,92,.1);
+  color: #d9c3a6;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.asset-progress b { color: #ffbe73; font-weight: 700; }
+.asset-progress i { color: rgba(217,195,166,.45); font-style: normal; }
+.asset-progress.is-done { background: rgba(125,222,168,.1); color: #7ddea8; }
 .asset-tools {
   margin-left: auto;
   display: flex;
