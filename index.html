@@ -145,13 +145,6 @@
               </div>
             </div>
           </div>
-          <div class="style-preview show" id="style-preview">
-            <div class="cover sc sc-live-hd" id="preview-cover"></div>
-            <div>
-              <div class="ttl" id="preview-title">真人写实电影风格高清</div>
-              <div class="desc" id="preview-desc">真实演员感，电影布光，可实拍服化道。角色、场景、道具将按同一风格生成。</div>
-            </div>
-          </div>
           <div class="auto-row">
             <div>
               <b>全自动</b>
@@ -422,18 +415,11 @@
       if (!style) {
         document.getElementById("style-name").textContent = "请选择风格";
         document.getElementById("style-map").textContent = "";
-        document.getElementById("style-preview").classList.remove("show");
         return;
       }
       document.getElementById("style-name").textContent = style.name;
       document.getElementById("style-map").textContent = typeMap[state.type];
-      ["style-thumb", "preview-cover"].forEach(function (id) {
-        var el = document.getElementById(id);
-        el.className = (id === "style-thumb" ? "thumb sc " : "cover sc ") + style.cover;
-      });
-      document.getElementById("preview-title").textContent = style.name + " · " + typeMap[state.type];
-      document.getElementById("preview-desc").textContent = style.desc + "。角色、场景、道具将按同一风格生成。";
-      document.getElementById("style-preview").classList.add("show");
+      document.getElementById("style-thumb").className = "thumb sc " + style.cover;
     }
 
     function renderLibrary() {
