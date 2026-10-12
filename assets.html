@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>资产库 · 离婚后（15集）</title>
-  <link rel="stylesheet" href="css/product.css?v=93" />
+  <link rel="stylesheet" href="css/product.css?v=94" />
 </head>
 <body class="asset-page">
 <div class="app">
@@ -37,7 +37,12 @@
             <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="6" cy="6" r="4.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M9.2 9.2 12 12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
             <input id="asset-search" type="search" placeholder="搜索资产" aria-label="搜索全局资产" />
           </label>
-          <select class="asset-episode" id="episode-filter" aria-label="集数筛选"></select>
+          <div class="episode-filter" id="episode-filter">
+            <button class="asset-episode" id="episode-filter-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+              <span id="episode-filter-label">全部集数</span>
+            </button>
+            <div class="episode-filter-menu" id="episode-filter-menu" hidden role="listbox" aria-label="集数筛选" aria-multiselectable="true"></div>
+          </div>
         </div>
       </div>
       <div class="asset-command-tabs">
@@ -118,10 +123,10 @@
             </div>
           </div>
           <div class="look-view-switch" id="look-view-switch" aria-label="形象展示模式">
-            <button type="button" data-look-view="flat" title="平铺展示" aria-label="平铺展示">
+            <button type="button" class="on" data-look-view="flat" title="平铺展示" aria-label="平铺展示">
               <svg viewBox="0 0 14 14" aria-hidden="true"><rect x="1.5" y="1.5" width="4.5" height="4.5" rx="1"/><rect x="8" y="1.5" width="4.5" height="4.5" rx="1"/><rect x="1.5" y="8" width="4.5" height="4.5" rx="1"/><rect x="8" y="8" width="4.5" height="4.5" rx="1"/></svg>
             </button>
-            <button type="button" class="on" data-look-view="structure" title="结构图展示" aria-label="结构图展示">
+            <button type="button" data-look-view="structure" title="结构图展示" aria-label="结构图展示">
               <svg viewBox="0 0 14 14" aria-hidden="true"><rect x="4.5" y="1" width="5" height="3.5" rx="1"/><rect x="1" y="9.5" width="4.5" height="3.5" rx="1"/><rect x="8.5" y="9.5" width="4.5" height="3.5" rx="1"/><path d="M7 4.5v2.2M3.25 9.5V7.2h7.5v2.3" fill="none" stroke="currentColor"/></svg>
             </button>
           </div>
@@ -424,7 +429,7 @@
   var editorKind = "char";
   var currentChar = D.characters[0];
   var editingLook = null;
-  var lookViewMode = "structure";
+  var lookViewMode = "flat";
   var previewRailOpen = false;
   var previewRailTab = "history";
   var previewRailSrc = "";
@@ -446,7 +451,7 @@
   }
 
   var query = "";
-  var episode = 0;
+  var episodeFilterNumbers = [];
   var multiOn = false;
   var selectedAssets = {};
   var revealedAssets = {};
@@ -457,8 +462,9 @@
   };
 
   function inEpisode(item) {
-    if (!episode) return true;
-    return (item.eps || []).indexOf(episode) !== -1;
+    if (!episodeFilterNumbers.length) return true;
+    var eps = item.eps || [];
+    return episodeFilterNumbers.some(function (n) { return eps.indexOf(n) !== -1; });
   }
 
   function rowsOf(kind) {
@@ -1805,14 +1811,62 @@
   document.getElementById("plain-save").onclick = function () { closePlain(); ReplicaUI.toast("已保存"); };
   document.getElementById("plain-gen").onclick = function () { ReplicaUI.toast("演示：开始生成"); };
 
-  var episodeFilter = document.getElementById("episode-filter");
-  episodeFilter.innerHTML = '<option value="">全部集数</option>' + D.episodes.map(function (ep) {
-    return '<option value="' + ep.no + '">第' + ep.no + '集</option>';
-  }).join("");
-  episodeFilter.onchange = function () {
-    episode = episodeFilter.value ? Number(episodeFilter.value) : 0;
+  function episodeFilterLabel() {
+    if (!episodeFilterNumbers.length) return "全部集数";
+    if (episodeFilterNumbers.length === 1) return "第" + episodeFilterNumbers[0] + "集";
+    var compact = episodeFilterNumbers.join("、");
+    if (compact.length <= 7) return "第" + compact + "集";
+    return "已选 " + episodeFilterNumbers.length + " 集";
+  }
+
+  function paintEpisodeFilter() {
+    var selected = {};
+    episodeFilterNumbers.forEach(function (n) { selected[n] = true; });
+    var allOn = !episodeFilterNumbers.length;
+    document.getElementById("episode-filter-label").textContent = episodeFilterLabel();
+    document.getElementById("episode-filter-menu").innerHTML =
+      '<button type="button" data-episode-all="1"' + (allOn ? ' class="on" aria-selected="true"' : ' aria-selected="false"') + '><span class="box"></span>全部集数</button>' +
+      D.episodes.map(function (ep) {
+        var on = !!selected[ep.no];
+        return '<button type="button" data-episode-no="' + ep.no + '"' + (on ? ' class="on" aria-selected="true"' : ' aria-selected="false"') + '><span class="box"></span>第' + ep.no + "集</button>";
+      }).join("");
+  }
+
+  function closeEpisodeFilter() {
+    var menu = document.getElementById("episode-filter-menu");
+    menu.hidden = true;
+    document.getElementById("episode-filter-trigger").setAttribute("aria-expanded", "false");
+  }
+
+  paintEpisodeFilter();
+  document.getElementById("episode-filter-trigger").onclick = function (e) {
+    e.stopPropagation();
+    var menu = document.getElementById("episode-filter-menu");
+    var open = menu.hidden;
+    menu.hidden = !open;
+    this.setAttribute("aria-expanded", open ? "true" : "false");
+  };
+  document.getElementById("episode-filter-menu").onclick = function (e) {
+    e.stopPropagation();
+    var all = e.target.closest("[data-episode-all]");
+    var item = e.target.closest("[data-episode-no]");
+    if (all) episodeFilterNumbers = [];
+    if (item) {
+      var n = Number(item.dataset.episodeNo);
+      var selected = {};
+      episodeFilterNumbers.forEach(function (value) { selected[value] = true; });
+      if (selected[n]) delete selected[n];
+      else selected[n] = true;
+      episodeFilterNumbers = Object.keys(selected).map(Number).sort(function (a, b) { return a - b; });
+    }
+    if (!all && !item) return;
+    paintEpisodeFilter();
     render();
   };
+  document.addEventListener("click", function (e) {
+    if (e.target.closest("#episode-filter")) return;
+    closeEpisodeFilter();
+  });
   document.getElementById("asset-search").oninput = function (e) {
     query = e.target.value;
     render();
@@ -2011,6 +2065,7 @@
 
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Escape") return;
+    if (!document.getElementById("episode-filter-menu").hidden) { closeEpisodeFilter(); return; }
     if (!document.getElementById("model-menu").hidden || !document.getElementById("ratio-popover").hidden || !document.getElementById("type-menu").hidden) { closeGenPanels(); return; }
     if (!document.getElementById("episode-editor").hidden) cancelEpisodeEditor();
     else if (!document.getElementById("episode-detail").hidden) closeEpisodeDetail();

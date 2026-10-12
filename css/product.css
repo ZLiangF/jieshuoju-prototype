@@ -3358,9 +3358,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   font-size: 12px;
 }
 .asset-query input:focus { border-color: rgba(165,118,255,.5); }
+.episode-filter { position: relative; }
 .asset-episode {
   appearance: none;
   height: 32px;
+  min-width: 108px;
+  max-width: 168px;
   padding: 0 28px 0 12px;
   border-radius: 999px;
   border: 1px solid rgba(196,168,255,.22);
@@ -3374,6 +3377,67 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   color: #efe7ff;
   font-size: 12px;
   outline: none;
+}
+.asset-episode span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.episode-filter-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 24;
+  width: 168px;
+  max-height: 280px;
+  overflow: auto;
+  padding: 6px;
+  border-radius: 12px;
+  background: #2a2a2e;
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 16px 40px rgba(0,0,0,.45);
+}
+.episode-filter-menu[hidden] { display: none; }
+.episode-filter-menu button {
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #e6e1ea;
+  background: transparent;
+  font-size: 12px;
+  text-align: left;
+}
+.episode-filter-menu button:hover { background: rgba(255,255,255,.06); }
+.episode-filter-menu button.on { background: rgba(150,98,255,.16); }
+.episode-filter-menu .box {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1.5px solid rgba(255,255,255,.45);
+  background: transparent;
+  flex: none;
+  position: relative;
+}
+.episode-filter-menu button.on .box {
+  background: #7c3aed;
+  border-color: #c4b5fd;
+}
+.episode-filter-menu button.on .box::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 0;
+  width: 3px;
+  height: 7px;
+  border: 1.5px solid #fff;
+  border-top: 0;
+  border-left: 0;
+  transform: rotate(45deg);
 }
 .asset-command-tabs .asset-actions { margin-left: auto; }
 .asset-none {
