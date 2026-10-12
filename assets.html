@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>资产库 · 离婚后（15集）</title>
-  <link rel="stylesheet" href="css/product.css?v=106" />
+  <link rel="stylesheet" href="css/product.css?v=113" />
 </head>
 <body class="asset-page">
 <div class="app">
@@ -57,6 +57,7 @@
           <button class="btn purple" id="gen-all" type="button">全量生成</button>
           <span class="asset-picked" id="asset-picked" hidden>已选 0</span>
           <button class="btn" id="asset-select-all" type="button" hidden>全选</button>
+          <button class="btn asset-delete" id="asset-delete" type="button" hidden>删除</button>
           <button class="btn" id="asset-multi" type="button" aria-pressed="false">多选</button>
           <button class="btn" id="upload-asset" type="button" hidden>上传资产</button>
         </div>
@@ -138,8 +139,9 @@
           </div>
         </div>
         <div class="look-multi-bar" id="look-multi-bar" hidden>
-          <span id="look-picked">已选 0</span>
+          <button type="button" id="look-select-all">全选</button>
           <button type="button" id="look-select-rest">全选剩余</button>
+          <button type="button" class="asset-delete" id="look-delete">删除</button>
           <button type="button" class="btn purple" id="look-gen-selected">生成所选</button>
         </div>
         <div class="look-library-body" id="look-library"></div>
@@ -920,12 +922,20 @@
     bar.hidden = !lookMultiOn;
     if (bar.hidden) return;
     var allPicked = pending.length > 0 && picked === pending.length;
-    document.getElementById("look-picked").textContent = "已选 " + picked;
+    var allLooks = currentChar.looksList || [];
+    var selectedCount = allLooks.filter(function (look) { return selectedLooks[look.id]; }).length;
+    var selectAllLooks = document.getElementById("look-select-all");
+    var everyLook = allLooks.length > 0 && selectedCount === allLooks.length;
+    selectAllLooks.textContent = everyLook ? "取消" : "全选";
+    selectAllLooks.disabled = !allLooks.length;
     var selectRest = document.getElementById("look-select-rest");
-    selectRest.textContent = allPicked ? "取消全选" : "全选剩余";
+    selectRest.textContent = "全选剩余";
     selectRest.disabled = !pending.length;
+    var removeLooks = document.getElementById("look-delete");
+    removeLooks.disabled = !selectedCount;
+    removeLooks.textContent = "删除";
     var gen = document.getElementById("look-gen-selected");
-    gen.textContent = picked ? "生成所选 " + picked : "生成所选";
+    gen.textContent = "生成所选";
     gen.disabled = !picked;
   }
 
@@ -1640,12 +1650,44 @@
     if (!lookMultiOn) selectedLooks = {};
     renderLookLibrary();
   };
+  document.getElementById("look-select-all").onclick = function () {
+    var looks = currentChar.looksList || [];
+    var allPicked = looks.length > 0 && looks.every(function (look) { return selectedLooks[look.id]; });
+    selectedLooks = {};
+    if (!allPicked) looks.forEach(function (look) { selectedLooks[look.id] = true; });
+    renderLookLibrary();
+  };
   document.getElementById("look-select-rest").onclick = function () {
     var pending = pendingLooksOf(currentChar);
     var allPicked = pending.length > 0 && pending.every(function (look) { return selectedLooks[look.id]; });
     selectedLooks = {};
     if (!allPicked) pending.forEach(function (look) { selectedLooks[look.id] = true; });
     renderLookLibrary();
+  };
+  document.getElementById("look-delete").onclick = function () {
+    if (this.disabled) return;
+    var looks = currentChar.looksList || [];
+    var removing = looks.filter(function (look) { return selectedLooks[look.id]; });
+    if (!removing.length) {
+      ReplicaUI.toast("请先勾选要删除的形象");
+      return;
+    }
+    if (removing.length >= looks.length) {
+      ReplicaUI.toast("至少保留一个形象");
+      return;
+    }
+    var removedIds = {};
+    removing.forEach(function (look) { removedIds[look.id] = look.parentId || ""; });
+    currentChar.looksList = looks.filter(function (look) { return !Object.prototype.hasOwnProperty.call(removedIds, look.id); });
+    currentChar.looksList.forEach(function (look) {
+      if (look.parentId && Object.prototype.hasOwnProperty.call(removedIds, look.parentId)) look.parentId = removedIds[look.parentId] || "";
+    });
+    if (currentChar.looks != null) currentChar.looks = currentChar.looksList.length;
+    var editingRemoved = editingLook && Object.prototype.hasOwnProperty.call(removedIds, editingLook.id);
+    selectedLooks = {};
+    render();
+    fillLookForm(editingRemoved ? currentChar.looksList[0] : editingLook);
+    ReplicaUI.toast("已删除 " + removing.length + " 个形象");
   };
   document.getElementById("look-gen-selected").onclick = function () {
     var count = revealItemLooks(currentChar, function (look) { return look && selectedLooks[look.id]; });
@@ -2171,6 +2213,10 @@
     var selectAll = document.getElementById("asset-select-all");
     selectAll.hidden = !multiOn || !visibleCards.length;
     selectAll.textContent = allVisiblePicked ? "取消全选" : "全选";
+    var removeAssets = document.getElementById("asset-delete");
+    removeAssets.hidden = !multiOn;
+    removeAssets.disabled = !count;
+    removeAssets.textContent = count ? "删除 " + count : "删除";
     if (multiOn) {
       var assets = {};
       generationTargets("selected").forEach(function (entry) { assets[entry.kind + ":" + entry.index] = true; });
@@ -2203,6 +2249,38 @@
 
   document.getElementById("asset-multi").onclick = function () {
     setMultiSelect(!multiOn);
+  };
+  function deleteSelectedAssets() {
+    var groups = { char: [], scene: [], prop: [] };
+    Object.keys(selectedAssets).forEach(function (key) {
+      var parts = key.split(":");
+      if (groups[parts[0]]) groups[parts[0]].push(Number(parts[1]));
+    });
+    var removed = 0;
+    var removedCurrent = false;
+    ["char", "scene", "prop"].forEach(function (kind) {
+      var list = kind === "char" ? D.characters : kind === "scene" ? D.scenes : D.props;
+      groups[kind].sort(function (a, b) { return b - a; }).forEach(function (index) {
+        if (!list[index]) return;
+        if (list[index] === currentChar) removedCurrent = true;
+        list.splice(index, 1);
+        removed++;
+      });
+    });
+    selectedAssets = {};
+    if (removedCurrent && document.getElementById("look-dialog").classList.contains("open")) closeLookDialog();
+    var fallback = tab === "scene" ? D.scenes[0] : tab === "prop" ? D.props[0] : D.characters[0];
+    if (!currentChar || D.characters.indexOf(currentChar) + D.scenes.indexOf(currentChar) + D.props.indexOf(currentChar) === -3) {
+      currentChar = fallback || D.characters[0] || D.scenes[0] || D.props[0];
+    }
+    render();
+    return removed;
+  }
+
+  document.getElementById("asset-delete").onclick = function () {
+    if (this.disabled) return;
+    var count = deleteSelectedAssets();
+    ReplicaUI.toast(count ? "已删除 " + count + " 个资产" : "请先勾选要删除的资产");
   };
   document.getElementById("asset-select-all").onclick = function () {
     var cards = [].slice.call(document.querySelectorAll("#grid .char-card"));
