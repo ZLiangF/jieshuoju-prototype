@@ -4,23 +4,24 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>创作 · 第1集：墓地贺芷提离婚协议</title>
-  <link rel="stylesheet" href="css/product.css?v=202610131728" />
+  <link rel="stylesheet" href="css/product.css?v=202610132203" />
 </head>
 <body class="ws-page">
 <div class="app">
   <header class="topbar">
     <div class="tb-left">
-      <a class="tb-back" href="episodes.html">‹ 返回全集</a>
-      <b>第1集：墓地贺芷提离婚协议</b>
-    </div>
-    <div class="tb-center">
-      <a class="step" href="episodes.html">中控台</a>
-      <button class="step on" data-act="list">分镜列表</button>
-      <button class="step" data-act="export" disabled style="opacity:.45">导出</button>
+      <a class="tb-back ws-back" href="episodes.html">‹ 返回全集</a>
+      <b class="ws-title">第1集：墓地贺芷提离婚协议</b>
     </div>
     <div class="tb-right">
       <div class="credit">✦ <span id="credits"></span></div>
-      <div class="avatar"></div>
+      <div class="ws-seg" role="tablist" aria-label="编辑视图">
+        <button type="button" class="on" role="tab" aria-selected="true">中控台</button>
+        <button type="button" role="tab" aria-selected="false" data-act="list">分镜列表</button>
+      </div>
+      <button type="button" class="ws-export" data-act="export">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7M5 6.8 8 9.8l3-3M3 11v1.6c0 .5.4.9.9.9h8.2c.5 0 .9-.4.9-.9V11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>导出
+      </button>
     </div>
   </header>
 
@@ -28,12 +29,12 @@
     <aside class="panel assets">
       <div class="assets-head">
         <h3>资产库</h3>
-        <button class="icon-round" data-act="add">+</button>
+        <button class="icon-round" data-act="add" title="新增素材" aria-label="新增素材">+</button>
       </div>
       <div class="search-row"><input id="asset-search" placeholder="搜索资产" /></div>
       <div class="asset-tabs">
-        <button class="on" data-tab="all" id="tab-all">资产 (12)</button>
-        <button data-tab="clip" id="tab-clip">当前片段 (0)</button>
+        <button data-tab="all" id="tab-all">资产 (0)</button>
+        <button class="on" data-tab="clip" id="tab-clip">当前片段 (0)</button>
         <button data-tab="material" id="tab-material">素材 (0)</button>
       </div>
       <div class="asset-scroll" id="asset-scroll"></div>
@@ -43,33 +44,79 @@
       <div class="shot-head">
         <div class="left">
           <b id="shot-title">片段 1</b>
-          <span class="chip" id="shot-scene">场 1-1 墓地</span>
-          <span class="chip">片段时长建议 4–15s</span>
+          <span class="ws-shot-hint">片段时长请限制在4–15s，输入“@”可快速调整镜头时长、引用角色、场景、素材</span>
         </div>
-        <button class="chip" data-act="full">全屏编辑</button>
-      </div>
-      <div class="prompt-box">
-        <textarea id="prompt"></textarea>
-      </div>
-      <div class="shot-foot">
-        <div class="model-wrap" style="position:relative">
-          <button class="model-btn" data-act="toggle-model"><span id="model-name">Seedance 2.0</span> ▾</button>
-          <div class="model-menu" id="model-menu"></div>
+        <div class="ws-head-tools">
+          <span class="ws-saved"><i></i>已保存</span>
+          <div class="ws-view-seg" role="tablist" aria-label="片段编辑方式">
+            <button type="button" role="tab" data-view="prompt" id="view-prompt">提示词</button>
+            <button type="button" role="tab" data-view="stage" id="view-stage">站位</button>
+          </div>
+          <button class="ws-icon" data-act="history" title="生成历史" aria-label="生成历史">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v3.2l2 1.3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          </button>
+          <button class="ws-icon" data-act="full" title="全屏编辑" aria-label="全屏编辑">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 2.5h4v4M13.5 2.5 9.2 6.8M6.5 13.5h-4v-4M2.5 13.5l4.3-4.3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
         </div>
-        <div class="model-wrap" style="position:relative">
-          <button class="mini" id="resolution-btn" data-act="toggle-resolution"><span id="resolution-name">720P</span> ▾</button>
-          <div class="resolution-menu" id="resolution-menu">
-            <button type="button" data-resolution="480P">480P</button>
-            <button type="button" data-resolution="720P">720P</button>
-            <button type="button" data-resolution="1080P">1080P</button>
+      </div>
+      <div class="prompt-box" id="prompt-box">
+        <div class="ws-prompt" id="prompt" contenteditable="true" spellcheck="false"></div>
+      </div>
+      <div class="stage-view" id="stage-view" hidden>
+        <div class="sv-top">
+          <div class="sv-scenes" id="sv-scenes"></div>
+          <div class="sv-tools">
+            <button type="button" data-sv="undo" id="sv-undo" title="撤销（⌘Z）">撤销</button>
+            <button type="button" data-sv="redo" id="sv-redo" title="重做（⇧⌘Z）">重做</button>
+            <button type="button" data-sv="clear" id="sv-clear">清空本图</button>
+            <i aria-hidden="true"></i>
+            <button type="button" data-sv="scene-changed" title="演示：场景图重新生成后的提示">场景已更新</button>
           </div>
         </div>
-        <label class="mini"> <input id="dur" value="10" /> s</label>
-        <span class="switch" title="匹配资产"></span>
-        <span style="color:#cfcdd5">匹配资产</span>
-        <button class="mini" data-act="rewrite">AI改写</button>
-        <button class="gen-btn" id="gen-btn" data-act="generate">生成视频 <span id="gen-cost">150</span></button>
-        <button class="icon-round" data-act="timer" title="定时生成">⏱</button>
+        <div class="sv-canvas-wrap" id="sv-wrap">
+          <div class="sv-canvas" id="sv-canvas">
+            <img id="sv-image" alt="" draggable="false" />
+            <div class="sv-layer" id="sv-layer"></div>
+            <div class="sv-empty" id="sv-empty" hidden></div>
+            <div class="sv-off" id="sv-off" hidden>
+              <b>应用站位已关闭</b>
+              <span>站位已保留，生成视频时不使用</span>
+              <button type="button" data-sv="turn-on">重新开启</button>
+            </div>
+          </div>
+          <div class="sv-pop" id="sv-pop" hidden></div>
+        </div>
+        <div class="sv-bottom">
+          <div class="sv-tray" id="sv-tray"></div>
+          <span class="sv-hint" id="sv-hint"></span>
+        </div>
+      </div>
+      <div class="shot-foot">
+        <div class="ws-gen-group">
+          <div class="model-wrap">
+            <button class="model-btn" data-act="toggle-model"><span id="model-name">Seedance 2.0</span> ▾</button>
+            <div class="model-menu" id="model-menu"></div>
+          </div>
+          <div class="model-wrap">
+            <button class="mini" id="resolution-btn" data-act="toggle-resolution"><span id="resolution-name">720P</span> ▾</button>
+            <div class="resolution-menu" id="resolution-menu">
+              <button type="button" data-resolution="480P">480P</button>
+              <button type="button" data-resolution="720P">720P</button>
+              <button type="button" data-resolution="1080P">1080P</button>
+            </div>
+          </div>
+          <label class="mini" title="生成时长（秒）"><input id="dur" value="10" aria-label="生成时长（秒）" /> s</label>
+        </div>
+        <div class="ws-foot-actions">
+          <button type="button" class="ws-switch on" id="match-switch" role="switch" aria-checked="true" data-act="match"><i></i>匹配资产</button>
+          <button type="button" class="ws-switch" id="stage-switch" role="switch" aria-checked="false" data-act="stage-switch"><i></i>应用站位</button>
+          <button class="mini" data-act="rewrite">AI改写</button>
+          <button class="gen-btn" id="gen-btn" data-act="generate">生成视频 <span id="gen-cost">150</span></button>
+          <button class="ws-icon" data-act="timer" title="定时生成" aria-label="定时生成">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="9" r="5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 6.5V9l1.6 1M6.5 2.5h3M3 4.5l1.2-1.2M13 4.5l-1.2-1.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+          </button>
+        </div>
       </div>
       <div class="draft-hint" id="draft-hint">
         <span class="draft-tag">样片</span>
@@ -79,19 +126,20 @@
 
     <section class="panel player">
       <div class="stage" id="stage">暂无视频</div>
-      <div class="player-bar"><span id="time-label">00:00 / 00:10</span></div>
+      <div class="player-bar">
+        <span id="time-label">00:00 / 00:10</span>
+        <span class="ws-player-tools">
+          <button type="button" data-act="player-tool" title="擦除字幕">擦字幕</button>
+          <button type="button" data-act="player-tool" title="提升画质">提画质</button>
+          <button type="button" data-act="player-tool" title="截取视频帧">截帧</button>
+        </span>
+      </div>
     </section>
 
     <section class="panel timeline">
       <div class="tl-head">
-        <div style="display:flex;gap:10px;align-items:center">
-          <button class="chip on">全部片段</button>
-          <button class="chip">1-1 墓地 日 外 18</button>
-        </div>
-        <div style="display:flex;gap:8px">
-          <button class="chip" disabled>播放预览</button>
-          <button class="chip">多选</button>
-        </div>
+        <span class="ws-tl-time"><button type="button" class="ws-play" data-act="play" aria-label="播放预览视频">▶</button><span id="tl-total">00:00/00:00</span></span>
+        <button class="chip" data-act="multi">多选</button>
       </div>
       <div class="tl-track" id="tl-track"></div>
     </section>
@@ -117,8 +165,18 @@
     </div>
   </div>
 </div>
+<div class="modal-mask" id="scene-changed-modal">
+  <div class="modal sv-modal" role="dialog" aria-modal="true" aria-labelledby="scene-changed-title">
+    <h3 id="scene-changed-title">场景已变化，站位可能失效</h3>
+    <p id="scene-changed-desc"></p>
+    <div class="sv-modal-acts">
+      <button class="btn" type="button" data-sv="scene-clear">清空站位</button>
+      <button class="btn primary" type="button" data-sv="scene-keep">保留站位</button>
+    </div>
+  </div>
+</div>
 <div class="toast-wrap"></div>
-<script src="js/data.js?v=202610131728"></script>
-<script src="js/workspace.js?v=202610131728"></script>
+<script src="js/data.js?v=202610132203"></script>
+<script src="js/workspace.js?v=202610132203"></script>
 </body>
 </html>

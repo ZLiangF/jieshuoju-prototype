@@ -133,7 +133,13 @@ window.ReplicaData = {
     }
   ],
   scenes: [
-    { id: "cemetery", name: "墓地", desc: "日 · 外", status: "ready", eps: [1], image: "media/scenes/cemetery.png" },
+    {
+      id: "cemetery", name: "墓地", desc: "日 · 外", status: "ready", eps: [1], image: "media/scenes/cemetery.png", looks: 2,
+      looksList: [
+        { id: "cemetery-main", name: "墓地", eps: "1", image: "media/scenes/cemetery.png", sheet: "media/scenes/cemetery.png", prompt: "阴天湿冷的山间墓地，中央青石板步道通向黑色花岗岩墓碑，左侧石阶，右侧矮墙与松柏，远山云雾。" },
+        { id: "tomb", parentId: "cemetery-main", name: "墓地-墓碑前近景", eps: "1", image: "media/scenes/cemetery-tomb.jpg", sheet: "media/scenes/cemetery-tomb.jpg", prompt: "萧母墓碑前近景，石台上摆着鲜花，左侧步道，右侧矮墙。" }
+      ]
+    },
     { id: "villa", name: "别墅客厅", desc: "日 · 内", status: "generating", eps: [2,3,6,7], image: "media/scenes/office.png" },
     { id: "gate", name: "别墅门口", desc: "日 · 外", status: "pending", eps: [3,8], image: "media/scenes/rain.png" },
     { id: "meeting", name: "董家会议室", desc: "日 · 内", status: "ready", eps: [4,5,10,12], image: "media/scenes/office.png" },
@@ -206,16 +212,103 @@ window.ReplicaData = {
     { id: "seedance-2.5", name: "Seedance 2.5", tag: "推荐", cost: 180 },
     { id: "wan-3", name: "Wan 3.0", cost: 160 }
   ],
+  /* 站位图：点位与默认站位都来自分镜里的「图中空间」「人物站位锚定」解析结果 */
+  stageScenes: {
+    "cemetery": {
+      name: "墓地", image: "media/scenes/cemetery.png", horizon: 0.32, k: 0.62,
+      points: [
+        { id: "left-steps", name: "左侧石阶", x: 0.22, y: 0.7 },
+        { id: "path-near", name: "步道近端", x: 0.4, y: 0.92 },
+        { id: "path-mid", name: "步道中段", x: 0.43, y: 0.66 },
+        { id: "tomb-front", name: "墓碑前", x: 0.58, y: 0.74 },
+        { id: "tomb-right", name: "墓碑右侧", x: 0.72, y: 0.68 },
+        { id: "wall-right", name: "右侧矮墙", x: 0.84, y: 0.86 }
+      ]
+    },
+    "cemetery/tomb": {
+      name: "墓地-墓碑前近景", image: "media/scenes/cemetery-tomb.jpg", horizon: 0.08, k: 0.82,
+      points: [
+        { id: "tomb-left", name: "墓碑左前", x: 0.33, y: 0.78 },
+        { id: "tomb-step", name: "台阶前", x: 0.5, y: 0.88 },
+        { id: "tomb-right", name: "墓碑右前", x: 0.7, y: 0.76 },
+        { id: "path-fore", name: "步道前景", x: 0.15, y: 0.94 }
+      ]
+    }
+  },
+  globalPrompt:
+    "【全局设定】画面风格和类型：真人写实电影风格高清，全程人物边界独立，自然表演，人物无穿插、无穿透；全程禁止出现字幕、禁止角色变脸、变装、形象突变；杜绝肢体畸形、扭曲、残缺等人体结构错误；禁止画面闪烁、跳变、卡顿、帧异常；全程无背景音乐、无 BGM，只保留对白与现场环境声",
   shots: [
-    { id: "s1", no: 1, duration: 10, scene: "1-1 墓地 日 外", title: "萧铭来到坟前", refs: ["xiaoming", "cemetery", "ebike", "joss"] },
-    { id: "s2", no: 2, duration: 4, scene: "1-1 墓地 日 外", title: "沈妍妍下车", refs: ["shen", "hezhi", "car"] },
-    { id: "s3", no: 3, duration: 13, scene: "1-1 墓地 日 外", title: "萧铭烧纸", refs: ["xiaoming", "cemetery", "joss"] },
-    { id: "s4", no: 4, duration: 14, scene: "1-1 墓地 日 外", title: "豪车撞倒电动车", refs: ["car", "ebike", "cemetery"] },
-    { id: "s5", no: 5, duration: 10, scene: "1-1 墓地 日 外", title: "贺芷俯视", refs: ["hezhi", "xiaoming"] },
-    { id: "s6", no: 6, duration: 15, scene: "1-1 墓地 日 外", title: "递离婚协议", refs: ["hezhi", "xiaoming"] }
-  ],
-  prompt:
-    "【全局设定】画面风格和类型：真人写实电影风格高清，全程人物独立、自然表演，人物动作流畅、不穿透；全程禁止出现字幕、禁止角色变脸、卡顿、形象突变；杜绝肢体畸形、扭曲、残缺等人体结构错误；禁止出现闪烁、跳动、卡顿、顿帧等；全程无背景音乐、无BGM，只保留对白与环境声；主体置于安全区，避免头脚被切。\n\n【空间总结】墓地：场景左-左侧石阶与灰色墓碑；场景中-中央青石板步道及黑色花岗岩墓碑；场景右-石质矮墙与高大松柏；场景后-远山墓碑群；母景点-中央青石板步道、黑色花岗岩墓碑。\n\n【站位总结】萧铭-外卖服戴头巾 骑萧铭的电动车 停于中央青石板步道近端，面向黑色花岗岩墓碑；萧铭从车上取下白色头巾戴上，拿下一袋纸钱。\n\n【安全区/音轨】主体置于安全区，避免头脚被切；环境风声与脚步声。\n\nc001, 3.2s, 空间:中央青石板步道（姿态-萧铭-外卖服戴头巾-跨坐萧铭的电动车 面向墓碑，侧脸，侧面微俯）\nc002, 3.4s, 空间:黑色花岗岩墓碑前（姿态-萧铭-外卖服戴头巾-蹲在墓前 双手捧纸钱，神色哀伤）"
+    {
+      id: "s1", no: 1, duration: 10, scene: "1-1 墓地 日 外", title: "萧铭来到坟前",
+      refs: ["xiaoming", "cemetery", "ebike", "joss"], scenes: ["cemetery"],
+      anchors: [{ asset: "xiaoming", scene: "cemetery", point: "path-near", dir: 135 }],
+      prompt:
+        "## S01 / 约10.0s\n图中空间：{s:cemetery}。阴天湿冷，远山云雾；左侧石阶与灰色墓碑，中央青石板步道通向黑色花岗岩墓碑，右侧石质矮墙与松柏。\n人物站位锚定：{c:xiaoming} 位于图中空间已声明的中央青石板步道近端，跨坐{p:ebike}，面向右前方的黑色花岗岩墓碑，背对镜头。\n" +
+        "c01 {t:3.2} ,(姿态:{c:xiaoming}-跨坐{p:ebike}停在步道近端) 背后跟拍{c:xiaoming}全景，机位低于肩部；轻微手持推进。{c:xiaoming}熄火，取下白色头巾戴上。\n" +
+        "c02 {t:3.4} ,(姿态:{c:xiaoming}-拎着{p:joss}走向墓碑) {c:xiaoming}中景，机位位于{c:xiaoming}左后方30度；固定。{c:xiaoming}低头，脚步放慢。\n" +
+        "c03 {t:3.4} ,(姿态:{c:xiaoming}-蹲在墓碑前) {c:xiaoming}近景侧脸。{c:xiaoming} 画外音：妈，对不起，今天来晚了。"
+    },
+    {
+      id: "s2", no: 2, duration: 4, scene: "1-1 墓地 日 外", title: "沈妍妍下车",
+      refs: ["shen", "hezhi", "xiaoming", "cemetery", "car"], scenes: ["cemetery"],
+      anchors: [
+        { asset: "shen", scene: "cemetery", point: "path-near", dir: 135 },
+        { asset: "xiaoming", scene: "cemetery", point: "tomb-front", dir: 180 }
+      ],
+      offscreen: [{ asset: "hezhi", note: "仍在豪车内，尚未入镜" }],
+      prompt:
+        "## S02 / 约4.0s\n图中空间：{s:cemetery}。{p:car}停在步道入口，车门打开。\n人物站位锚定：{c:shen} 位于图中空间已声明的步道近端，撑黑伞下车，面向墓碑方向；{c:xiaoming} 位于墓碑前，蹲着背对镜头；{c:hezhi} 仍在{p:car}车内，尚未入镜，身体不进入当前首帧。\n" +
+        "c01 {t:2.0} ,(姿态:{c:shen}-撑伞下车) 低机位跟拍{c:shen}脚步落地，雨水溅起。\n" +
+        "c02 {t:2.0} ,(姿态:{c:shen}-撑伞望向墓碑) 越过{c:shen}肩膀拍远处{c:xiaoming}背影。"
+    },
+    {
+      id: "s3", no: 3, duration: 13, scene: "1-1 墓地 日 外", title: "萧铭烧纸",
+      refs: ["xiaoming", "cemetery", "cemetery/tomb", "joss"], scenes: ["cemetery", "cemetery/tomb"],
+      anchors: [
+        { asset: "xiaoming", scene: "cemetery", point: "tomb-front", dir: 180 },
+        { asset: "xiaoming", scene: "cemetery/tomb", point: "tomb-left", dir: 160 }
+      ],
+      prompt:
+        "## S03 / 约13.0s\n图中空间：{s:cemetery} 全景交代位置，{s:cemetery/tomb} 拍烧纸动作。\n人物站位锚定：{s:cemetery} 中 {c:xiaoming} 位于墓碑前，蹲下背对镜头；{s:cemetery/tomb} 中 {c:xiaoming} 位于墓碑左前，侧身面向墓碑。\n" +
+        "c01 {t:4.0} ,(姿态:{c:xiaoming}-蹲在墓碑前) {s:cemetery}远景，人物占画面三分之一。\n" +
+        "c02 {t:5.0} ,(姿态:{c:xiaoming}-点燃{p:joss}) 切{s:cemetery/tomb}，{c:xiaoming}侧脸近景，火光映在脸上。\n" +
+        "c03 {t:4.0} ,(姿态:{c:xiaoming}-低头沉默) 固定机位，纸灰被风吹起。"
+    },
+    {
+      id: "s4", no: 4, duration: 14, scene: "1-1 墓地 日 外", title: "豪车撞倒电动车",
+      refs: ["xiaoming", "cemetery", "car", "ebike"], scenes: ["cemetery"], anchors: [],
+      prompt:
+        "## S04 / 约14.0s\n图中空间：{s:cemetery}。\n" +
+        "c01 {t:5.0} ,{p:car}从步道入口急停，车头撞上{p:ebike}，电动车侧翻。\n" +
+        "c02 {t:5.0} ,{c:xiaoming}回头，纸钱被风吹散。\n" +
+        "c03 {t:4.0} ,车门打开，雨伞先探出车外。"
+    },
+    {
+      id: "s5", no: 5, duration: 10, scene: "1-1 墓地 日 外", title: "贺芷俯视",
+      refs: ["hezhi", "shen", "xiaoming", "cemetery"], scenes: ["cemetery"],
+      anchors: [
+        { asset: "hezhi", scene: "cemetery", point: "path-mid", dir: 60 },
+        { asset: "shen", scene: "cemetery", point: "left-steps", dir: 90 },
+        { asset: "xiaoming", scene: "cemetery", point: "tomb-front", dir: 240 }
+      ],
+      prompt:
+        "## S05 / 约10.0s\n图中空间：{s:cemetery}。\n人物站位锚定：{c:hezhi} 位于步道中段，居高临下看向右侧墓碑前的{c:xiaoming}；{c:shen} 位于左侧石阶，替{c:hezhi}撑伞；{c:xiaoming} 位于墓碑前，回头看向{c:hezhi}。\n" +
+        "c01 {t:4.0} ,(姿态:{c:hezhi}-居高临下俯视) 仰拍{c:hezhi}中景。\n" +
+        "c02 {t:6.0} ,(姿态:{c:shen}-厌恶开口) {c:shen}：我说怎么找不到人，原来在给一个死人上坟。"
+    },
+    {
+      id: "s6", no: 6, duration: 15, scene: "1-1 墓地 日 外", title: "递离婚协议",
+      refs: ["hezhi", "xiaoming", "cemetery/tomb", "papers"], scenes: ["cemetery/tomb"],
+      anchors: [
+        { asset: "hezhi", scene: "cemetery/tomb", point: "tomb-right", dir: 270 },
+        { asset: "xiaoming", scene: "cemetery/tomb", point: "tomb-left", dir: 90 }
+      ],
+      prompt:
+        "## S06 / 约15.0s\n图中空间：{s:cemetery/tomb}。\n人物站位锚定：{c:hezhi} 位于墓碑右前，面向左侧的{c:xiaoming}；{c:xiaoming} 位于墓碑左前，起身面向{c:hezhi}。\n" +
+        "c01 {t:7.0} ,(姿态:{c:hezhi}-递出{p:papers}) 过肩拍，{c:hezhi}手臂伸进画面。\n" +
+        "c02 {t:8.0} ,(姿态:{c:xiaoming}-盯着协议不动) {c:xiaoming}近景，雨水顺着头巾滴落。"
+    }
+  ]
 };
 
 window.ReplicaUI = {
