@@ -55,12 +55,13 @@ function rowsOf(kind) {
 
 function isLookRevealed(item, look) {
   if (!revealedAssets[item.id]) return false;
-  if (!look || D.characters.indexOf(item) === -1) return true;
-  return !!revealedLooks[item.id + "/" + look.id];
+  if (!look || revealedLooks[item.id + "/" + look.id]) return true;
+  if (D.characters.indexOf(item) !== -1) return false;
+  return look.status !== "pending";
 }
 
 function assetLookStats(a) {
-  var looks = D.characters.indexOf(a) !== -1 ? (a.looksList || []) : [];
+  var looks = a.looksList || [];
   if (!looks.length) return { total: 1, done: revealedAssets[a.id] ? 1 : 0 };
   var done = looks.filter(function (look) { return isLookRevealed(a, look); }).length;
   return { total: looks.length, done: done };
@@ -78,8 +79,14 @@ function renderProgress() {
     var stats = assetLookStats(row.item);
     roles += stats.total - stats.done;
   });
-  rowsOf("scene").forEach(function (row) { if (assetState(row.item) === "pending") scenes++; });
-  rowsOf("prop").forEach(function (row) { if (assetState(row.item) === "pending") props++; });
+  rowsOf("scene").forEach(function (row) {
+    var stats = assetLookStats(row.item);
+    scenes += stats.total - stats.done;
+  });
+  rowsOf("prop").forEach(function (row) {
+    var stats = assetLookStats(row.item);
+    props += stats.total - stats.done;
+  });
   var parts = [];
   if (roles) parts.push("角色 <b>" + roles + "</b>");
   if (scenes) parts.push("场景 <b>" + scenes + "</b>");
@@ -114,16 +121,17 @@ function cardHtml(row) {
   var kind = row.kind;
   var state = assetState(a);
   var lookStats = assetLookStats(a);
-  var looks = kind === "char" ? lookStats.total : 1;
+  var looks = lookStats.total;
   var pending = lookStats.total - lookStats.done;
   var showSheet = kind === "char" && a.sheet && state !== "pending";
-  var lookText = kind === "char"
-    ? (looks > 1 ? "已生成 " + lookStats.done + "/" + looks + " 个形象" : "共 1 个形象")
-    : kind === "scene" ? "共 1 个场景图" : "共 1 个道具";
+  var unit = kind === "char" ? "形象" : kind === "scene" ? "场景" : "道具";
+  var lookText = looks > 1
+    ? "已生成 " + lookStats.done + "/" + looks + " 个" + unit
+    : kind === "scene" ? "共 1 个场景图" : "共 1 个" + unit;
   var generatingLooks = (a.looksList || []).filter(function (look) { return look.status === "generating"; }).length;
   var flagText = state === "generating" ? "生成中"
-    : generatingLooks ? generatingLooks + "个形象生成中"
-    : state === "partial" ? pending + "个形象待生成"
+    : generatingLooks ? generatingLooks + "个" + unit + "生成中"
+    : state === "partial" ? pending + "个" + unit + "待生成"
     : state === "pending" ? "待生成"
     : state === "failed" ? "生成失败"
     : "已完成";
@@ -1545,6 +1553,7 @@ document.getElementById("role-save").onclick = function () {
     currentChar.looks = currentChar.looksList.length;
     if (newLookParentId) expandedLooks[currentChar.id + ":" + newLookParentId] = true;
     closeRole();
+    render();
     fillLookForm(look);
     ReplicaUI.toast("已新增子" + word);
     return;
@@ -1695,7 +1704,7 @@ function eachAssetImage(fn) {
     ["prop", D.props]
   ].forEach(function (pair) {
     pair[1].forEach(function (item, index) {
-      if (pair[0] === "char" && item.looksList && item.looksList.length) {
+      if (item.looksList && item.looksList.length) {
         item.looksList.forEach(function (look) {
           fn({ kind: pair[0], item: item, index: index, look: look });
         });
