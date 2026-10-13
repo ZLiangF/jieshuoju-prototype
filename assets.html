@@ -508,17 +508,15 @@
   }
 
   function renderProgress() {
-    var roles = 0, scenes = 0, props = 0, subLooks = 0;
+    var roles = 0, scenes = 0, props = 0;
     rowsOf("char").forEach(function (row) {
       var stats = assetLookStats(row.item);
-      if (!stats.done) { roles++; subLooks += stats.total - 1; }
-      else subLooks += stats.total - stats.done;
+      roles += stats.total - stats.done;
     });
     rowsOf("scene").forEach(function (row) { if (assetState(row.item) === "pending") scenes++; });
     rowsOf("prop").forEach(function (row) { if (assetState(row.item) === "pending") props++; });
     var parts = [];
     if (roles) parts.push("角色 <b>" + roles + "</b>");
-    if (subLooks) parts.push("子形象 <b>" + subLooks + "</b>");
     if (scenes) parts.push("场景 <b>" + scenes + "</b>");
     if (props) parts.push("道具 <b>" + props + "</b>");
     var el = document.getElementById("asset-progress");
