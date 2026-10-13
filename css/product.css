@@ -3207,6 +3207,32 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   font-weight: 650;
 }
 .card-gen:hover { background: #623cd9; }
+.card-del {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 6;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: #e4e4e7;
+  background: rgba(8,8,12,.72);
+  border: 1px solid rgba(255,255,255,.14);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity .15s, color .15s, background .15s;
+}
+.card-del svg { width: 15px; height: 15px; }
+.asset-card:hover .card-del, .card-del:focus-visible { opacity: 1; }
+.card-del:hover { color: #fff; background: #e5484d; border-color: #e5484d; }
+.asset-delete-modal { width: 380px; }
+.asset-delete-modal h3 { font-size: 16px; }
+.asset-delete-modal p { margin: 10px 0 20px; color: #a1a1aa; line-height: 1.7; font-size: 13px; }
+.asset-delete-acts { display: flex; justify-content: flex-end; gap: 8px; }
+.btn.danger { color: #fff; background: #e5484d; border-color: #e5484d; }
+.btn.danger:hover { background: #d93d42; }
 .asset-check.is-on::after {
   content: "";
   position: absolute;

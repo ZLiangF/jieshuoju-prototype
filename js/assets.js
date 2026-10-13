@@ -1,5 +1,6 @@
 var D = ReplicaData;
 document.getElementById("credits").textContent = ReplicaUI.credits();
+var TRASH_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.8 4.3h10.4M6.3 4.3V2.9h3.4v1.4M4.2 4.3l.6 8.4c.05.6.5 1 1.1 1h4.2c.6 0 1.05-.4 1.1-1l.6-8.4M6.7 7v4.2M9.3 7v4.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 var EMPTY_PERSON_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.3" r="3.1" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 18.6c0-2.3 2.7-3.9 6-3.9s6 1.6 6 3.9c0 .6-.5 1-1 1H7c-.5 0-1-.4-1-1Z" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
 var EMPTY_IMAGE_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="5.5" width="15" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="9.3" cy="10" r="1.4" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="m5.5 17 4.3-4 3 2.6 2.4-2.1 3.3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 var tab = "char";
@@ -151,11 +152,12 @@ function cardHtml(row) {
   var check = multiOn
     ? '<span class="asset-check card-pick' + (picked ? " is-on" : "") + '" role="checkbox" aria-checked="' + (picked ? "true" : "false") + '" aria-label="选择' + (kind === "char" ? "角色" : "资产") + '"></span>'
     : "";
+  var delBtn = multiOn ? "" : '<button type="button" class="card-del" data-del-key="' + key + '" title="删除资产" aria-label="删除' + a.name + '">' + TRASH_ICON + "</button>";
   var genBtn = kind === "char" && pending
     ? '<button type="button" class="card-gen" data-gen-char="' + row.i + '" title="生成该角色全部未完成形象">生成</button>'
     : "";
   return '<article class="char-card asset-card asset-' + kind + " is-" + state + (picked ? " is-picked" : "") + '" data-kind="' + kind + '" data-i="' + row.i + '" data-key="' + key + '">' +
-    '<div class="' + mediaClass + '">' + visual + genBtn + check +
+    '<div class="' + mediaClass + '">' + visual + genBtn + check + delBtn +
     '<div class="edit"><span>直接编辑</span></div>' +
     '<span class="asset-flag ' + flagState + '">' + flagIcon + flagText + "</span></div>" +
     '<div class="asset-card-info"><div class="asset-card-title"><h3>' + a.name +
@@ -904,6 +906,11 @@ document.getElementById("grid").onclick = function (e) {
     else selectedAssets[pickKey] = true;
     if (Object.keys(selectedAssets).length) multiOn = true;
     render();
+    return;
+  }
+  var del = e.target.closest("[data-del-key]");
+  if (del) {
+    openDeleteConfirm(del.dataset.delKey);
     return;
   }
   var gen = e.target.closest("[data-gen-char]");
@@ -1823,8 +1830,11 @@ document.getElementById("asset-multi").onclick = function () {
   setMultiSelect(!multiOn);
 };
 function deleteSelectedAssets() {
+  return deleteAssets(Object.keys(selectedAssets));
+}
+function deleteAssets(keys) {
   var groups = { char: [], scene: [], prop: [] };
-  Object.keys(selectedAssets).forEach(function (key) {
+  keys.forEach(function (key) {
     var parts = key.split(":");
     if (groups[parts[0]]) groups[parts[0]].push(Number(parts[1]));
   });
@@ -1848,6 +1858,43 @@ function deleteSelectedAssets() {
   render();
   return removed;
 }
+
+var pendingDeleteKey = null;
+function assetByKey(key) {
+  var parts = key.split(":");
+  var list = parts[0] === "char" ? D.characters : parts[0] === "scene" ? D.scenes : D.props;
+  return list[Number(parts[1])] || null;
+}
+function openDeleteConfirm(key) {
+  var item = assetByKey(key);
+  if (!item) return;
+  var kind = key.split(":")[0];
+  var unit = kind === "char" ? "角色" : kind === "scene" ? "场景" : "道具";
+  var looks = (item.looksList || []).length;
+  var sub = kind === "char" ? "形象" : kind === "scene" ? "子场景" : "子道具";
+  pendingDeleteKey = key;
+  document.getElementById("asset-delete-title").textContent = "删除" + unit + "「" + item.name + "」？";
+  document.getElementById("asset-delete-desc").textContent =
+    (looks > 1 ? "它的 " + looks + " 个" + sub + "会一起删除，" : "") + "分镜里对它的引用会失效，删除后无法恢复。";
+  document.getElementById("asset-delete-dialog").classList.add("open");
+  document.getElementById("asset-delete-ok").focus();
+}
+function closeDeleteConfirm() {
+  pendingDeleteKey = null;
+  document.getElementById("asset-delete-dialog").classList.remove("open");
+}
+document.getElementById("asset-delete-cancel").onclick = closeDeleteConfirm;
+document.getElementById("asset-delete-dialog").onclick = function (e) {
+  if (e.target === this) closeDeleteConfirm();
+};
+document.getElementById("asset-delete-ok").onclick = function () {
+  var key = pendingDeleteKey;
+  var item = key && assetByKey(key);
+  closeDeleteConfirm();
+  if (!item) return;
+  deleteAssets([key]);
+  ReplicaUI.toast("已删除「" + item.name + "」");
+};
 
 document.getElementById("asset-delete").onclick = function () {
   if (this.disabled) return;
@@ -1892,6 +1939,7 @@ document.getElementById("gen-all").onclick = function () {
 
 document.addEventListener("keydown", function (e) {
   if (e.key !== "Escape") return;
+  if (document.getElementById("asset-delete-dialog").classList.contains("open")) { closeDeleteConfirm(); return; }
   if (!document.getElementById("episode-filter-menu").hidden) { closeEpisodeFilter(); return; }
   if (!document.getElementById("model-menu").hidden || !document.getElementById("ratio-popover").hidden || !document.getElementById("type-menu").hidden) { closeGenPanels(); return; }
   if (!document.getElementById("episode-editor").hidden) cancelEpisodeEditor();
