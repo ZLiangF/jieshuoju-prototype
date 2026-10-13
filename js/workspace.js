@@ -25,7 +25,7 @@
   document.getElementById("credits").textContent = ReplicaUI.credits();
 
   function card(a, extra) {
-    return '<button class="acard ' + (extra || "") + '" data-asset="' + a.id + '"><div class="thumb"><img src="' + a.image + '"></div><div class="name">' + (a.look ? a.name + "-" + a.look : a.name) + "</div></button>";
+    return '<button class="acard ' + (extra || "") + '" data-asset="' + a.id + '"><div class="thumb"><img loading="lazy" decoding="async" src="' + a.image + '"></div><div class="name">' + (a.look ? a.name + "-" + a.look : a.name) + "</div></button>";
   }
 
   function renderAssets() {

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>样式回归检查</title>
+<style>
+  body { margin: 0; padding: 24px; font: 13px/1.6 -apple-system, "PingFang SC", sans-serif; color: #e8e6ee; background: #121217; }
+  h1 { margin: 0 0 6px; font-size: 18px; }
+  p { margin: 0 0 16px; color: #9a96a6; }
+  button { height: 32px; padding: 0 14px; margin-right: 8px; border: 0; border-radius: 8px; color: #fff; background: #6b46e5; cursor: pointer; }
+  button.ghost { background: rgba(255,255,255,.1); }
+  button:disabled { opacity: .5; cursor: default; }
+  table { width: 100%; margin-top: 18px; border-collapse: collapse; }
+  td, th { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,.08); text-align: left; vertical-align: top; }
+  .ok { color: #69d5aa; }
+  .bad { color: #ff788e; }
+  pre { margin: 4px 0 0; max-height: 220px; overflow: auto; white-space: pre-wrap; color: #c9c4d0; font-size: 11px; }
+  iframe { position: fixed; left: -3000px; top: 0; width: 1440px; height: 900px; border: 0; }
+</style>
+</head>
+<body>
+<h1>样式回归检查</h1>
+<p>改样式或结构之前点「记录基线」，改完点「对比」。会在 1440×900 下依次打开每个场景，比较所有元素的计算样式和报错。基线存在本机浏览器的 IndexedDB 里。</p>
+<button id="save">记录基线</button>
+<button id="compare" class="ghost">对比</button>
+<span id="status"></span>
+<table><thead><tr><th>场景</th><th>元素</th><th>结果</th></tr></thead><tbody id="rows"></tbody></table>
+<iframe id="frame"></iframe>
+<script>
+  var ROOT = new URLSearchParams(location.search).get("root") || "../";
+  var KEY = "regress-baseline-v1";
+
+  function click(w, selector) {
+    var el = w.document.querySelector(selector);
+    if (!el) throw new Error("找不到 " + selector);
+    el.click();
+  }
+  function clickText(w, selector, text) {
+    var el = [].find.call(w.document.querySelectorAll(selector), function (node) { return node.textContent.indexOf(text) !== -1; });
+    if (!el) throw new Error("找不到 " + text);
+    el.click();
+  }
+  function openCharacter(w, name) {
+    clickText(w, "#grid .char-card", name);
+  }
+
+  var SCENARIOS = [
+    { name: "首页 · 空态", page: "index.html" },
+    { name: "首页 · 粘贴文本", page: "index.html", run: function (w) { click(w, "#sample"); } },
+    { name: "首页 · 已上传", page: "index.html", run: function (w) { click(w, "#upload"); } },
+    { name: "首页 · 风格库", page: "index.html", run: function (w) { click(w, "#upload"); click(w, "#open-style"); } },
+    { name: "剧本大纲", page: "outline.html" },
+    { name: "资产库 · 默认", page: "assets.html" },
+    { name: "资产库 · 首次全量生成", page: "assets.html", run: function (w) { click(w, "#gen-all"); } },
+    { name: "资产库 · 全部生成", page: "assets.html", run: function (w) { click(w, "#gen-all"); click(w, "#gen-all"); } },
+    { name: "资产库 · 场景", page: "assets.html", run: function (w) { click(w, "#gen-all"); clickText(w, "button", "场景"); } },
+    { name: "资产库 · 道具", page: "assets.html", run: function (w) { clickText(w, "button", "道具"); } },
+    { name: "资产库 · 多选", page: "assets.html", run: function (w) { click(w, "#asset-multi"); click(w, "#grid .char-card"); } },
+    { name: "资产库 · 集数筛选", page: "assets.html", run: function (w) { click(w, "#episode-filter-trigger"); } },
+    { name: "资产详情 · 平铺", page: "assets.html", run: function (w) { click(w, "#gen-all"); openCharacter(w, "萧铭"); } },
+    { name: "资产详情 · 结构", page: "assets.html", run: function (w) { openCharacter(w, "萧铭"); click(w, '[data-look-view="structure"]'); } },
+    { name: "资产详情 · 多选", page: "assets.html", run: function (w) { openCharacter(w, "贺芷"); click(w, "#look-multi"); click(w, "#look-select-all"); } },
+    { name: "资产详情 · 音色", page: "assets.html", run: function (w) { openCharacter(w, "萧铭"); click(w, "[data-look-voice]"); } },
+    { name: "资产详情 · 场景", page: "assets.html", run: function (w) { click(w, "#gen-all"); clickText(w, "button", "场景"); click(w, "#grid .char-card"); } },
+    { name: "分集视频", page: "episodes.html" },
+    { name: "单集工作台", page: "workspace.html" }
+  ];
+
+  function normalize(value) {
+    return value
+      .replace(/\?v=[\w.-]+/g, "")
+      .replace(/\.(png|jpe?g|webp)\b/g, ".img")
+      .replace(/https?:\/\/[^/]+\/[^"')]*?\/(media|css|js)\//g, "$1/");
+  }
+  function hash(text) {
+    var h = 2166136261;
+    for (var i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return (h >>> 0).toString(36);
+  }
+  function describe(el) {
+    var parts = [];
+    while (el && el.nodeType === 1 && el.tagName !== "HTML") {
+      var part = el.tagName.toLowerCase();
+      if (el.id) { parts.unshift(part + "#" + el.id); break; }
+      var cls = (el.getAttribute("class") || "").trim().split(/\s+/).filter(Boolean).slice(0, 2).join(".");
+      if (cls) part += "." + cls;
+      var index = 1, sib = el;
+      while ((sib = sib.previousElementSibling)) if (sib.tagName === el.tagName) index++;
+      parts.unshift(part + ":" + index);
+      el = el.parentElement;
+    }
+    return parts.join(" > ");
+  }
+  function styleText(w, el, pseudo) {
+    var cs = w.getComputedStyle(el, pseudo);
+    if (pseudo && (cs.content === "none" || cs.content === "normal")) return "";
+    var out = [];
+    for (var i = 0; i < cs.length; i++) out.push(cs[i] + ":" + cs.getPropertyValue(cs[i]));
+    return normalize(out.join(";"));
+  }
+  function snapshot(w) {
+    var map = {};
+    var seen = {};
+    [].forEach.call(w.document.body.querySelectorAll("*"), function (el) {
+      if (el.closest(".toast-wrap") || /^(SCRIPT|STYLE|LINK|META|TEMPLATE|NOSCRIPT)$/.test(el.tagName)) return;
+      var key = describe(el);
+      seen[key] = (seen[key] || 0) + 1;
+      if (seen[key] > 1) key += "~" + seen[key];
+      var text = el.tagName + "|" + normalize(el.getAttribute("src") || "") + "|" + styleText(w, el) + "|" + styleText(w, el, "::before") + "|" + styleText(w, el, "::after");
+      map[key] = { h: hash(text), t: text };
+    });
+    return map;
+  }
+
+  function load(page) {
+    return new Promise(function (resolve) {
+      var frame = document.getElementById("frame");
+      var errors = [];
+      frame.onload = function () {
+        var w = frame.contentWindow;
+        var style = w.document.createElement("style");
+        style.textContent = "*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}";
+        w.document.head.appendChild(style);
+        setTimeout(function () { resolve({ w: w, errors: errors }); }, 300);
+      };
+      frame.src = ROOT + page + "?regress=" + Date.now();
+      var poll = setInterval(function () {
+        var w = frame.contentWindow;
+        if (w && !w.__regressHooked) {
+          w.__regressHooked = true;
+          w.addEventListener("error", function (e) { errors.push(e.message); });
+        }
+      }, 0);
+      setTimeout(function () { clearInterval(poll); }, 2000);
+    });
+  }
+
+  async function runAll() {
+    var result = {};
+    for (var i = 0; i < SCENARIOS.length; i++) {
+      var s = SCENARIOS[i];
+      document.getElementById("status").textContent = "正在检查：" + s.name;
+      var ctx = await load(s.page);
+      var runError = "";
+      try { if (s.run) s.run(ctx.w); } catch (e) { runError = e.message; }
+      await new Promise(function (r) { setTimeout(r, 250); });
+      result[s.name] = { styles: snapshot(ctx.w), errors: ctx.errors.concat(runError ? ["步骤失败：" + runError] : []) };
+    }
+    document.getElementById("status").textContent = "";
+    return result;
+  }
+
+  function slim(result) {
+    var out = {};
+    Object.keys(result).forEach(function (name) {
+      var styles = {};
+      Object.keys(result[name].styles).forEach(function (k) { styles[k] = result[name].styles[k].t; });
+      out[name] = { styles: styles, errors: result[name].errors };
+    });
+    return out;
+  }
+
+  function pack(result) {
+    var texts = [], index = {};
+    var scenes = {};
+    Object.keys(result).forEach(function (name) {
+      var styles = {};
+      Object.keys(result[name].styles).forEach(function (k) {
+        var t = result[name].styles[k];
+        if (!(t in index)) { index[t] = texts.length; texts.push(t); }
+        styles[k] = index[t];
+      });
+      scenes[name] = { styles: styles, errors: result[name].errors };
+    });
+    return { texts: texts, scenes: scenes };
+  }
+
+  function unpack(data) {
+    var out = {};
+    Object.keys(data.scenes).forEach(function (name) {
+      var styles = {};
+      Object.keys(data.scenes[name].styles).forEach(function (k) { styles[k] = data.texts[data.scenes[name].styles[k]]; });
+      out[name] = { styles: styles, errors: data.scenes[name].errors };
+    });
+    return out;
+  }
+
+  function db() {
+    return new Promise(function (resolve, reject) {
+      var req = indexedDB.open("regress", 1);
+      req.onupgradeneeded = function () { req.result.createObjectStore("kv"); };
+      req.onsuccess = function () { resolve(req.result); };
+      req.onerror = function () { reject(req.error); };
+    });
+  }
+  async function saveBaseline(data) {
+    var conn = await db();
+    await new Promise(function (resolve, reject) {
+      var tx = conn.transaction("kv", "readwrite");
+      tx.objectStore("kv").put(data, KEY);
+      tx.oncomplete = resolve;
+      tx.onerror = function () { reject(tx.error); };
+    });
+  }
+  async function readBaseline() {
+    var conn = await db();
+    return new Promise(function (resolve, reject) {
+      var req = conn.transaction("kv").objectStore("kv").get(KEY);
+      req.onsuccess = function () { resolve(req.result || null); };
+      req.onerror = function () { reject(req.error); };
+    });
+  }
+
+  function diffText(a, b) {
+    var pa = {}, pb = {};
+    a.split(";").forEach(function (x) { var i = x.indexOf(":"); pa[x.slice(0, i)] = x.slice(i + 1); });
+    b.split(";").forEach(function (x) { var i = x.indexOf(":"); pb[x.slice(0, i)] = x.slice(i + 1); });
+    var out = [];
+    Object.keys(Object.assign({}, pa, pb)).forEach(function (k) { if (pa[k] !== pb[k]) out.push(k + ": " + pa[k] + " → " + pb[k]); });
+    return out.slice(0, 12).join("\n");
+  }
+
+  function row(name, count, ok, detail) {
+    var tr = document.createElement("tr");
+    tr.innerHTML = "<td>" + name + "</td><td>" + count + "</td><td class='" + (ok ? "ok" : "bad") + "'>" + (ok ? "一致" : "有差异") + (detail ? "<pre></pre>" : "") + "</td>";
+    if (detail) tr.querySelector("pre").textContent = detail;
+    document.getElementById("rows").appendChild(tr);
+  }
+
+  window.addEventListener("unhandledrejection", function (e) {
+    document.getElementById("status").textContent = "出错：" + (e.reason && e.reason.message || e.reason);
+    window.__regressDone = { error: String(e.reason && e.reason.message || e.reason) };
+    lock(false);
+  });
+
+  function lock(on) {
+    document.getElementById("save").disabled = on;
+    document.getElementById("compare").disabled = on;
+  }
+
+  document.getElementById("save").onclick = async function () {
+    lock(true);
+    document.getElementById("rows").innerHTML = "";
+    var result = slim(await runAll());
+    await saveBaseline(pack(result));
+    Object.keys(result).forEach(function (name) {
+      var errors = result[name].errors;
+      row(name, Object.keys(result[name].styles).length, !errors.length, errors.join("\n"));
+    });
+    document.getElementById("status").textContent = "基线已记录";
+    window.__regressDone = { saved: true };
+    lock(false);
+  };
+
+  document.getElementById("compare").onclick = async function () {
+    var stored = await readBaseline();
+    if (!stored) { document.getElementById("status").textContent = "还没有基线"; return; }
+    var base = unpack(stored);
+    lock(true);
+    document.getElementById("rows").innerHTML = "";
+    var now = slim(await runAll());
+    var summary = { ok: 0, bad: 0, details: {} };
+    Object.keys(now).forEach(function (name) {
+      var a = (base[name] || { styles: {} }).styles, b = now[name].styles;
+      var lines = [];
+      Object.keys(Object.assign({}, a, b)).forEach(function (k) {
+        if (a[k] === b[k]) return;
+        if (a[k] === undefined) lines.push("+ 新增 " + k);
+        else if (b[k] === undefined) lines.push("- 消失 " + k);
+        else lines.push("~ " + k + "\n" + diffText(a[k], b[k]));
+      });
+      now[name].errors.forEach(function (e) { lines.push("报错：" + e); });
+      var ok = !lines.length;
+      summary[ok ? "ok" : "bad"]++;
+      if (!ok) summary.details[name] = lines.slice(0, 20);
+      row(name, Object.keys(b).length, ok, lines.slice(0, 20).join("\n"));
+    });
+    document.getElementById("status").textContent = summary.bad ? summary.bad + " 个场景有差异" : "全部一致";
+    window.__regressDone = summary;
+    lock(false);
+  };
+</script>
+</body>
+</html>
