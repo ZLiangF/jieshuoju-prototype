@@ -2314,14 +2314,9 @@ function submitGeneration(mode) {
 
 function syncGenButton() {
   var button = document.getElementById("gen-all");
-  var more = document.getElementById("gen-more");
-  var menu = document.getElementById("gen-menu");
-  var everything = document.getElementById("gen-everything");
   var multi = document.getElementById("asset-multi");
   var picked = document.getElementById("asset-picked");
   var stats = assetImageStats();
-  var tabStats = assetImageStats(tab, true);
-  var tabWord = tab === "char" ? "角色" : tab === "scene" ? "场景" : "道具";
   var count = Object.keys(selectedAssets).length;
   var visibleCards = [].slice.call(document.querySelectorAll("#grid .char-card"));
   var allVisiblePicked = visibleCards.length > 0 && visibleCards.every(function (card) { return selectedAssets[card.dataset.key]; });
@@ -2338,13 +2333,7 @@ function syncGenButton() {
   removeAssets.hidden = !multiOn;
   removeAssets.disabled = !count;
   removeAssets.textContent = count ? "删除 " + count : "删除";
-  more.hidden = multiOn;
-  if (multiOn) {
-    menu.hidden = true;
-    more.setAttribute("aria-expanded", "false");
-  }
-  everything.disabled = !stats.remaining;
-  document.getElementById("gen-everything-count").textContent = stats.remaining + "项";
+  button.classList.remove("is-complete");
   if (multiOn) {
     var assets = {};
     generationTargets("selected").forEach(function (entry) { assets[entry.kind + ":" + entry.index] = true; });
@@ -2354,17 +2343,20 @@ function syncGenButton() {
     button.title = assetCount ? "只生成勾选里还未完成的资产" : "请勾选待生成或生成失败的资产";
     return;
   }
-  if (tabStats.remaining) {
-    button.textContent = "生成" + tabWord + "待办 · " + tabStats.remaining + "项";
-    button.disabled = false;
-    button.title = "只生成当前" + tabWord + "分类里还未完成的内容";
-  } else {
-    button.textContent = tabWord + "已完成";
+  if (!stats.remaining) {
+    button.textContent = "全量资产已完成";
     button.disabled = true;
-    button.title = "当前" + tabWord + "分类没有待生成内容";
+    button.classList.add("is-complete");
+    button.title = "角色、场景和道具均已完成";
+  } else if (stats.generated) {
+    button.textContent = "生成剩余资产";
+    button.disabled = false;
+    button.title = "生成剩余的 " + stats.remaining + " 项资产";
+  } else {
+    button.textContent = "全量生成";
+    button.disabled = false;
+    button.title = "生成角色、场景和道具的全部待办";
   }
-  more.disabled = !stats.remaining;
-  more.title = stats.remaining ? "还可以生成全部分类的 " + stats.remaining + " 项待办" : "所有资产已完成";
 }
 
 function setMultiSelect(on) {
@@ -2461,29 +2453,6 @@ document.getElementById("asset-select-all").onclick = function () {
   });
   syncGenButton();
 };
-function closeAssetGenMenu() {
-  document.getElementById("gen-menu").hidden = true;
-  document.getElementById("gen-more").setAttribute("aria-expanded", "false");
-}
-document.getElementById("gen-more").onclick = function (e) {
-  e.stopPropagation();
-  if (this.disabled) return;
-  var menu = document.getElementById("gen-menu");
-  menu.hidden = !menu.hidden;
-  this.setAttribute("aria-expanded", menu.hidden ? "false" : "true");
-};
-document.getElementById("gen-everything").onclick = function () {
-  closeAssetGenMenu();
-  if (this.disabled) return;
-  var stats = assetImageStats();
-  var count = submitGeneration("all");
-  ReplicaUI.toast(!stats.generated
-    ? "已生成 " + count + " 个资产，其余待办可以继续补齐"
-    : "已生成全部待办，共 " + count + " 个资产");
-};
-document.addEventListener("click", function (e) {
-  if (!e.target.closest(".asset-bulk-generate")) closeAssetGenMenu();
-});
 document.getElementById("gen-all").onclick = function () {
   if (this.disabled) return;
   if (multiOn) {
@@ -2495,20 +2464,20 @@ document.getElementById("gen-all").onclick = function () {
     ReplicaUI.toast("已生成所选 " + selectedCount + " 个资产");
     return;
   }
-  var tabWord = tab === "char" ? "角色" : tab === "scene" ? "场景" : "道具";
-  var stats = assetImageStats(tab, true);
+  var stats = assetImageStats();
   if (!stats.remaining) {
-    ReplicaUI.toast(tabWord + "没有待生成内容");
+    ReplicaUI.toast("所有资产已完成");
     return;
   }
-  var count = submitGeneration("tab");
-  var remaining = assetImageStats(tab, true).remaining;
-  ReplicaUI.toast("已生成" + tabWord + "待办，共 " + count + " 个资产" + (remaining ? "，还有 " + remaining + " 项可以继续补齐" : ""));
+  var count = submitGeneration("all");
+  var remaining = assetImageStats().remaining;
+  ReplicaUI.toast(remaining
+    ? "已生成 " + count + " 个资产，还有 " + remaining + " 项可以继续补齐"
+    : "已生成全部待办，共 " + count + " 个资产");
 };
 
 document.addEventListener("keydown", function (e) {
   if (e.key !== "Escape") return;
-  if (!document.getElementById("gen-menu").hidden) { closeAssetGenMenu(); return; }
   if (document.getElementById("asset-delete-dialog").classList.contains("open")) { closeDeleteConfirm(); return; }
   if (!document.getElementById("episode-filter-menu").hidden) { closeEpisodeFilter(); return; }
   if (!document.getElementById("model-menu").hidden || !document.getElementById("ratio-popover").hidden || !document.getElementById("type-menu").hidden) { closeGenPanels(); return; }
