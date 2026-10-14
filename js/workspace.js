@@ -40,7 +40,25 @@
   function sceneById(id) { return D.scenes.find(function (a) { return a.id === id; }); }
   function propById(id) { return D.props.find(function (a) { return a.id === id; }); }
   function inEpisode(a) { return (a.eps || []).indexOf(EPISODE) > -1; }
-  function charLabel(c) { return c.looksList && c.looksList[0] ? c.looksList[0].name : c.name + (c.look ? "-" + c.look : ""); }
+  function lookInEpisode(look) {
+    return String(look && look.eps || "").split(",").some(function (part) {
+      var range = part.trim().split("-").map(Number);
+      if (!range[0]) return false;
+      return range.length > 1 ? EPISODE >= range[0] && EPISODE <= range[1] : EPISODE === range[0];
+    });
+  }
+  function activeLook(c) {
+    var looks = c && c.looksList || [];
+    return looks.find(lookInEpisode) || looks[0] || null;
+  }
+  function charLabel(c) {
+    var look = activeLook(c);
+    return look ? look.name : c.name + (c.look ? "-" + c.look : "");
+  }
+  function outfitImage(c) {
+    var look = activeLook(c);
+    return look && look.image ? look.image : c.image;
+  }
   function mmss(sec) { return String(Math.floor(sec / 60)).padStart(2, "0") + ":" + String(sec % 60).padStart(2, "0"); }
 
   document.getElementById("credits").textContent = ReplicaUI.credits();
@@ -383,10 +401,11 @@
       html += board.marks.map(function (m) {
         var c = charById(m.asset);
         var hpx = markHeight(m, p) * ch;
+        var outfit = c ? outfitImage(c) : "";
         return '<div class="mk' + (m.id === state.selected ? " on" : "") + (hits[m.id] ? " is-overlap" : "") + (m.locked ? " is-locked" : "") + '" data-mark="' + m.id + '" style="left:' + m.x * 100 + "%;top:" + m.y * 100 + "%;--h:" + hpx.toFixed(1) + "px;--c:" + colorOf(m.asset) + '">' +
           '<span class="mk-name">' + (c ? c.name : m.asset) + (m.locked ? " · 锁" : "") + "</span>" +
           '<span class="mk-head"><span class="mk-dir" style="transform:rotate(' + (-m.dir) + 'deg)"><i data-rotate="' + m.id + '" title="拖动调整朝向"></i></span></span>' +
-          '<span class="mk-body"></span><span class="mk-foot"></span></div>';
+          '<span class="mk-body">' + (outfit ? '<img class="mk-wear" src="' + outfit + '" alt="" draggable="false">' : "") + '</span><span class="mk-foot"></span></div>';
       }).join("");
     }
     $("#sv-layer").innerHTML = html;

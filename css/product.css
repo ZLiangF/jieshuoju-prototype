@@ -5625,9 +5625,13 @@ body.ws-page .tcard .dur { left: 6px; bottom: 5px; color: #e4e4e7; text-shadow: 
   content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 1px dashed rgba(255,255,255,.7); pointer-events: none;
 }
 .mk-body {
-  flex: 1; width: calc(var(--h) * .28); margin-top: calc(var(--h) * .015);
+  position: relative; flex: 1; width: calc(var(--h) * .28); margin-top: calc(var(--h) * .015); overflow: hidden;
   border-radius: calc(var(--h) * .12) calc(var(--h) * .12) calc(var(--h) * .05) calc(var(--h) * .05);
-  background: var(--c); box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.4);
+  background: #f4f4f5; border: 1.5px solid var(--c); box-shadow: inset 0 0 0 1px rgba(255,255,255,.35);
+}
+.mk-wear {
+  width: 100%; height: 100%; display: block; object-fit: cover; object-position: center 46%;
+  transform: scale(1.38); pointer-events: none; user-select: none;
 }
 .mk-foot {
   position: absolute; left: 50%; bottom: 0; transform: translate(-50%, 50%);
