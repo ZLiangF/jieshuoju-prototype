@@ -3494,6 +3494,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   gap: 28px 15px;
   align-items: stretch;
 }
+@media (min-width: 1280px) {
+  .asset-page .char-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
 .asset-page .char-card.asset-card {
   min-width: 0;
   min-height: 0;
