@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>资产库 · 离婚后（15集）</title>
-  <link rel="stylesheet" href="css/product.css?v=202610141721" />
+  <link rel="stylesheet" href="css/product.css?v=202610141915" />
 </head>
 <body class="asset-page">
 <div class="app">
@@ -463,6 +463,41 @@
   </div>
 </div>
 
+<div class="modal-mask" id="asset-generate-dialog">
+  <div class="modal asset-generate-modal" role="dialog" aria-modal="true" aria-labelledby="asset-generate-title" aria-describedby="asset-generate-note">
+    <div class="asset-generate-head">
+      <span class="asset-generate-icon" aria-hidden="true">✦</span>
+      <div>
+        <h3 id="asset-generate-title">确认全量生成</h3>
+        <p>提交前请确认本次生成内容</p>
+      </div>
+    </div>
+    <div class="asset-generate-options">
+      <label class="asset-generate-field">
+        <span>生成模型</span>
+        <span class="asset-generate-select">
+          <select id="asset-generate-model" aria-label="生成模型"></select>
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 6.2 8 10l3.8-3.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+      </label>
+      <div class="asset-generate-field">
+        <span>分辨率</span>
+        <div class="asset-generate-quality" id="asset-generate-quality" role="radiogroup" aria-label="分辨率"></div>
+      </div>
+    </div>
+    <div class="asset-generate-summary">
+      <div><span>生成范围</span><strong id="asset-generate-range"></strong></div>
+      <div><span>生成数量</span><strong id="asset-generate-count"></strong></div>
+      <div><span>预计积分</span><strong class="asset-generate-cost" id="asset-generate-cost"></strong></div>
+    </div>
+    <p class="asset-generate-note" id="asset-generate-note"></p>
+    <div class="asset-generate-acts">
+      <button type="button" class="btn" id="asset-generate-cancel">取消</button>
+      <button type="button" class="btn purple" id="asset-generate-ok">确认生成</button>
+    </div>
+  </div>
+</div>
+
 <div class="episode-detail" id="episode-detail" hidden>
   <div class="episode-detail-head">
     <strong id="episode-detail-title">出现集数</strong>
@@ -493,7 +528,7 @@
   </div>
 </div>
 
-<script src="js/data.js?v=202610141721"></script>
-<script src="js/assets.js?v=202610141721"></script>
+<script src="js/data.js?v=202610141915"></script>
+<script src="js/assets.js?v=202610141915"></script>
 </body>
 </html>

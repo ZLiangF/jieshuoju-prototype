@@ -41,6 +41,18 @@ var multiOn = false;
 var selectedAssets = {};
 var revealedAssets = {};
 var revealedLooks = {};
+var ASSET_GENERATION_COSTS = {
+  "gpt-25-flare": { "1K": 2, "2K": 3, "4K": 5 },
+  "gpt-25-sunburst": { "1K": 3, "2K": 5, "4K": 8 },
+  "gpt-2": { "1K": 2, "2K": 3, "4K": 5 },
+  "nano-banana-21": { "512P": 1, "1K": 2, "2K": 3, "4K": 5 },
+  "banana-2": { "512P": 1, "1K": 2, "2K": 3, "4K": 5 },
+  "nano-banana-2-lite": { "1K": 1 },
+  "banana-pro": { "1K": 3, "2K": 5, "4K": 8 },
+  "seedream-5": { "1K": 3, "2K": 5 }
+};
+var pendingGenerationMode = "";
+var bulkGenerationChoice = { model: "banana-2", quality: "2K" };
 var FIRST_REVEAL = {
   xiaoming: true, hezhi: true, cuiguihua: true, sucheng: true,
   cemetery: true, meeting: true, banquet: true, rainst: true, xmoffice: true,
@@ -2270,6 +2282,15 @@ function generationTargets(mode) {
   return targets;
 }
 
+function generationSubmissionTargets(mode) {
+  var onlyFirst = (mode === "all" || mode === "tab") && !assetImageStats().generated;
+  return generationTargets(mode).filter(function (entry) {
+    if (onlyFirst && !FIRST_REVEAL[entry.item.id]) return false;
+    if (onlyFirst && entry.look && entry.item.looksList.length > 1 && !lookHasImage(entry.item, entry.look)) return false;
+    return true;
+  });
+}
+
 function assetImageStats(kind, filtered) {
   var generated = 0;
   var remaining = 0;
@@ -2293,14 +2314,8 @@ function refreshPendingLooks() {
 }
 
 function submitGeneration(mode) {
-  var onlyFirst = (mode === "all" || mode === "tab") && !assetImageStats().generated;
   var ids = {};
-  eachAssetImage(function (entry) {
-    if (entryState(entry) === "ready") return;
-    if (mode === "selected" && !selectedAssets[entry.kind + ":" + entry.index]) return;
-    if (mode === "tab" && (entry.kind !== tab || !inEpisode(entry.item))) return;
-    if (onlyFirst && !FIRST_REVEAL[entry.item.id]) return;
-    if (onlyFirst && entry.look && entry.item.looksList.length > 1 && !lookHasImage(entry.item, entry.look)) return;
+  generationSubmissionTargets(mode).forEach(function (entry) {
     revealedAssets[entry.item.id] = true;
     if (entry.look) {
       revealedLooks[entry.item.id + "/" + entry.look.id] = true;
@@ -2453,31 +2468,141 @@ document.getElementById("asset-select-all").onclick = function () {
   });
   syncGenButton();
 };
+
+function generationAssetCount(targets) {
+  var assets = {};
+  targets.forEach(function (entry) { assets[entry.kind + ":" + entry.index] = true; });
+  return Object.keys(assets).length;
+}
+
+function generationKindNames(targets) {
+  var kinds = {};
+  targets.forEach(function (entry) { kinds[entry.kind] = true; });
+  return [["char", "角色"], ["scene", "场景"], ["prop", "道具"]]
+    .filter(function (entry) { return kinds[entry[0]]; })
+    .map(function (entry) { return entry[1]; })
+    .join("、");
+}
+
+function closeGenerationConfirm() {
+  pendingGenerationMode = "";
+  document.getElementById("asset-generate-dialog").classList.remove("open");
+}
+
+function currentBulkGenerationModel() {
+  return imageModels.filter(function (item) { return item.id === bulkGenerationChoice.model; })[0] || imageModels[0];
+}
+
+function paintBulkGenerationOptions() {
+  var model = currentBulkGenerationModel();
+  if (model.qualities.indexOf(bulkGenerationChoice.quality) === -1) {
+    bulkGenerationChoice.quality = model.qualities.indexOf("2K") !== -1 ? "2K" : model.qualities[model.qualities.length - 1];
+  }
+  var select = document.getElementById("asset-generate-model");
+  select.innerHTML = imageModels.map(function (item) {
+    return '<option value="' + item.id + '"' + (item.id === model.id ? " selected" : "") + ">" + item.name + "</option>";
+  }).join("");
+  document.getElementById("asset-generate-quality").innerHTML = ["512P", "1K", "2K", "4K"].map(function (quality) {
+    var enabled = model.qualities.indexOf(quality) !== -1;
+    var on = quality === bulkGenerationChoice.quality;
+    return '<button type="button" data-bulk-quality="' + quality + '" role="radio" aria-checked="' + (on ? "true" : "false") + '"' +
+      (on ? ' class="on"' : "") + (enabled ? "" : " disabled") + ">" + quality + "</button>";
+  }).join("");
+}
+
+function bulkGenerationUnitCost() {
+  var costs = ASSET_GENERATION_COSTS[bulkGenerationChoice.model] || {};
+  return costs[bulkGenerationChoice.quality] || 3;
+}
+
+function refreshGenerationEstimate() {
+  if (!pendingGenerationMode) return;
+  var targets = generationSubmissionTargets(pendingGenerationMode);
+  var unitCost = bulkGenerationUnitCost();
+  var cost = targets.length * unitCost;
+  var note = document.getElementById("asset-generate-note");
+  var confirm = document.getElementById("asset-generate-ok");
+  var enough = D.credits >= cost;
+  document.getElementById("asset-generate-cost").textContent = "✦ " + cost;
+  note.classList.toggle("is-error", !enough);
+  note.textContent = enough
+    ? currentBulkGenerationModel().name + " · " + bulkGenerationChoice.quality + "，每项 " + unitCost + " 积分；提交后扣除。"
+    : "积分不足：当前余额 ✦ " + D.credits.toLocaleString("en-US") + "，本次需要 ✦ " + cost + "。";
+  confirm.disabled = !enough;
+  confirm.innerHTML = "确认生成 <b>✦ " + cost + "</b>";
+}
+
+function openGenerationConfirm(mode) {
+  var targets = generationSubmissionTargets(mode);
+  if (!targets.length) {
+    ReplicaUI.toast(mode === "selected" ? "所选资产已生成或正在生成" : "所有资产已完成");
+    return;
+  }
+  var selected = mode === "selected";
+  var generated = assetImageStats().generated;
+  var title = selected ? "确认生成所选资产" : generated ? "确认生成剩余资产" : "确认全量生成";
+  var range = selected
+    ? "已选 " + generationAssetCount(targets) + " 个资产"
+    : (generated ? "全部剩余资产" : "全部资产");
+  var kinds = generationKindNames(targets);
+  if (kinds) range += " · " + kinds;
+  pendingGenerationMode = mode;
+  paintBulkGenerationOptions();
+  document.getElementById("asset-generate-title").textContent = title;
+  document.getElementById("asset-generate-range").textContent = range;
+  document.getElementById("asset-generate-count").textContent = targets.length + " 项生成内容";
+  refreshGenerationEstimate();
+  var confirm = document.getElementById("asset-generate-ok");
+  document.getElementById("asset-generate-dialog").classList.add("open");
+  (confirm.disabled ? document.getElementById("asset-generate-cancel") : confirm).focus();
+}
+
+document.getElementById("asset-generate-model").onchange = function () {
+  bulkGenerationChoice.model = this.value;
+  paintBulkGenerationOptions();
+  refreshGenerationEstimate();
+};
+document.getElementById("asset-generate-quality").onclick = function (e) {
+  var button = e.target.closest("[data-bulk-quality]");
+  if (!button || button.disabled) return;
+  bulkGenerationChoice.quality = button.dataset.bulkQuality;
+  paintBulkGenerationOptions();
+  refreshGenerationEstimate();
+};
+document.getElementById("asset-generate-cancel").onclick = closeGenerationConfirm;
+document.getElementById("asset-generate-dialog").onclick = function (e) {
+  if (e.target === this) closeGenerationConfirm();
+};
+document.getElementById("asset-generate-ok").onclick = function () {
+  if (this.disabled || !pendingGenerationMode) return;
+  var mode = pendingGenerationMode;
+  var targets = generationSubmissionTargets(mode);
+  var cost = targets.length * bulkGenerationUnitCost();
+  if (!targets.length) {
+    closeGenerationConfirm();
+    ReplicaUI.toast("生成内容已发生变化，请重新选择");
+    return;
+  }
+  if (D.credits < cost) {
+    openGenerationConfirm(mode);
+    return;
+  }
+  D.credits -= cost;
+  document.getElementById("credits").textContent = ReplicaUI.credits();
+  closeGenerationConfirm();
+  submitGeneration(mode);
+  var remaining = assetImageStats().remaining;
+  ReplicaUI.toast(currentBulkGenerationModel().name + " · " + bulkGenerationChoice.quality + "，已扣除 " + cost + " 积分并提交 " + targets.length + " 项" + (remaining ? "，还有 " + remaining + " 项待生成" : ""));
+};
+
 document.getElementById("gen-all").onclick = function () {
   if (this.disabled) return;
-  if (multiOn) {
-    var selectedCount = submitGeneration("selected");
-    if (!selectedCount) {
-      ReplicaUI.toast("所选资产已生成或正在生成");
-      return;
-    }
-    ReplicaUI.toast("已生成所选 " + selectedCount + " 个资产");
-    return;
-  }
-  var stats = assetImageStats();
-  if (!stats.remaining) {
-    ReplicaUI.toast("所有资产已完成");
-    return;
-  }
-  var count = submitGeneration("all");
-  var remaining = assetImageStats().remaining;
-  ReplicaUI.toast(remaining
-    ? "已生成 " + count + " 个资产，还有 " + remaining + " 项可以继续补齐"
-    : "已生成全部待办，共 " + count + " 个资产");
+  openGenerationConfirm(multiOn ? "selected" : "all");
 };
 
 document.addEventListener("keydown", function (e) {
   if (e.key !== "Escape") return;
+  if (document.getElementById("asset-generate-dialog").classList.contains("open")) { closeGenerationConfirm(); return; }
   if (document.getElementById("asset-delete-dialog").classList.contains("open")) { closeDeleteConfirm(); return; }
   if (!document.getElementById("episode-filter-menu").hidden) { closeEpisodeFilter(); return; }
   if (!document.getElementById("model-menu").hidden || !document.getElementById("ratio-popover").hidden || !document.getElementById("type-menu").hidden) { closeGenPanels(); return; }
