@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>资产库 · 离婚后（15集）</title>
-  <link rel="stylesheet" href="css/product.css?v=202610141915" />
+  <link rel="stylesheet" href="css/product.css?v=202610142336" />
 </head>
 <body class="asset-page">
 <div class="app">
@@ -29,13 +29,10 @@
   <div class="page asset-page-main">
     <div class="asset-commandbar">
       <div class="asset-command-top">
-        <div class="asset-heading">
-          <h2>已识别总资产 <span class="asset-total-tail"><b id="asset-total"></b>个</span></h2>
-        </div>
-        <div class="asset-tools">
+        <div class="asset-tools asset-finder">
           <label class="asset-query">
             <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="6" cy="6" r="4.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M9.2 9.2 12 12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-            <input id="asset-search" type="search" placeholder="搜索资产" aria-label="搜索全局资产" />
+            <input id="asset-search" type="search" placeholder="搜索资产" aria-label="搜索全部资产" />
           </label>
           <div class="episode-filter" id="episode-filter">
             <button class="asset-episode" id="episode-filter-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
@@ -43,6 +40,13 @@
             </button>
             <div class="episode-filter-menu" id="episode-filter-menu" hidden role="listbox" aria-label="集数筛选" aria-multiselectable="true"></div>
           </div>
+        </div>
+        <div class="asset-actions asset-bulk-generate">
+          <button class="btn purple" id="gen-all" type="button">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 9.3 6.1 13.6 7.4 9.3 8.7 8 13 6.7 8.7 2.4 7.4 6.7 6.1Z" fill="currentColor"/><path d="m12.6 10.6.5 1.4 1.4.5-1.4.5-.5 1.4-.5-1.4-1.4-.5 1.4-.5Z" fill="currentColor"/></svg>
+            <em class="gen-all-label" id="gen-all-label">全量生成</em>
+            <i class="gen-all-count" id="gen-all-count"></i>
+          </button>
         </div>
       </div>
       <div class="asset-command-tabs">
@@ -52,14 +56,15 @@
           <button data-tab="prop">道具 <span class="tab-stats"><b class="tab-count" id="count-prop"></b><span class="tab-pending" id="pending-prop"></span></span></button>
         </div>
         <div class="asset-actions">
-          <button class="btn asset-add" id="add" type="button" aria-label="新增形象" title="新增形象"><span>＋</span></button>
-          <div class="asset-bulk-generate">
-            <button class="btn purple" id="gen-all" type="button">全量生成</button>
-          </div>
+          <button class="btn asset-add" id="add" type="button" aria-label="新增角色" title="新增角色"><span>＋</span></button>
           <span class="asset-picked" id="asset-picked" hidden>已选 0</span>
           <button class="btn" id="asset-select-all" type="button" hidden>全选</button>
           <button class="btn asset-delete" id="asset-delete" type="button" hidden>删除</button>
-          <button class="btn" id="asset-multi" type="button" aria-pressed="false">多选</button>
+          <button class="btn purple" id="gen-selected" type="button" hidden>生成所选</button>
+          <button class="btn asset-multi" id="asset-multi" type="button" aria-pressed="false">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="12" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="m5.2 8.2 1.9 1.9 3.8-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <em id="asset-multi-label">多选</em>
+          </button>
           <button class="btn" id="upload-asset" type="button" hidden>上传资产</button>
         </div>
       </div>
@@ -528,7 +533,7 @@
   </div>
 </div>
 
-<script src="js/data.js?v=202610141915"></script>
-<script src="js/assets.js?v=202610141915"></script>
+<script src="js/data.js?v=202610142336"></script>
+<script src="js/assets.js?v=202610142336"></script>
 </body>
 </html>

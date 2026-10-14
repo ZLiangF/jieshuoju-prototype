@@ -115,24 +115,44 @@ function renderProgress() {
   });
 }
 
+function matchesQuery(row) {
+  var q = query.trim().toLowerCase();
+  if (!q) return true;
+  return ((row.item.name || "") + " " + (row.item.desc || "") + " " + (row.item.tag || "")).toLowerCase().indexOf(q) !== -1;
+}
+
+function matchedRows(kind) {
+  return rowsOf(kind).filter(matchesQuery);
+}
+
 function renderTabCounts() {
-  var chars = rowsOf("char").length;
-  var scenes = rowsOf("scene").length;
-  var props = rowsOf("prop").length;
-  document.getElementById("count-char").textContent = chars;
-  document.getElementById("count-scene").textContent = scenes;
-  document.getElementById("count-prop").textContent = props;
-  document.getElementById("asset-total").textContent = chars + scenes + props;
-  renderProgress();
+  ["char", "scene", "prop"].forEach(function (kind) {
+    document.getElementById("count-" + kind).textContent = matchedRows(kind).length;
+  });
+  if (!query.trim()) {
+    renderProgress();
+    return;
+  }
+  ["char", "scene", "prop"].forEach(function (kind) {
+    var el = document.getElementById("pending-" + kind);
+    el.hidden = true;
+    el.parentElement.classList.add("is-done");
+  });
+}
+
+function setActiveTab(kind) {
+  tab = kind;
+  document.querySelectorAll(".asset-commandbar .tabs button").forEach(function (button) {
+    button.classList.toggle("on", button.dataset.tab === kind);
+  });
+  var word = kind === "scene" ? "场景" : kind === "prop" ? "道具" : "角色";
+  var add = document.getElementById("add");
+  add.title = "新增" + word;
+  add.setAttribute("aria-label", "新增" + word);
 }
 
 function visibleAssets() {
-  var q = query.trim().toLowerCase();
-  var rows = q ? rowsOf("char").concat(rowsOf("scene"), rowsOf("prop")) : rowsOf(tab);
-  if (!q) return rows;
-  return rows.filter(function (row) {
-    return ((row.item.name || "") + " " + (row.item.desc || "") + " " + (row.item.tag || "")).toLowerCase().indexOf(q) !== -1;
-  });
+  return matchedRows(tab);
 }
 
 function cardHtml(row) {
@@ -1114,8 +1134,7 @@ document.getElementById("grid").onclick = function (e) {
 document.querySelector(".tabs").onclick = function (e) {
   var b = e.target.closest("[data-tab]");
   if (!b) return;
-  tab = b.dataset.tab;
-  document.querySelectorAll(".tabs button").forEach(function (x) { x.classList.toggle("on", x === b); });
+  setActiveTab(b.dataset.tab);
   render();
 };
 
@@ -2133,12 +2152,7 @@ document.getElementById("role-save").onclick = function () {
   var list = kind === "scene" ? D.scenes : kind === "prop" ? D.props : D.characters;
   list.push(item);
   closeRole();
-  if (tab !== kind) {
-    tab = kind;
-    document.querySelectorAll(".tabs button").forEach(function (button) {
-      button.classList.toggle("on", button.dataset.tab === kind);
-    });
-  }
+  if (tab !== kind) setActiveTab(kind);
   render();
   ReplicaUI.toast("已新增" + word);
 };
@@ -2162,6 +2176,7 @@ function paintEpisodeFilter() {
   episodeFilterNumbers.forEach(function (n) { selected[n] = true; });
   var allOn = !episodeFilterNumbers.length;
   document.getElementById("episode-filter-label").textContent = episodeFilterLabel();
+  document.getElementById("episode-filter-trigger").classList.toggle("is-active", !allOn);
   document.getElementById("episode-filter-menu").innerHTML =
     '<button type="button" data-episode-all="1"' + (allOn ? ' class="on" aria-selected="true"' : ' aria-selected="false"') + '><span class="box"></span>全部集数</button>' +
     D.episodes.map(function (ep) {
@@ -2207,6 +2222,10 @@ document.addEventListener("click", function (e) {
 });
 document.getElementById("asset-search").oninput = function (e) {
   query = e.target.value;
+  if (query.trim() && !matchedRows(tab).length) {
+    var next = ["char", "scene", "prop"].filter(function (kind) { return matchedRows(kind).length; })[0];
+    if (next) setActiveTab(next);
+  }
   render();
 };
 document.getElementById("look-library").addEventListener("scroll", positionEpisodeDetail);
@@ -2275,6 +2294,7 @@ function generationTargets(mode) {
   var targets = [];
   eachAssetImage(function (entry) {
     if (mode === "selected" && !selectedAssets[entry.kind + ":" + entry.index]) return;
+    if (mode === "all" && !inEpisode(entry.item)) return;
     if (mode === "tab" && (entry.kind !== tab || !inEpisode(entry.item))) return;
     var state = entryState(entry);
     if (state === "pending" || state === "failed") targets.push(entry);
@@ -2283,7 +2303,7 @@ function generationTargets(mode) {
 }
 
 function generationSubmissionTargets(mode) {
-  var onlyFirst = (mode === "all" || mode === "tab") && !assetImageStats().generated;
+  var onlyFirst = (mode === "all" || mode === "tab") && !assetImageStats(null, true).generated;
   return generationTargets(mode).filter(function (entry) {
     if (onlyFirst && !FIRST_REVEAL[entry.item.id]) return false;
     if (onlyFirst && entry.look && entry.item.looksList.length > 1 && !lookHasImage(entry.item, entry.look)) return false;
@@ -2329,13 +2349,15 @@ function submitGeneration(mode) {
 
 function syncGenButton() {
   var button = document.getElementById("gen-all");
+  var genSelected = document.getElementById("gen-selected");
   var multi = document.getElementById("asset-multi");
   var picked = document.getElementById("asset-picked");
-  var stats = assetImageStats();
+  var stats = assetImageStats(null, true);
+  var scope = episodeFilterNumbers.length ? episodeFilterLabel() : "";
   var count = Object.keys(selectedAssets).length;
   var visibleCards = [].slice.call(document.querySelectorAll("#grid .char-card"));
   var allVisiblePicked = visibleCards.length > 0 && visibleCards.every(function (card) { return selectedAssets[card.dataset.key]; });
-  multi.textContent = multiOn ? "取消" : "多选";
+  document.getElementById("asset-multi-label").textContent = multiOn ? "取消" : "多选";
   multi.classList.toggle("on", multiOn);
   multi.setAttribute("aria-pressed", multiOn ? "true" : "false");
   multi.title = multiOn ? "取消多选，回到当前状态" : "勾选资产后单独生成";
@@ -2348,29 +2370,30 @@ function syncGenButton() {
   removeAssets.hidden = !multiOn;
   removeAssets.disabled = !count;
   removeAssets.textContent = count ? "删除 " + count : "删除";
+  var assets = {};
+  generationTargets("selected").forEach(function (entry) { assets[entry.kind + ":" + entry.index] = true; });
+  var assetCount = Object.keys(assets).length;
+  genSelected.hidden = !multiOn;
+  genSelected.textContent = assetCount ? "生成所选 " + assetCount : "生成所选";
+  genSelected.disabled = !assetCount;
+  genSelected.title = assetCount ? "只生成勾选里还未完成的资产" : "请勾选待生成或生成失败的资产";
+
+  var label = document.getElementById("gen-all-label");
+  var pendingCount = document.getElementById("gen-all-count");
   button.classList.remove("is-complete");
-  if (multiOn) {
-    var assets = {};
-    generationTargets("selected").forEach(function (entry) { assets[entry.kind + ":" + entry.index] = true; });
-    var assetCount = Object.keys(assets).length;
-    button.textContent = assetCount ? "生成所选 " + assetCount : "生成所选";
-    button.disabled = !assetCount;
-    button.title = assetCount ? "只生成勾选里还未完成的资产" : "请勾选待生成或生成失败的资产";
-    return;
-  }
   if (!stats.remaining) {
-    button.textContent = "全量资产已完成";
+    label.textContent = scope ? scope + "资产已完成" : "全量资产已完成";
+    pendingCount.textContent = "";
     button.disabled = true;
     button.classList.add("is-complete");
-    button.title = "角色、场景和道具均已完成";
-  } else if (stats.generated) {
-    button.textContent = "生成剩余资产";
-    button.disabled = false;
-    button.title = "生成剩余的 " + stats.remaining + " 项资产";
+    button.title = (scope || "全部集数") + "的角色、场景和道具均已完成";
   } else {
-    button.textContent = "全量生成";
-    button.disabled = false;
-    button.title = "生成角色、场景和道具的全部待办";
+    label.textContent = stats.generated
+      ? (scope ? "生成" + scope + "剩余资产" : "生成剩余资产")
+      : (scope ? "生成" + scope + "资产" : "全量生成");
+    pendingCount.textContent = generationSubmissionTargets("all").length || "";
+    button.disabled = multiOn;
+    button.title = multiOn ? "多选中，请使用「生成所选」" : "生成" + (scope || "全部集数") + "的待生成内容";
   }
 }
 
@@ -2539,11 +2562,14 @@ function openGenerationConfirm(mode) {
     return;
   }
   var selected = mode === "selected";
-  var generated = assetImageStats().generated;
-  var title = selected ? "确认生成所选资产" : generated ? "确认生成剩余资产" : "确认全量生成";
+  var generated = assetImageStats(null, true).generated;
+  var scope = episodeFilterNumbers.length ? episodeFilterLabel() : "全部集数";
+  var title = selected ? "确认生成所选资产"
+    : episodeFilterNumbers.length ? "确认生成" + scope + (generated ? "剩余资产" : "资产")
+    : generated ? "确认生成剩余资产" : "确认全量生成";
   var range = selected
     ? "已选 " + generationAssetCount(targets) + " 个资产"
-    : (generated ? "全部剩余资产" : "全部资产");
+    : scope + (generated ? "剩余资产" : "资产");
   var kinds = generationKindNames(targets);
   if (kinds) range += " · " + kinds;
   pendingGenerationMode = mode;
@@ -2591,13 +2617,17 @@ document.getElementById("asset-generate-ok").onclick = function () {
   document.getElementById("credits").textContent = ReplicaUI.credits();
   closeGenerationConfirm();
   submitGeneration(mode);
-  var remaining = assetImageStats().remaining;
+  var remaining = mode === "selected" ? 0 : assetImageStats(null, true).remaining;
   ReplicaUI.toast(currentBulkGenerationModel().name + " · " + bulkGenerationChoice.quality + "，已扣除 " + cost + " 积分并提交 " + targets.length + " 项" + (remaining ? "，还有 " + remaining + " 项待生成" : ""));
 };
 
 document.getElementById("gen-all").onclick = function () {
   if (this.disabled) return;
-  openGenerationConfirm(multiOn ? "selected" : "all");
+  openGenerationConfirm("all");
+};
+document.getElementById("gen-selected").onclick = function () {
+  if (this.disabled) return;
+  openGenerationConfirm("selected");
 };
 
 document.addEventListener("keydown", function (e) {

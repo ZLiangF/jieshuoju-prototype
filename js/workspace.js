@@ -159,12 +159,48 @@
   /* ---------- 提示词 ---------- */
 
   var CHIP_ICONS = { c: ICON_CHAR, s: ICON_SCENE, p: ICON_PROP };
+  var ICON_STAGE = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="6" cy="7" r="1.3" fill="currentColor"/><path d="M4.4 11.2c0-1.1.7-1.9 1.6-1.9s1.6.8 1.6 1.9" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="10.6" cy="7.6" r="1.1" fill="currentColor"/></svg>';
+  var STATION_RULE = "是站位图参考，严禁生成任何标记服装块到正式视频生成中。";
+
+  function markPlace(key, m) {
+    var name = pointName(key, m.point);
+    if (name !== "自由位置") return name;
+    var side = m.x < 0.34 ? "图面左侧" : m.x > 0.66 ? "图面右侧" : "图面中央";
+    return side + (m.y > 0.82 ? "近处" : m.y < 0.6 ? "远处" : "");
+  }
+
+  function markFacing(m) {
+    var name = dirName(m.dir);
+    return name.indexOf("朝") === 0 ? "身体" + name + "方" : name;
+  }
+
+  function stationPrompt(s) {
+    if (!stationSnapshot(s)) return "";
+    var st = stageOf(s);
+    var keys = (s.scenes || []).filter(function (key) { return st.boards[key] && st.boards[key].marks.length; });
+    return keys.map(function (key) {
+      var lines = st.boards[key].marks.map(function (m) {
+        return "{c:" + m.asset + "}站在" + markPlace(key, m) + "，" + markFacing(m) + "。";
+      });
+      return "{m:" + (keys.length > 1 ? key : "") + "}" + STATION_RULE + lines.join("");
+    }).join("");
+  }
+
+  function promptText(s) {
+    var station = stationPrompt(s);
+    if (!station) return s.prompt;
+    return s.prompt.replace(/(图中空间：[^\n]*)/, function (line) { return line + station; });
+  }
 
   function promptHtml(s) {
-    var text = D.globalPrompt + "\n" + s.prompt;
+    var text = D.globalPrompt + "\n" + promptText(s);
     var esc = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    return esc.replace(/\{([cspt]):([^}]+)\}/g, function (all, kind, val) {
+    return esc.replace(/\{([csptm]):([^}]*)\}/g, function (all, kind, val) {
       if (kind === "t") return '<span class="pchip pc-time" contenteditable="false">◷ ' + val + " s</span>";
+      if (kind === "m") {
+        var title = val && sceneInfo(val) ? "@站位图·" + sceneInfo(val).name : "@站位图";
+        return '<span class="pchip pc-stage" contenteditable="false" title="开启「应用站位」后自动带入，关闭后移除">' + ICON_STAGE + title + "</span>";
+      }
       var label = kind === "c" ? (charById(val) ? charLabel(charById(val)) : val)
         : kind === "s" ? (sceneRef(val) || { name: val }).name
         : (propById(val) || { name: val }).name;
@@ -522,10 +558,11 @@
   function renderEditor() {
     var s = shot();
     $("#shot-title").textContent = "片段 " + s.no;
-    if (state.promptShot !== s.id) {
+    var promptKey = s.id + "|" + stationPrompt(s);
+    if (state.promptShot !== promptKey) {
       $("#prompt").innerHTML = promptHtml(s);
-      $("#dur").value = s.duration;
-      state.promptShot = s.id;
+      if (state.promptShot === null || state.promptShot.split("|")[0] !== s.id) $("#dur").value = s.duration;
+      state.promptShot = promptKey;
     }
     $("#prompt-box").hidden = state.view !== "prompt";
     $("#stage-view").hidden = state.view !== "stage";
