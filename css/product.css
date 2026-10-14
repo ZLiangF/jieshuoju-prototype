@@ -3719,7 +3719,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   transition: background .16s ease, border-color .16s ease;
 }
 .asset-sub-count svg { width: 12px; height: 12px; flex: none; }
-.asset-sub-count:hover { background: rgba(117,72,231,.85); border-color: rgba(195,160,255,.5); }
+.asset-sub-count:hover, .asset-sub-count.on { background: rgba(117,72,231,.85); border-color: rgba(195,160,255,.5); }
 .asset-sub-count:focus-visible, .asset-icon-btn:focus-visible { outline: 2px solid #b892ff; outline-offset: 2px; }
 
 /* 子角色平铺 */
