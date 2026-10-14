@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>资产库 · 离婚后（15集）</title>
-  <link rel="stylesheet" href="css/product.css?v=202610141134" />
+  <link rel="stylesheet" href="css/product.css?v=202610141404" />
 </head>
 <body class="asset-page">
 <div class="app">
@@ -53,7 +53,18 @@
         </div>
         <div class="asset-actions">
           <button class="btn asset-add" id="add" type="button" aria-label="新增形象" title="新增形象"><span>＋</span></button>
-          <button class="btn purple" id="gen-all" type="button">全量生成</button>
+          <div class="asset-bulk-generate">
+            <button class="btn purple" id="gen-all" type="button">生成角色待办</button>
+            <button class="btn purple asset-gen-more" id="gen-more" type="button" aria-label="更多生成范围" aria-haspopup="menu" aria-expanded="false">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4.5 6.3 3.5 3.5 3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div class="asset-gen-menu" id="gen-menu" hidden role="menu">
+              <button type="button" id="gen-everything" role="menuitem">
+                <span><strong>生成全部待办</strong><small>角色、场景和道具</small></span>
+                <b id="gen-everything-count">0项</b>
+              </button>
+            </div>
+          </div>
           <span class="asset-picked" id="asset-picked" hidden>已选 0</span>
           <button class="btn" id="asset-select-all" type="button" hidden>全选</button>
           <button class="btn asset-delete" id="asset-delete" type="button" hidden>删除</button>
@@ -197,13 +208,13 @@
             </div>
             <div class="composer-prompt-row">
               <div class="prompt-field">
-                <textarea class="look-area" id="f-prompt" maxlength="600" aria-label="提示词" placeholder="描述服装、发型、体态和情绪，保持五视图一致"></textarea>
+                <textarea class="look-area" id="f-prompt" maxlength="2000" aria-label="提示词" placeholder="描述服装、发型、体态和情绪，保持五视图一致"></textarea>
                 <div class="prompt-field-foot">
                   <div class="prompt-ai-actions">
                     <button class="text-btn" id="rewrite" type="button">AI 改写</button>
                     <span class="image-prompt-state" id="image-prompt-state" hidden></span>
                   </div>
-                  <span class="prompt-count" id="prompt-count">0 / 600</span>
+                  <span class="prompt-count" id="prompt-count">0 / 2000</span>
                 </div>
               </div>
               <button class="composer-collapse" id="composer-collapse" type="button" aria-label="收起提示词">
@@ -272,6 +283,47 @@
         </div>
         </div>
       </section>
+    </div>
+  </div>
+</div>
+
+<div class="voice-modal rewrite-modal" id="rewrite-dialog">
+  <div class="voice-sheet rewrite-sheet">
+    <div class="voice-sheet-head">
+      <div>
+        <span>提示词</span>
+        <h3>AI 改写提示词</h3>
+      </div>
+      <button class="icon-round" id="rewrite-x" type="button" aria-label="关闭">×</button>
+    </div>
+    <div class="rewrite-field">
+      <span><i>*</i>选择模型</span>
+      <div class="rewrite-model" id="rewrite-model-control">
+        <button class="rewrite-model-trigger" id="rewrite-model-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+          <span id="rewrite-model-label">GLLM 3.5</span>
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 6.2 8 10l3.8-3.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="rewrite-model-menu" id="rewrite-model-menu" hidden role="listbox" aria-label="改写模型"></div>
+      </div>
+    </div>
+    <div class="rewrite-field">
+      <span>预设指令<em>可多选</em></span>
+      <div class="rewrite-presets" id="rewrite-presets"></div>
+    </div>
+    <label class="rewrite-field">
+      <span>自由指令</span>
+      <textarea id="rewrite-free" maxlength="200" placeholder="请输入改写指令，例如：服装换成深色西装，光线再柔和一些"></textarea>
+    </label>
+    <div class="rewrite-original">
+      <span>原文</span>
+      <p id="rewrite-source"></p>
+    </div>
+    <div class="voice-sheet-foot">
+      <span></span>
+      <div>
+        <button class="btn" id="rewrite-cancel" type="button">放弃改写</button>
+        <button class="btn purple" id="rewrite-confirm" type="button">改写 <b>✦ 2</b></button>
+      </div>
     </div>
   </div>
 </div>
@@ -450,7 +502,7 @@
   </div>
 </div>
 
-<script src="js/data.js?v=202610141134"></script>
-<script src="js/assets.js?v=202610141134"></script>
+<script src="js/data.js?v=202610141404"></script>
+<script src="js/assets.js?v=202610141404"></script>
 </body>
 </html>

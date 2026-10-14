@@ -13,6 +13,7 @@ var selectedLooks = {};
 var previewRailOpen = false;
 var previewRailTab = "history";
 var previewRailSrc = "";
+var historySelectedId = "";
 var newLookParentId = "";
 var roleCreateMode = "asset";
 var roleEpsNumbers = [];
@@ -21,8 +22,10 @@ var episodePanelIndex = -1;
 var episodeDraftNumbers = [];
 var episodeDraftValid = true;
 var lookDirty = false;
+var PROMPT_LIMIT = 2000;
 var imageAnalysisSeq = 0;
 var lookImageMode = "upload";
+var lookGenerationSeq = 0;
 var voiceBeforeEdit = "";
 var pendingReferenceSrc = "";
 var referenceImageValue = "";
@@ -72,6 +75,8 @@ function assetLookStats(a) {
 
 function assetState(a) {
   var stats = assetLookStats(a);
+  if (!stats.done && a.status === "generating") return "generating";
+  if (!stats.done && a.status === "failed") return "failed";
   if (!stats.done) return "pending";
   return stats.done < stats.total ? "partial" : "ready";
 }
@@ -131,16 +136,18 @@ function cardHtml(row) {
     ? "已生成 " + lookStats.done + "/" + looks + " 个" + unit
     : kind === "scene" ? "共 1 个场景图" : "共 1 个" + unit;
   var generatingLooks = (a.looksList || []).filter(function (look) { return look.status === "generating"; }).length;
+  var failedLooks = (a.looksList || []).filter(function (look) { return look.status === "failed" && !isLookRevealed(a, look); }).length;
+  if (!(a.looksList || []).length && a.status === "failed") failedLooks = 1;
   var flagText = state === "generating" ? "生成中"
     : generatingLooks ? generatingLooks + "个" + unit + "生成中"
-    : state === "partial" ? pending + "个" + unit + "待生成"
-    : state === "pending" ? "待生成"
-    : state === "failed" ? "生成失败"
+    : failedLooks ? (pending > 1 ? "重试 " + pending + " 个" : "重新生成")
+    : state === "partial" ? "补齐 " + pending + " 个"
+    : state === "pending" ? "生成"
     : "已完成";
-  var flagState = state === "generating" || generatingLooks ? "generating" : state;
+  var flagState = state === "generating" || generatingLooks ? "generating" : failedLooks ? "failed" : state;
   var flagIcon = state === "ready"
     ? '<svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4.5 7.1 6.2 8.8 9.6 5.3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-    : state === "failed"
+    : failedLooks
     ? '<svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.1" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M7 4.1v3.3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><circle cx="7" cy="9.7" r=".7" fill="currentColor"/></svg>'
     : '<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M11.3 7.1a4.3 4.3 0 1 1-1.23-3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M10.1 2.4v2.3H7.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   var mediaClass = "asset-card-media is-" + state + (showSheet ? " is-sheet" : "") + (state === "pending" ? " is-empty" : "");
@@ -154,12 +161,12 @@ function cardHtml(row) {
     ? '<span class="asset-check card-pick' + (picked ? " is-on" : "") + '" role="checkbox" aria-checked="' + (picked ? "true" : "false") + '" aria-label="选择' + (kind === "char" ? "角色" : "资产") + '"></span>'
     : "";
   var delBtn = multiOn ? "" : '<button type="button" class="card-del" data-del-key="' + key + '" title="删除资产" aria-label="删除' + a.name + '">' + TRASH_ICON + "</button>";
-  var genBtn = kind === "char" && pending
-    ? '<button type="button" class="card-gen" data-gen-char="' + row.i + '" title="生成该角色全部未完成形象">生成</button>'
-    : "";
+  var actionable = pending && !generatingLooks && state !== "generating";
+  var flag = actionable && !multiOn
+    ? '<button type="button" class="asset-flag is-action ' + flagState + '" data-gen-asset="' + key + '" title="' + (failedLooks ? "重新生成失败内容" : "生成该资产还未完成的内容") + '">' + flagIcon + flagText + "</button>"
+    : '<span class="asset-flag ' + flagState + '">' + flagIcon + (multiOn && actionable ? (state === "partial" ? pending + " 个待生成" : "待生成") : flagText) + "</span>";
   return '<article class="char-card asset-card asset-' + kind + " is-" + state + (picked ? " is-picked" : "") + '" data-kind="' + kind + '" data-i="' + row.i + '" data-key="' + key + '">' +
-    '<div class="' + mediaClass + '">' + visual + genBtn + check + delBtn +
-    '<span class="asset-flag ' + flagState + '">' + flagIcon + flagText + "</span></div>" +
+    '<div class="' + mediaClass + '">' + visual + check + delBtn + flag + "</div>" +
     '<div class="asset-card-info"><div class="asset-card-title"><h3>' + a.name +
     (a.tag ? ' <span class="tag">' + a.tag + "</span>" : "") + '</h3><span class="looks">' + lookText + "</span></div>" +
     (a.desc ? "<p>" + a.desc + "</p>" : '<p class="asset-empty-desc">点击卡片直接编辑资产</p>') +
@@ -353,18 +360,21 @@ function lookCardHtml(look, index, flat) {
   var looks = currentChar.looksList || [];
   var parent = lookParent(looks, look);
   var primary = looks[primaryLookIndex(looks)];
-  var parentText = !flat ? ""
-    : (!parent && primary === look) ? "主" + assetWord()
-    : "上级：" + lookShortName(parent || primary);
+  var isPrimary = primary === look;
+  var kindText = isPrimary ? "主" + assetWord() : "子" + assetWord();
+  var parentText = !flat || isPrimary ? "" : "上级：" + lookShortName(parent || primary);
   var checked = editorKind === "char" && lookMultiOn && !!selectedLooks[look.id];
   var check = editorKind === "char" && lookMultiOn ? '<span class="asset-check look-pick' + (checked ? " is-on" : "") + '" role="checkbox" aria-checked="' + (checked ? "true" : "false") + '" aria-label="选择形象"></span>' : "";
   return '<article class="look-library-card ' + (editingLook === look ? "on " : "") + state + (checked ? " is-look-picked" : "") +
     '" data-look-index="' + index + '" tabindex="0">' +
-    '<div class="look-card-image' + (state === "pending" ? " is-empty" : "") + '">' +
-    (state === "pending"
-      ? '<span class="look-card-empty" aria-hidden="true">' + (editorKind === "char" ? EMPTY_PERSON_ICON : EMPTY_IMAGE_ICON) + "</span>"
-      : '<img src="' + look.image + '" alt="' + shortName + '">') + check +
+    '<div class="look-card-image' + (state !== "ready" ? " is-empty" : "") + '">' +
+    (state === "ready"
+      ? '<img src="' + look.image + '" alt="' + shortName + '">'
+      : state === "generating"
+      ? '<span class="look-card-empty is-generating" aria-hidden="true"><i></i><small>' + (look.generationProgress || 8) + "%</small></span>"
+      : '<span class="look-card-empty" aria-hidden="true">' + (editorKind === "char" ? EMPTY_PERSON_ICON : EMPTY_IMAGE_ICON) + "</span>") + check +
     '<button type="button" class="look-card-eps' + (chip.compact ? " is-compact" : "") + '" data-look-eps="' + index + '" title="' + chip.title + '">' + chip.html + "</button>" +
+    '<span class="look-kind-tag ' + (isPrimary ? "is-primary" : "is-child") + '">' + kindText + "</span>" +
     '<span class="look-state-tag ' + state + '">' + lookStateIcon(state) + lookStateText(state) + "</span></div>" +
     '<div class="look-card-info"><strong>' + shortName + '</strong>' +
     (parentText ? '<em class="look-card-parent">' + parentText + "</em>" : "") +
@@ -399,9 +409,9 @@ function renderLookTreeNodes(looks, parent, primary) {
     var open = !!expandedLooks[currentChar.id + ":" + look.id];
     var state = lookVisualState(look, index);
     var chipText = episodeChip(look.eps).html.replace(/<[^>]+>/g, "");
-    var thumb = state === "pending"
-      ? '<span class="look-tree-avatar">' + (editorKind === "char" ? EMPTY_PERSON_ICON : EMPTY_IMAGE_ICON) + "</span>"
-      : '<img src="' + look.image + '" alt="">';
+    var thumb = state === "ready"
+      ? '<img src="' + look.image + '" alt="">'
+      : '<span class="look-tree-avatar' + (state === "generating" ? " is-generating" : "") + '">' + (editorKind === "char" ? EMPTY_PERSON_ICON : EMPTY_IMAGE_ICON) + "</span>";
     var checked = editorKind === "char" && lookMultiOn && !!selectedLooks[look.id];
     var check = editorKind === "char" && lookMultiOn ? '<span class="asset-check look-tree-check look-pick' + (checked ? " is-on" : "") + '" role="checkbox" aria-checked="' + (checked ? "true" : "false") + '" aria-label="选择形象"></span>' : "";
     html += '<div class="look-tree-node">' +
@@ -411,7 +421,7 @@ function renderLookTreeNodes(looks, parent, primary) {
         : '<span class="look-tree-toggle is-leaf"></span>') +
       '<button type="button" class="look-tree-main" data-look-index="' + index + '">' + check + thumb +
       '<span class="look-tree-copy"><strong>' + lookShortName(look) + '</strong><small>' +
-      '<i class="state ' + state + '">' + lookStateText(state) + "</i><i>" + chipText + "</i>" +
+      '<i class="look-kind-inline">子' + assetWord() + '</i><i class="state ' + state + '">' + lookStateText(state) + "</i><i>" + chipText + "</i>" +
       (childCount ? "<i>" + childCount + " 个子" + assetWord() + "</i>" : "") +
       "</small></span></button>" +
       '<button type="button" class="look-tree-voice' + (look.voice ? " bound" : "") + '" data-look-voice="' + index + '" title="' + (look.voice || "绑定音色") + '"><span>♪</span>' + voiceLabel(look.voice) + "</button>" +
@@ -546,21 +556,104 @@ function emptyLookBoardHtml() {
     "</div></div>";
 }
 
-function previewHistoryItems(look) {
-  var current = look ? sheetForLook(look) : "";
-  if (!current) return [];
-  var pool = [current];
-  if (editorKind === "char") {
-    D.characters.forEach(function (char) {
-      if (char.sheet && pool.indexOf(char.sheet) === -1) pool.push(char.sheet);
-    });
-  } else {
-    editorItems().forEach(function (item) {
-      if (item.image && item.status && item.status !== "pending" && pool.indexOf(item.image) === -1) pool.push(item.image);
+function generationLookBoardHtml(look) {
+  var progress = Math.max(6, Math.min(96, look.generationProgress || 8));
+  var stage = look.generationStage || "任务排队中";
+  return '<div class="look-generation-live">' +
+    '<span class="look-generation-spinner" aria-hidden="true"></span>' +
+    '<strong>' + stage + "</strong>" +
+    '<span>正在使用 ' + document.getElementById("model-label").textContent + " 生成，可先切换到其他资产</span>" +
+    '<div class="look-generation-track"><i style="width:' + progress + '%"></i></div>' +
+    '<small>' + progress + "% · 预计很快完成</small></div>";
+}
+
+function failedLookBoardHtml() {
+  return '<div class="look-generation-live is-failed">' +
+    '<span class="look-generation-error" aria-hidden="true">!</span>' +
+    '<strong>生成失败</strong><span>可以调整提示词或参考图后重新生成</span></div>';
+}
+
+function renderCurrentLookOutput(look) {
+  var preview = document.getElementById("f-preview");
+  var state = look ? lookVisualState(look, (currentChar.looksList || []).indexOf(look)) : "pending";
+  var stateBadge = document.getElementById("current-look-state");
+  stateBadge.className = "current-look-state " + state;
+  stateBadge.textContent = lookStateText(state);
+
+  var hasSheet = !!(look && sheetForLook(look) && state === "ready");
+  previewRailSrc = hasSheet ? sheetForLook(look) : "";
+  historySelectedId = "";
+  preview.innerHTML = hasSheet
+    ? '<img class="five-view-sheet" src="' + previewRailSrc + '" alt="' + currentChar.name + '五视图">'
+    : state === "generating" && look
+    ? generationLookBoardHtml(look)
+    : state === "failed"
+    ? failedLookBoardHtml()
+    : emptyLookBoardHtml();
+  var output = preview.closest(".look-current-output");
+  output.classList.toggle("is-empty", !hasSheet);
+  output.classList.toggle("is-generating", state === "generating");
+  renderPreviewRail(look, hasSheet);
+
+  var generate = document.getElementById("gen-look");
+  generate.disabled = state === "generating";
+  generate.classList.toggle("is-generating", state === "generating");
+  generate.textContent = state === "generating" ? "" : "↑";
+  if (state === "generating") generate.setAttribute("aria-label", "生成中");
+  else if (typeof paintGenControls === "function") paintGenControls();
+}
+
+function escapeHtml(text) {
+  return String(text || "").replace(/[&<>"']/g, function (ch) {
+    return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
+  });
+}
+
+function historyStamp(date) {
+  var d = date || new Date();
+  function pad(n) { return n < 10 ? "0" + n : String(n); }
+  return d.getFullYear() + "/" + pad(d.getMonth() + 1) + "/" + pad(d.getDate()) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+}
+
+function ensureLookHistory(look) {
+  if (!look) return [];
+  if (look.history) return look.history;
+  look.history = [];
+  var src = look.sheet || (isLookRevealed(currentChar, look) ? sheetForLook(look) : "");
+  if (src) {
+    look.history.push({
+      id: look.id + "-v1",
+      version: 1,
+      time: "2026/10/14 11:20:03",
+      prompt: look.prompt || "",
+      src: src
     });
   }
-  return pool.slice(0, 4).map(function (src, index, list) {
-    return { src: src, label: index === 0 ? "当前" : "第" + (list.length - index) + "次" };
+  return look.history;
+}
+
+function recordLookHistory(item, look) {
+  var previous = currentChar;
+  currentChar = item;
+  var src = sheetForLook(look);
+  currentChar = previous;
+  if (!src) return;
+  var list = ensureLookHistory(look);
+  var prompt = look.prompt || "";
+  var last = list[list.length - 1];
+  if (last && last.src === src && last.prompt === prompt) return;
+  list.push({
+    id: look.id + "-v" + (list.length + 1) + "-" + Date.now(),
+    version: list.length + 1,
+    time: historyStamp(),
+    prompt: prompt,
+    src: src
+  });
+}
+
+function previewHistoryItems(look) {
+  return ensureLookHistory(look).slice().reverse().map(function (item) {
+    return { id: item.id, src: item.src, label: "V" + item.version, prompt: item.prompt, time: item.time };
   });
 }
 
@@ -594,11 +687,70 @@ function renderPreviewRail(look, hasSheet) {
   document.querySelectorAll("#preview-side [data-preview-tab]").forEach(function (button) {
     button.classList.toggle("on", button.dataset.previewTab === previewRailTab);
   });
+  if (previewRailTab === "history" && !history.some(function (item) { return item.id === historySelectedId; })) historySelectedId = "";
   var items = previewRailTab === "history" ? history : previewRecommendItems();
   document.getElementById("preview-side-list").innerHTML = items.map(function (item) {
+    if (item.id) {
+      var promptText = (item.prompt || "").replace(/\s+/g, " ").trim();
+      return '<article class="preview-side-card' + (item.id === historySelectedId ? " on" : "") + '">' +
+        '<button type="button" class="preview-side-open" data-preview-src="' + item.src + '" data-history-id="' + item.id + '">' +
+        '<img src="' + item.src + '" alt="' + item.label + '">' +
+        '<span class="preview-history-caption"><b>' + item.label + "</b><small>" + escapeHtml(item.time || "") + "</small>" + escapeHtml(promptText || "暂无提示词") + "</span></button>" +
+        '<div class="preview-history-acts">' +
+        '<button type="button" data-history-restore="' + item.id + '" aria-label="恢复提示词"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 7.2h6.1a3.1 3.1 0 1 1 0 6.2H7.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M5.6 4.8 3.2 7.2l2.4 2.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' +
+        '<button type="button" data-history-download="' + item.id + '" aria-label="下载图片"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.8v6.4M5.4 7.2 8 9.8l2.6-2.6M3.4 12.6h9.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' +
+        '<button type="button" data-history-delete="' + item.id + '" aria-label="删除记录"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4.6h9.6M6.2 4.6V3.4h3.6v1.2M4.6 4.6l.5 7.4h5.8l.5-7.4M6.8 7v3.2M9.2 7v3.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div></article>';
+    }
     return '<button type="button" class="preview-side-card' + (item.src === previewRailSrc ? " on" : "") + '" data-preview-src="' + item.src + '">' +
       '<img src="' + item.src + '" alt="' + item.label + '"><span>' + item.label + "</span></button>";
-  }).join("") || '<p class="preview-side-empty">暂无内容</p>';
+  }).join("") || '<p class="preview-side-empty">' + (previewRailTab === "history" ? "还没有生成历史" : "暂无内容") + "</p>";
+}
+
+function historyById(id) {
+  return (editingLook ? ensureLookHistory(editingLook) : []).filter(function (item) { return item.id === id; })[0] || null;
+}
+
+function showHistoryImage(item) {
+  if (!item) return;
+  historySelectedId = item.id;
+  previewRailSrc = item.src;
+  var preview = document.getElementById("f-preview");
+  preview.innerHTML = '<img class="five-view-sheet" src="' + item.src + '" alt="V' + item.version + '">';
+  preview.closest(".look-current-output").classList.remove("is-empty");
+  renderPreviewRail(editingLook, true);
+}
+
+function restoreHistory(id) {
+  var item = historyById(id);
+  if (!item) return;
+  document.getElementById("f-prompt").value = item.prompt || "";
+  updatePromptCount();
+  lookDirty = true;
+  document.querySelector(".draft-hint").textContent = "已从 V" + item.version + " 恢复提示词";
+  ReplicaUI.toast("已恢复 V" + item.version + " 的提示词");
+}
+
+function downloadHistory(id) {
+  var item = historyById(id);
+  if (!item) return;
+  var link = document.createElement("a");
+  var name = (editingLook ? lookShortName(editingLook) : "历史图片") + "-V" + item.version;
+  link.href = item.src;
+  link.download = name.replace(/[\\/:*?"<>|]/g, "-") + ".jpg";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  ReplicaUI.toast("已开始下载 V" + item.version);
+}
+
+function deleteHistory(id) {
+  if (!editingLook) return;
+  var item = historyById(id);
+  if (!item) return;
+  editingLook.history = ensureLookHistory(editingLook).filter(function (entry) { return entry.id !== id; });
+  if (historySelectedId === id) historySelectedId = "";
+  renderPreviewRail(editingLook, !document.querySelector(".look-current-output").classList.contains("is-empty"));
+  ReplicaUI.toast("已删除 V" + item.version);
 }
 
 function fillLookForm(look) {
@@ -629,19 +781,7 @@ function fillLookForm(look) {
   updatePromptCount();
   renderLookLibrary();
 
-  var preview = document.getElementById("f-preview");
-  var state = look ? lookVisualState(look, (currentChar.looksList || []).indexOf(look)) : "pending";
-  var stateBadge = document.getElementById("current-look-state");
-  stateBadge.className = "current-look-state " + state;
-  stateBadge.textContent = lookStateText(state);
-
-  var hasSheet = !!(look && sheetForLook(look) && state !== "pending");
-  previewRailSrc = hasSheet ? sheetForLook(look) : "";
-  preview.innerHTML = hasSheet
-    ? '<img class="five-view-sheet" src="' + previewRailSrc + '" alt="' + currentChar.name + '五视图">'
-    : emptyLookBoardHtml();
-  preview.closest(".look-current-output").classList.toggle("is-empty", !hasSheet);
-  renderPreviewRail(look, hasSheet);
+  renderCurrentLookOutput(look);
   var referenceSrc = look && look.referenceImage ? look.referenceImage : "";
   updateReferenceComposer(referenceSrc);
   var referenceMode = look && (look.referenceMode === "current" || (look.useMainImage === false && look.useReferenceImage)) ? "current" : "main";
@@ -818,6 +958,7 @@ function closeLookDialog() {
   closeEpisodeUi();
   closeReferenceDialog();
   closeVoiceDialog(false);
+  closeRewriteDialog(true);
   lookMultiOn = false;
   selectedLooks = {};
   document.body.classList.remove("asset-editor-page-open");
@@ -826,7 +967,7 @@ function closeLookDialog() {
 
 function updatePromptCount() {
   var value = document.getElementById("f-prompt").value;
-  document.getElementById("prompt-count").textContent = value.length + " / 600";
+  document.getElementById("prompt-count").textContent = value.length + " / " + PROMPT_LIMIT;
 }
 
 function renderVoiceSelection() {
@@ -917,13 +1058,15 @@ document.getElementById("grid").onclick = function (e) {
     openDeleteConfirm(del.dataset.delKey);
     return;
   }
-  var gen = e.target.closest("[data-gen-char]");
+  var gen = e.target.closest("[data-gen-asset]");
   if (gen) {
-    var item = D.characters[Number(gen.dataset.genChar)];
+    var parts = gen.dataset.genAsset.split(":");
+    var source = parts[0] === "char" ? D.characters : parts[0] === "scene" ? D.scenes : D.props;
+    var item = source[Number(parts[1])];
     var generated = item ? revealItemLooks(item) : 0;
     render();
     if (item && document.getElementById("look-dialog").classList.contains("open") && currentChar === item) fillLookForm(editingLook);
-    ReplicaUI.toast(generated ? "已生成「" + item.name + "」的 " + generated + " 个形象" : "该角色没有待生成的形象");
+    ReplicaUI.toast(generated ? "已生成「" + item.name + "」的 " + generated + " 项内容" : "这个资产没有待生成内容");
     return;
   }
   var card = e.target.closest(".char-card");
@@ -1132,36 +1275,249 @@ document.getElementById("look-dialog-x").onclick = closeLookDialog;
 document.getElementById("asset-match").onclick = function () {
   ReplicaUI.toast("官方资产匹配中，完成后可确认");
 };
+function refreshLookGeneration(item) {
+  if (currentChar !== item || !document.getElementById("look-dialog").classList.contains("open")) return;
+  renderLookLibrary();
+  renderCurrentLookOutput(editingLook);
+}
+
+function updateLookGeneration(item, looks, taskId, progress, stage) {
+  looks.forEach(function (look) {
+    if (look.generationTask !== taskId || look.status !== "generating") return;
+    look.generationProgress = progress;
+    look.generationStage = stage;
+  });
+  refreshLookGeneration(item);
+}
+
+function finishLookGeneration(item, looks, taskId) {
+  var completed = 0;
+  looks.forEach(function (look) {
+    if (look.generationTask !== taskId || look.status !== "generating") return;
+    delete look.status;
+    delete look.generationTask;
+    delete look.generationProgress;
+    delete look.generationStage;
+    revealedAssets[item.id] = true;
+    revealedLooks[item.id + "/" + look.id] = true;
+    recordLookHistory(item, look);
+    completed++;
+  });
+  refreshPendingLooks();
+  render();
+  refreshLookGeneration(item);
+  var unit = D.characters.indexOf(item) !== -1 ? "形象" : D.scenes.indexOf(item) !== -1 ? "场景" : "道具";
+  if (completed) ReplicaUI.toast("生成完成 · " + item.name + " " + completed + " 个" + unit);
+}
+
+function startLookGeneration(item, looks) {
+  var targets = looks.filter(function (look, index) {
+    var state = item === currentChar ? lookVisualState(look, (item.looksList || []).indexOf(look)) : (isLookRevealed(item, look) ? "ready" : "pending");
+    return state === "pending" || state === "failed";
+  });
+  if (!targets.length) {
+    ReplicaUI.toast("没有待生成的" + (editorKind === "char" ? "形象" : assetWord()));
+    return 0;
+  }
+  var cost = targets.length * 3;
+  if (D.credits < cost) {
+    ReplicaUI.toast("积分不足，本次生成需要 " + cost + " 积分");
+    return 0;
+  }
+  D.credits -= cost;
+  document.getElementById("credits").textContent = ReplicaUI.credits();
+  var taskId = ++lookGenerationSeq;
+  targets.forEach(function (look) {
+    look.status = "generating";
+    look.generationTask = taskId;
+    look.generationProgress = 8;
+    look.generationStage = "任务排队中";
+  });
+  refreshLookGeneration(item);
+  ReplicaUI.toast("已扣除 " + cost + " 积分，任务已提交，可以继续浏览其他资产");
+  setTimeout(function () { updateLookGeneration(item, targets, taskId, 36, "正在分析提示词"); }, 900);
+  setTimeout(function () { updateLookGeneration(item, targets, taskId, 68, "正在生成图像"); }, 2100);
+  setTimeout(function () { updateLookGeneration(item, targets, taskId, 91, "正在优化画面细节"); }, 3500);
+  setTimeout(function () { finishLookGeneration(item, targets, taskId); }, 5200);
+  return targets.length;
+}
+
 document.getElementById("gen-look").onclick = function () {
   if (!document.getElementById("f-prompt").value.trim()) {
     ReplicaUI.toast("请先填写" + (editorKind === "char" ? "形象" : assetWord()) + "提示词");
     return;
   }
-  var state = document.getElementById("current-look-state");
-  var type = currentGenType();
-  state.className = "current-look-state generating";
-  state.textContent = (type.state || (editorKind === "char" && type.id === "auto" ? "五视图" : "")) + "生成中";
-  ReplicaUI.toast("已提交生成 · " + type.name + " · " + document.getElementById("model-label").textContent + " · " + document.getElementById("ratio-label").textContent);
-};
-document.getElementById("rewrite").onclick = function () {
-  var box = document.getElementById("f-prompt");
-  var type = currentGenType();
-  var base = box.value.trim().replace(/[。；，\s]+$/, "");
-  var tail = type.prompt || (editorKind === "char" && type.id === "auto" ? "输出近景、正面、左右侧面与背面五视图。" : "");
-  if (tail && base.indexOf(tail.replace(/。$/, "")) !== -1) tail = "";
-  if (editorKind === "char") {
-    var polish = "神态自然、比例准确、服饰材质清晰";
-    if (!base) base = "中国人物，形象自然，服饰材质清晰，保持五官与体态一致";
-    else if (base.indexOf(polish) === -1) base = base.replace(/。/g, "，") + "，" + polish;
-  } else if (!base) {
-    base = currentChar.name + "，细节清晰，光线自然";
+  if (!editingLook) {
+    ReplicaUI.toast("请先保存新增" + assetWord());
+    return;
   }
-  box.value = (base + "。" + tail).slice(0, 600);
-  lookDirty = true;
-  document.querySelector(".draft-hint").textContent = "存在未保存的草稿修改";
-  updatePromptCount();
-  ReplicaUI.toast("AI 已按「" + type.name + "」优化提示词");
+  editingLook.prompt = document.getElementById("f-prompt").value.trim();
+  lookDirty = false;
+  document.querySelector(".draft-hint").textContent = "提示词已保存，生成任务在后台进行";
+  startLookGeneration(currentChar, [editingLook]);
 };
+document.getElementById("rewrite").onclick = function () { openRewriteDialog(); };
+
+var REWRITE_COST = 2;
+var rewriteBusy = false;
+var rewriteSelection = {};
+var rewriteModelId = "gllm";
+var rewriteModels = [
+  { id: "gllm", name: "GLLM 3.5" },
+  { id: "gllm-pro", name: "GLLM 3.5 Pro" }
+];
+var rewritePresets = {
+  char: [
+    { id: "persona", name: "更符合角色人设", line: "人物气质、年龄和身份更贴合角色设定" },
+    { id: "face", name: "五官更精致", line: "五官端正清晰，眼神有神，皮肤质感自然" },
+    { id: "costume", name: "服装更符合身份", line: "服饰款式、材质和配色符合人物身份" },
+    { id: "unified", name: "整体造型更统一", line: "发型、妆造和服装风格统一" }
+  ],
+  scene: [
+    { id: "space", name: "空间关系更清晰", line: "前后景层次清楚，主体位置明确" },
+    { id: "light", name: "光线氛围更统一", line: "光线方向、色调和天气氛围统一" },
+    { id: "nopeople", name: "去掉多余人物", line: "画面中不出现人物" },
+    { id: "material", name: "材质细节更真实", line: "建筑、地面和物件材质真实" }
+  ],
+  prop: [
+    { id: "material", name: "材质更清楚", line: "材质、颜色和结构清晰" },
+    { id: "ratio", name: "比例更准确", line: "尺寸比例准确，轮廓完整" },
+    { id: "clean", name: "背景更干净", line: "纯色干净背景，主体突出" },
+    { id: "wear", name: "使用痕迹更自然", line: "使用痕迹自然，不过度做旧" }
+  ]
+};
+
+function currentRewriteModel() {
+  return rewriteModels.filter(function (item) { return item.id === rewriteModelId; })[0] || rewriteModels[0];
+}
+
+function closeRewriteModelMenu() {
+  var menu = document.getElementById("rewrite-model-menu");
+  if (!menu) return;
+  menu.hidden = true;
+  document.getElementById("rewrite-model-trigger").setAttribute("aria-expanded", "false");
+}
+
+function paintRewriteModels() {
+  var current = currentRewriteModel();
+  document.getElementById("rewrite-model-label").textContent = current.name;
+  document.getElementById("rewrite-model-menu").innerHTML = rewriteModels.map(function (item) {
+    var on = item.id === current.id;
+    return '<button type="button" role="option" data-rewrite-model="' + item.id + '"' + (on ? ' class="on" aria-selected="true"' : ' aria-selected="false"') + '>' +
+      '<span class="rewrite-model-mark" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M8 1.8 9.15 6.15 13.5 8 9.15 9.85 8 14.2 6.85 9.85 2.5 8 6.85 6.15Z" fill="currentColor"/></svg></span>' +
+      '<span class="name">' + item.name + "</span>" +
+      '<span class="tick" aria-hidden="true">' + (on ? '<svg viewBox="0 0 16 16"><path d="m3.4 8.2 3 3 6.2-6.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' : "") + "</span></button>";
+  }).join("");
+}
+
+function paintRewritePresets() {
+  var items = rewritePresets[editorKind] || rewritePresets.char;
+  document.getElementById("rewrite-presets").innerHTML = items.map(function (item) {
+    return '<button type="button" class="' + (rewriteSelection[item.id] ? "on" : "") + '" data-rewrite-preset="' + item.id + '">' + item.name + "</button>";
+  }).join("");
+}
+
+function openRewriteDialog() {
+  var text = document.getElementById("f-prompt").value.trim();
+  if (!text) {
+    ReplicaUI.toast("请先填写提示词，再进行改写");
+    return;
+  }
+  rewriteSelection = {};
+  rewriteBusy = false;
+  document.getElementById("rewrite-free").value = "";
+  document.getElementById("rewrite-source").textContent = text;
+  document.getElementById("rewrite-cancel").disabled = false;
+  var confirm = document.getElementById("rewrite-confirm");
+  confirm.disabled = false;
+  confirm.innerHTML = "改写 <b>✦ " + REWRITE_COST + "</b>";
+  paintRewriteModels();
+  closeRewriteModelMenu();
+  paintRewritePresets();
+  document.getElementById("rewrite-dialog").classList.add("open");
+}
+
+function closeRewriteDialog(force) {
+  if (rewriteBusy && !force) return;
+  closeRewriteModelMenu();
+  document.getElementById("rewrite-dialog").classList.remove("open");
+}
+
+function applyRewrite() {
+  if (rewriteBusy) return;
+  var box = document.getElementById("f-prompt");
+  var source = box.value.trim();
+  if (!source) {
+    ReplicaUI.toast("请先填写提示词，再进行改写");
+    return;
+  }
+  if (D.credits < REWRITE_COST) {
+    ReplicaUI.toast("积分不足，改写需要 " + REWRITE_COST + " 积分");
+    return;
+  }
+  rewriteBusy = true;
+  D.credits -= REWRITE_COST;
+  document.getElementById("credits").textContent = ReplicaUI.credits();
+  var confirm = document.getElementById("rewrite-confirm");
+  var cancel = document.getElementById("rewrite-cancel");
+  confirm.disabled = true;
+  cancel.disabled = true;
+  confirm.textContent = "改写中";
+  var items = rewritePresets[editorKind] || rewritePresets.char;
+  var lines = items.filter(function (item) { return rewriteSelection[item.id]; }).map(function (item) { return item.line; });
+  var free = document.getElementById("rewrite-free").value.trim().replace(/[。；，\s]+$/, "");
+  if (free) lines.push(free);
+  var base = source.replace(/[。；，\s]+$/, "");
+  lines.forEach(function (line) {
+    if (base.indexOf(line) === -1) base += "，" + line;
+  });
+  if (!lines.length && base.indexOf("细节完整、描述具体") === -1) base += "，细节完整、描述具体";
+  var next = (base + "。").slice(0, PROMPT_LIMIT);
+  var model = currentRewriteModel().name;
+  setTimeout(function () {
+    if (document.getElementById("f-prompt") === box) {
+      box.value = next;
+      lookDirty = true;
+      document.querySelector(".draft-hint").textContent = "已用 " + model + " 改写提示词";
+      updatePromptCount();
+    }
+    rewriteBusy = false;
+    cancel.disabled = false;
+    confirm.disabled = false;
+    confirm.innerHTML = "改写 <b>✦ " + REWRITE_COST + "</b>";
+    document.getElementById("rewrite-dialog").classList.remove("open");
+    ReplicaUI.toast("已扣除 " + REWRITE_COST + " 积分，提示词已改写");
+  }, 900);
+}
+
+document.getElementById("rewrite-model-trigger").onclick = function () {
+  if (rewriteBusy) return;
+  var menu = document.getElementById("rewrite-model-menu");
+  var open = menu.hidden;
+  menu.hidden = !open;
+  this.setAttribute("aria-expanded", open ? "true" : "false");
+};
+document.getElementById("rewrite-model-menu").onclick = function (e) {
+  var button = e.target.closest("[data-rewrite-model]");
+  if (!button || rewriteBusy) return;
+  rewriteModelId = button.dataset.rewriteModel;
+  paintRewriteModels();
+  closeRewriteModelMenu();
+};
+document.getElementById("rewrite-dialog").addEventListener("click", function (e) {
+  if (e.target.closest("#rewrite-model-control")) return;
+  closeRewriteModelMenu();
+});
+document.getElementById("rewrite-presets").onclick = function (e) {
+  var button = e.target.closest("[data-rewrite-preset]");
+  if (!button || rewriteBusy) return;
+  var id = button.dataset.rewritePreset;
+  rewriteSelection[id] = !rewriteSelection[id];
+  button.classList.toggle("on", rewriteSelection[id]);
+};
+document.getElementById("rewrite-x").onclick = function () { closeRewriteDialog(); };
+document.getElementById("rewrite-cancel").onclick = function () { closeRewriteDialog(); };
+document.getElementById("rewrite-confirm").onclick = applyRewrite;
 
 function openLookImagePicker(mode) {
   if (mode === "reverse" && D.credits < 1) {
@@ -1188,7 +1544,7 @@ function reversePromptFromImage() {
     inferred = (existing ? existing + "。" : currentChar.name + "，") +
       "保持上传图片中的五官、发型、服装款式、颜色与材质一致，身材比例自然，白底，输出近景、正面、左右侧面与背面五视图。";
   }
-  box.value = inferred.slice(0, 600);
+  box.value = inferred.slice(0, PROMPT_LIMIT);
   lookDirty = true;
   document.querySelector(".draft-hint").textContent = "存在未保存的草稿修改";
   updatePromptCount();
@@ -1262,8 +1618,18 @@ document.getElementById("preview-side").onclick = function (e) {
     renderPreviewRail(editingLook, !document.querySelector(".look-current-output").classList.contains("is-empty"));
     return;
   }
+  var restore = e.target.closest("[data-history-restore]");
+  if (restore) { restoreHistory(restore.dataset.historyRestore); return; }
+  var download = e.target.closest("[data-history-download]");
+  if (download) { downloadHistory(download.dataset.historyDownload); return; }
+  var remove = e.target.closest("[data-history-delete]");
+  if (remove) { deleteHistory(remove.dataset.historyDelete); return; }
   var card = e.target.closest("[data-preview-src]");
   if (!card) return;
+  if (card.dataset.historyId) {
+    showHistoryImage(historyById(card.dataset.historyId));
+    return;
+  }
   previewRailSrc = card.dataset.previewSrc;
   var preview = document.getElementById("f-preview");
   preview.innerHTML = '<img class="five-view-sheet" src="' + previewRailSrc + '" alt="五视图">';
@@ -1388,11 +1754,11 @@ document.getElementById("look-delete").onclick = function () {
   ReplicaUI.toast("已删除 " + removing.length + " 个形象");
 };
 document.getElementById("look-gen-selected").onclick = function () {
-  var count = revealItemLooks(currentChar, function (look) { return look && selectedLooks[look.id]; });
+  var targets = (currentChar.looksList || []).filter(function (look) { return selectedLooks[look.id]; });
+  var count = startLookGeneration(currentChar, targets);
+  if (!count) return;
   selectedLooks = {};
-  render();
-  fillLookForm(editingLook);
-  ReplicaUI.toast(count ? "已生成所选 " + count + " 个形象" : "没有待生成的形象");
+  renderLookLibrary();
 };
 document.getElementById("voice-dialog-x").onclick = function () { closeVoiceDialog(true); };
 document.getElementById("voice-cancel").onclick = function () { closeVoiceDialog(true); };
@@ -1897,16 +2263,19 @@ function generationTargets(mode) {
   var targets = [];
   eachAssetImage(function (entry) {
     if (mode === "selected" && !selectedAssets[entry.kind + ":" + entry.index]) return;
+    if (mode === "tab" && (entry.kind !== tab || !inEpisode(entry.item))) return;
     var state = entryState(entry);
     if (state === "pending" || state === "failed") targets.push(entry);
   });
   return targets;
 }
 
-function assetImageStats() {
+function assetImageStats(kind, filtered) {
   var generated = 0;
   var remaining = 0;
   eachAssetImage(function (entry) {
+    if (kind && entry.kind !== kind) return;
+    if (filtered && !inEpisode(entry.item)) return;
     var state = entryState(entry);
     if (state === "pending" || state === "failed") remaining++;
     else if (state !== "generating") generated++;
@@ -1924,11 +2293,12 @@ function refreshPendingLooks() {
 }
 
 function submitGeneration(mode) {
-  var onlyFirst = mode === "all" && !assetImageStats().generated;
+  var onlyFirst = (mode === "all" || mode === "tab") && !assetImageStats().generated;
   var ids = {};
   eachAssetImage(function (entry) {
     if (entryState(entry) === "ready") return;
     if (mode === "selected" && !selectedAssets[entry.kind + ":" + entry.index]) return;
+    if (mode === "tab" && (entry.kind !== tab || !inEpisode(entry.item))) return;
     if (onlyFirst && !FIRST_REVEAL[entry.item.id]) return;
     if (onlyFirst && entry.look && entry.item.looksList.length > 1 && !lookHasImage(entry.item, entry.look)) return;
     revealedAssets[entry.item.id] = true;
@@ -1944,9 +2314,14 @@ function submitGeneration(mode) {
 
 function syncGenButton() {
   var button = document.getElementById("gen-all");
+  var more = document.getElementById("gen-more");
+  var menu = document.getElementById("gen-menu");
+  var everything = document.getElementById("gen-everything");
   var multi = document.getElementById("asset-multi");
   var picked = document.getElementById("asset-picked");
   var stats = assetImageStats();
+  var tabStats = assetImageStats(tab, true);
+  var tabWord = tab === "char" ? "角色" : tab === "scene" ? "场景" : "道具";
   var count = Object.keys(selectedAssets).length;
   var visibleCards = [].slice.call(document.querySelectorAll("#grid .char-card"));
   var allVisiblePicked = visibleCards.length > 0 && visibleCards.every(function (card) { return selectedAssets[card.dataset.key]; });
@@ -1963,6 +2338,13 @@ function syncGenButton() {
   removeAssets.hidden = !multiOn;
   removeAssets.disabled = !count;
   removeAssets.textContent = count ? "删除 " + count : "删除";
+  more.hidden = multiOn;
+  if (multiOn) {
+    menu.hidden = true;
+    more.setAttribute("aria-expanded", "false");
+  }
+  everything.disabled = !stats.remaining;
+  document.getElementById("gen-everything-count").textContent = stats.remaining + "项";
   if (multiOn) {
     var assets = {};
     generationTargets("selected").forEach(function (entry) { assets[entry.kind + ":" + entry.index] = true; });
@@ -1972,19 +2354,17 @@ function syncGenButton() {
     button.title = assetCount ? "只生成勾选里还未完成的资产" : "请勾选待生成或生成失败的资产";
     return;
   }
-  if (!stats.generated && stats.remaining) {
-    button.textContent = "全量生成";
+  if (tabStats.remaining) {
+    button.textContent = "生成" + tabWord + "待办 · " + tabStats.remaining + "项";
     button.disabled = false;
-    button.title = "所有图片都还没生成，可以一键生成全部资产";
-  } else if (stats.remaining) {
-    button.textContent = "生成剩余资产";
-    button.disabled = false;
-    button.title = "已经有图片生成过，不能再全量生成。这里只补齐还没完成的资产";
+    button.title = "只生成当前" + tabWord + "分类里还未完成的内容";
   } else {
-    button.textContent = "已全部生成";
+    button.textContent = tabWord + "已完成";
     button.disabled = true;
-    button.title = "没有待生成的资产";
+    button.title = "当前" + tabWord + "分类没有待生成内容";
   }
+  more.disabled = !stats.remaining;
+  more.title = stats.remaining ? "还可以生成全部分类的 " + stats.remaining + " 项待办" : "所有资产已完成";
 }
 
 function setMultiSelect(on) {
@@ -2081,6 +2461,29 @@ document.getElementById("asset-select-all").onclick = function () {
   });
   syncGenButton();
 };
+function closeAssetGenMenu() {
+  document.getElementById("gen-menu").hidden = true;
+  document.getElementById("gen-more").setAttribute("aria-expanded", "false");
+}
+document.getElementById("gen-more").onclick = function (e) {
+  e.stopPropagation();
+  if (this.disabled) return;
+  var menu = document.getElementById("gen-menu");
+  menu.hidden = !menu.hidden;
+  this.setAttribute("aria-expanded", menu.hidden ? "false" : "true");
+};
+document.getElementById("gen-everything").onclick = function () {
+  closeAssetGenMenu();
+  if (this.disabled) return;
+  var stats = assetImageStats();
+  var count = submitGeneration("all");
+  ReplicaUI.toast(!stats.generated
+    ? "已生成 " + count + " 个资产，其余待办可以继续补齐"
+    : "已生成全部待办，共 " + count + " 个资产");
+};
+document.addEventListener("click", function (e) {
+  if (!e.target.closest(".asset-bulk-generate")) closeAssetGenMenu();
+});
 document.getElementById("gen-all").onclick = function () {
   if (this.disabled) return;
   if (multiOn) {
@@ -2092,26 +2495,30 @@ document.getElementById("gen-all").onclick = function () {
     ReplicaUI.toast("已生成所选 " + selectedCount + " 个资产");
     return;
   }
-  var stats = assetImageStats();
+  var tabWord = tab === "char" ? "角色" : tab === "scene" ? "场景" : "道具";
+  var stats = assetImageStats(tab, true);
   if (!stats.remaining) {
-    ReplicaUI.toast("没有待生成的资产");
+    ReplicaUI.toast(tabWord + "没有待生成内容");
     return;
   }
-  var full = !stats.generated;
-  var count = submitGeneration("all");
-  ReplicaUI.toast(full
-    ? "已生成 " + count + " 个资产，其余还没生成，可以点「生成剩余资产」"
-    : "已补齐剩余 " + count + " 个资产");
+  var count = submitGeneration("tab");
+  var remaining = assetImageStats(tab, true).remaining;
+  ReplicaUI.toast("已生成" + tabWord + "待办，共 " + count + " 个资产" + (remaining ? "，还有 " + remaining + " 项可以继续补齐" : ""));
 };
 
 document.addEventListener("keydown", function (e) {
   if (e.key !== "Escape") return;
+  if (!document.getElementById("gen-menu").hidden) { closeAssetGenMenu(); return; }
   if (document.getElementById("asset-delete-dialog").classList.contains("open")) { closeDeleteConfirm(); return; }
   if (!document.getElementById("episode-filter-menu").hidden) { closeEpisodeFilter(); return; }
   if (!document.getElementById("model-menu").hidden || !document.getElementById("ratio-popover").hidden || !document.getElementById("type-menu").hidden) { closeGenPanels(); return; }
   if (!document.getElementById("episode-editor").hidden) cancelEpisodeEditor();
   else if (!document.getElementById("episode-detail").hidden) closeEpisodeDetail();
   else if (document.getElementById("reference-dialog").classList.contains("open")) closeReferenceDialog();
+  else if (document.getElementById("rewrite-dialog").classList.contains("open")) {
+    if (!document.getElementById("rewrite-model-menu").hidden) closeRewriteModelMenu();
+    else closeRewriteDialog();
+  }
   else if (document.getElementById("voice-dialog").classList.contains("open")) closeVoiceDialog(true);
   else if (document.getElementById("look-dialog").classList.contains("open") && lookMultiOn) {
     lookMultiOn = false;
