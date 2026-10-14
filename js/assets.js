@@ -944,6 +944,7 @@ document.getElementById("grid").onclick = function (e) {
   var item = source[Number(card.dataset.i)];
   if (kind === "char" || kind === "scene" || kind === "prop") {
     editorKind = kind;
+    paintGenControls();
     ensureEditorLooks(item);
     currentChar = item;
     var looks = item.looksList || [];
@@ -1137,19 +1138,29 @@ document.getElementById("gen-look").onclick = function () {
     return;
   }
   var state = document.getElementById("current-look-state");
+  var type = currentGenType();
   state.className = "current-look-state generating";
-  state.textContent = editorKind === "char" ? "五视图生成中" : "生成中";
-  ReplicaUI.toast("已提交生成 · " + document.getElementById("model-label").textContent + " · " + document.getElementById("ratio-label").textContent);
+  state.textContent = (type.state || (editorKind === "char" && type.id === "auto" ? "五视图" : "")) + "生成中";
+  ReplicaUI.toast("已提交生成 · " + type.name + " · " + document.getElementById("model-label").textContent + " · " + document.getElementById("ratio-label").textContent);
 };
 document.getElementById("rewrite").onclick = function () {
   var box = document.getElementById("f-prompt");
-  box.value = box.value
-    ? box.value.replace(/。/g, "，神态自然、比例准确、服饰材质清晰。") + " 输出近景、正面、左右侧面与背面五视图。"
-    : "中国人物，形象自然，服饰材质清晰，保持五官与体态一致，输出近景、正面、左右侧面与背面五视图。";
+  var type = currentGenType();
+  var base = box.value.trim().replace(/[。；，\s]+$/, "");
+  var tail = type.prompt || (editorKind === "char" && type.id === "auto" ? "输出近景、正面、左右侧面与背面五视图。" : "");
+  if (tail && base.indexOf(tail.replace(/。$/, "")) !== -1) tail = "";
+  if (editorKind === "char") {
+    var polish = "神态自然、比例准确、服饰材质清晰";
+    if (!base) base = "中国人物，形象自然，服饰材质清晰，保持五官与体态一致";
+    else if (base.indexOf(polish) === -1) base = base.replace(/。/g, "，") + "，" + polish;
+  } else if (!base) {
+    base = currentChar.name + "，细节清晰，光线自然";
+  }
+  box.value = (base + "。" + tail).slice(0, 600);
   lookDirty = true;
   document.querySelector(".draft-hint").textContent = "存在未保存的草稿修改";
   updatePromptCount();
-  ReplicaUI.toast("AI 已优化五视图提示词");
+  ReplicaUI.toast("AI 已按「" + type.name + "」优化提示词");
 };
 
 function openLookImagePicker(mode) {
@@ -1424,11 +1435,48 @@ var imageModels = [
 ];
 var ratioOptions = ["auto", "1:1", "9:16", "16:9", "3:4", "4:3", "3:2", "2:3", "5:4", "4:5", "21:9"];
 var genChoice = { model: "banana-2", quality: "2K", ratio: "16:9", think: "high", search: "", type: "auto" };
-var genTypes = [
-  { id: "sheet", name: "角色五视图" },
-  { id: "auto", name: "Auto" },
-  { id: "free", name: "自由模式" }
-];
+var genTypeAuto = { id: "auto", name: "Auto", desc: "按提示词自动选择出图方式" };
+var genTypeFree = { id: "free", name: "自由模式", desc: "完全按提示词出图，不加约束" };
+var genTypesByKind = {
+  char: [
+    { group: "", items: [genTypeAuto] },
+    { group: "多视图", items: [
+      { id: "sheet", name: "角色五视图", desc: "近景、正面、左右侧面、背面", ratio: "16:9", state: "五视图", prompt: "白底，输出近景、正面、左右侧面与背面五视图。" },
+      { id: "three", name: "角色三视图", desc: "正面、侧面、背面全身", ratio: "16:9", state: "三视图", prompt: "白底，输出正面、侧面、背面三视图全身站姿。" }
+    ] },
+    { group: "人脸", items: [
+      { id: "face", name: "人脸特写", desc: "正脸近景，五官清晰", ratio: "1:1", state: "人脸特写", prompt: "正脸近景特写，五官清晰，皮肤质感真实，柔和光线。" },
+      { id: "face-fix", name: "人脸优化", desc: "修复崩脸，保持长相一致", ratio: "", state: "人脸优化", prompt: "修复面部细节，五官端正对称，眼睛清晰有神，保持原有长相不变。" }
+    ] },
+    { group: "", items: [genTypeFree] }
+  ],
+  scene: [
+    { group: "", items: [genTypeAuto] },
+    { group: "场景", items: [
+      { id: "scene-wide", name: "全景空镜", desc: "完整空间，无人物", ratio: "16:9", state: "全景", prompt: "全景空镜，完整展示空间结构，画面中不出现人物。" },
+      { id: "scene-angles", name: "多机位四视角", desc: "同一场景的四个方向", ratio: "16:9", state: "四视角", prompt: "同一场景的正面、左侧、右侧、反打四个机位，布局与陈设保持一致。" },
+      { id: "scene-light", name: "日夜光影", desc: "白天、黄昏、夜晚三版", ratio: "16:9", state: "光影版本", prompt: "同一场景的白天、黄昏、夜晚三种光线版本，结构不变。" }
+    ] },
+    { group: "", items: [genTypeFree] }
+  ],
+  prop: [
+    { group: "", items: [genTypeAuto] },
+    { group: "道具", items: [
+      { id: "prop-three", name: "道具三视图", desc: "正面、侧面、俯视", ratio: "16:9", state: "三视图", prompt: "纯色背景，输出正面、侧面、俯视三视图。" },
+      { id: "prop-detail", name: "细节特写", desc: "材质纹理与磨损痕迹", ratio: "1:1", state: "细节特写", prompt: "微距细节特写，材质纹理清晰，保留使用痕迹。" },
+      { id: "prop-white", name: "白底单品", desc: "居中白底，方便抠图", ratio: "1:1", state: "单品图", prompt: "纯白背景，道具居中，光线均匀，无投影干扰。" }
+    ] },
+    { group: "", items: [genTypeFree] }
+  ]
+};
+function currentGenTypes() {
+  return genTypesByKind[editorKind] || genTypesByKind.char;
+}
+function currentGenType() {
+  var all = [];
+  currentGenTypes().forEach(function (block) { all = all.concat(block.items); });
+  return all.filter(function (item) { return item.id === genChoice.type; })[0] || genTypeAuto;
+}
 
 function currentImageModel() {
   return imageModels.filter(function (item) { return item.id === genChoice.model; })[0] || imageModels[0];
@@ -1470,11 +1518,16 @@ function paintGenControls() {
   document.getElementById("model-mark").innerHTML = model.mark;
   document.getElementById("model-label").textContent = model.name;
   document.getElementById("ratio-label").textContent = (genChoice.ratio === "auto" ? "自适应" : genChoice.ratio) + " · " + genChoice.quality;
-  var type = genTypes.filter(function (item) { return item.id === genChoice.type; })[0] || genTypes[1];
+  var type = currentGenType();
+  genChoice.type = type.id;
   document.getElementById("type-label").textContent = type.name;
-  document.getElementById("type-menu").innerHTML = genTypes.map(function (item) {
-    return '<button type="button" role="option" data-gen-type="' + item.id + '"' + (item.id === type.id ? ' class="on" aria-selected="true"' : ' aria-selected="false"') + '>' +
-      '<span>' + item.name + '</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>';
+  document.getElementById("gen-look").setAttribute("aria-label", "生成" + (type.state || (editorKind === "char" ? "形象" : assetWord())));
+  document.getElementById("type-menu").innerHTML = currentGenTypes().map(function (block, index) {
+    var head = block.group ? '<div class="gen-type-group">' + block.group + "</div>" : (index ? '<div class="gen-type-sep" role="separator"></div>' : "");
+    return head + block.items.map(function (item) {
+      return '<button type="button" role="option" data-gen-type="' + item.id + '"' + (item.id === type.id ? ' class="on" aria-selected="true"' : ' aria-selected="false"') + '>' +
+        '<span class="gen-type-text"><b>' + item.name + '</b><small>' + item.desc + '</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>';
+    }).join("");
   }).join("");
   var lastGroup = "";
   document.getElementById("model-menu").innerHTML = imageModels.map(function (item) {
@@ -1537,6 +1590,11 @@ document.getElementById("type-menu").onclick = function (e) {
   var button = e.target.closest("[data-gen-type]");
   if (!button) return;
   genChoice.type = button.dataset.genType;
+  var picked = currentGenType();
+  if (picked.ratio && picked.ratio !== genChoice.ratio) {
+    genChoice.ratio = picked.ratio;
+    ReplicaUI.toast("已切换为「" + picked.name + "」，比例调整为 " + picked.ratio);
+  }
   paintGenControls();
   closeGenPanels();
 };

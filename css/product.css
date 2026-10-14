@@ -4252,14 +4252,41 @@ body.asset-editor-page-open { overflow: hidden; }
 }
 .composer-options .gen-type-trigger[aria-expanded="true"] svg { transform: rotate(180deg); }
 .gen-type-menu {
-  width: 156px;
+  width: 232px;
+  max-height: min(440px, 70vh);
+  overflow-y: auto;
   padding: 4px;
   border-radius: 12px;
 }
+.gen-type-group {
+  padding: 8px 8px 4px;
+  color: #8d8794;
+  font-size: 11px;
+}
+.gen-type-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: rgba(255,255,255,.07);
+}
+.gen-type-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  text-align: left;
+}
+.gen-type-text b { font-weight: 520; }
+.gen-type-text small {
+  color: #8d8794;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .composer-options .gen-type-menu button {
   width: 100%;
-  height: 32px;
-  padding: 0 8px;
+  min-height: 42px;
+  padding: 5px 8px;
   display: flex;
   align-items: center;
   justify-content: space-between;
