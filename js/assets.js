@@ -21,6 +21,8 @@ var episodePanelIndex = -1;
 var episodeDraftNumbers = [];
 var episodeDraftValid = true;
 var lookDirty = false;
+var imageAnalysisSeq = 0;
+var lookImageMode = "upload";
 var voiceBeforeEdit = "";
 var pendingReferenceSrc = "";
 var referenceImageValue = "";
@@ -88,13 +90,12 @@ function renderProgress() {
     var stats = assetLookStats(row.item);
     props += stats.total - stats.done;
   });
-  var parts = [];
-  if (roles) parts.push("角色 <b>" + roles + "</b>");
-  if (scenes) parts.push("场景 <b>" + scenes + "</b>");
-  if (props) parts.push("道具 <b>" + props + "</b>");
-  var el = document.getElementById("asset-progress");
-  el.classList.toggle("is-done", !parts.length);
-  el.innerHTML = parts.length ? "待生成 " + parts.join('<i aria-hidden="true">·</i>') : "已全部生成";
+  [["char", roles], ["scene", scenes], ["prop", props]].forEach(function (entry) {
+    var el = document.getElementById("pending-" + entry[0]);
+    el.hidden = !entry[1];
+    el.textContent = entry[1] ? "待 " + entry[1] : "";
+    el.parentElement.classList.toggle("is-done", !entry[1]);
+  });
 }
 
 function renderTabCounts() {
@@ -158,7 +159,6 @@ function cardHtml(row) {
     : "";
   return '<article class="char-card asset-card asset-' + kind + " is-" + state + (picked ? " is-picked" : "") + '" data-kind="' + kind + '" data-i="' + row.i + '" data-key="' + key + '">' +
     '<div class="' + mediaClass + '">' + visual + genBtn + check + delBtn +
-    '<div class="edit"><span>直接编辑</span></div>' +
     '<span class="asset-flag ' + flagState + '">' + flagIcon + flagText + "</span></div>" +
     '<div class="asset-card-info"><div class="asset-card-title"><h3>' + a.name +
     (a.tag ? ' <span class="tag">' + a.tag + "</span>" : "") + '</h3><span class="looks">' + lookText + "</span></div>" +
@@ -541,6 +541,7 @@ function emptyLookBoardHtml() {
     '<span class="is-left">' + doc + '</span><span class="is-center">' + upload + '</span><span class="is-right">' + doc + "</span></div>" +
     '<div class="upload-empty-actions">' +
     '<button type="button" data-empty-upload="local"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V5M8.5 8.5 12 5l3.5 3.5M5 14v3.5c0 .8.7 1.5 1.5 1.5h11c.8 0 1.5-.7 1.5-1.5V14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>本地上传</button>' +
+    '<button type="button" class="is-reverse" data-empty-upload="reverse">✦ 反推图片 <small>1积分</small></button>' +
     '<button type="button" data-empty-upload="library"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7.5c0-.8.7-1.5 1.5-1.5h4l1.6 2H18c.8 0 1.5.7 1.5 1.5v7.5c0 .8-.7 1.5-1.5 1.5H6c-.8 0-1.5-.7-1.5-1.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 14h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>资产库</button>' +
     "</div></div>";
 }
@@ -608,6 +609,9 @@ function fillLookForm(look) {
   ensureEditorLooks(currentChar);
   editingLook = look;
   lookDirty = false;
+  imageAnalysisSeq++;
+  document.getElementById("image-analyze-badge").hidden = true;
+  document.getElementById("image-prompt-state").hidden = true;
   document.querySelector(".draft-hint").textContent = "修改会先保存为草稿，不会覆盖原图";
   var parentLook = (currentChar.looksList || []).filter(function (item) { return item.id === newLookParentId; })[0];
   document.getElementById("f-look-name").value = look ? look.name : (parentLook ? parentLook.name : currentChar.name) + "-新" + assetWord();
@@ -1066,16 +1070,33 @@ document.getElementById("editor-role-switch").onclick = function (e) {
   fillLookForm(primaryLook);
 };
 
+function placeRolePreview(button) {
+  var preview = document.getElementById("editor-role-preview");
+  var rect = button.getBoundingClientRect();
+  var width = preview.offsetWidth || 200;
+  preview.style.left = Math.max(12, Math.min(window.innerWidth - width - 12, rect.left + rect.width / 2 - width / 2)) + "px";
+  preview.style.top = (rect.bottom + 8) + "px";
+}
 document.getElementById("editor-role-switch").onmouseover = function (e) {
   var button = e.target.closest("[data-editor-char]");
   if (!button) return;
   var char = editorItems().find(function (item) { return item.id === button.dataset.editorChar; });
+  if (!char) return;
   var preview = document.getElementById("editor-role-preview");
-  var rect = button.getBoundingClientRect();
-  preview.innerHTML = '<img src="' + char.image + '" alt=""><div><strong>' + char.name + '</strong><span>' + (char.desc || "") + "</span></div>";
-  preview.style.left = Math.max(12, Math.min(window.innerWidth - 188, rect.left + rect.width / 2 - 86)) + "px";
-  preview.style.top = (rect.bottom + 8) + "px";
+  var src = char.sheet || char.image;
+  preview.innerHTML = '<img src="' + src + '" alt=""><div><strong>' + char.name + '</strong><span>' + (char.desc || "") + "</span></div>";
   preview.classList.add("show");
+  var img = preview.querySelector("img");
+  var fit = function () {
+    if (!img.naturalWidth) return;
+    preview.style.setProperty("--preview-ratio", img.naturalWidth + " / " + img.naturalHeight);
+    var copy = preview.querySelector("div");
+    if (copy) copy.style.width = img.offsetWidth + "px";
+    placeRolePreview(button);
+  };
+  if (img.complete) fit();
+  else img.onload = fit;
+  placeRolePreview(button);
 };
 document.getElementById("editor-role-switch").onmouseleave = function () {
   document.getElementById("editor-role-preview").classList.remove("show");
@@ -1130,9 +1151,95 @@ document.getElementById("rewrite").onclick = function () {
   updatePromptCount();
   ReplicaUI.toast("AI 已优化五视图提示词");
 };
+
+function openLookImagePicker(mode) {
+  if (mode === "reverse" && D.credits < 1) {
+    ReplicaUI.toast("积分不足，无法反推图片");
+    return;
+  }
+  lookImageMode = mode || "upload";
+  var input = document.getElementById("look-image-input");
+  input.value = "";
+  input.click();
+}
+
+function reversePromptFromImage() {
+  var box = document.getElementById("f-prompt");
+  var existing = box.value.trim()
+    .replace(/。?保持上传图片中的[\s\S]*$/, "")
+    .replace(/[。；，\s]+$/, "");
+  var inferred;
+  if (editorKind === "scene") {
+    inferred = "根据上传图片还原「" + currentChar.name + "」的空间结构、主体布局、建筑与地面材质、光线方向、色调和天气，保持画面透视准确，不新增人物。";
+  } else if (editorKind === "prop") {
+    inferred = "根据上传图片还原「" + currentChar.name + "」的外形、材质、颜色、尺寸比例和使用痕迹，纯色背景，多角度清晰展示。";
+  } else {
+    inferred = (existing ? existing + "。" : currentChar.name + "，") +
+      "保持上传图片中的五官、发型、服装款式、颜色与材质一致，身材比例自然，白底，输出近景、正面、左右侧面与背面五视图。";
+  }
+  box.value = inferred.slice(0, 600);
+  lookDirty = true;
+  document.querySelector(".draft-hint").textContent = "存在未保存的草稿修改";
+  updatePromptCount();
+}
+
+function setImageAnalysis(state, text) {
+  var badge = document.getElementById("image-analyze-badge");
+  var hint = document.getElementById("image-prompt-state");
+  badge.className = "image-analyze-badge " + state;
+  badge.textContent = text;
+  badge.hidden = state === "done";
+  hint.className = "image-prompt-state " + state;
+  hint.textContent = state === "loading" ? "✦ 正在识别图片…" : "✦ 已根据上传图片生成";
+  hint.hidden = false;
+}
+
+document.getElementById("look-image-input").onchange = function () {
+  var file = this.files && this.files[0];
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) {
+    ReplicaUI.toast("图片不能超过 10MB");
+    return;
+  }
+  var shouldReverse = lookImageMode === "reverse";
+  if (shouldReverse) {
+    D.credits -= 1;
+    document.getElementById("credits").textContent = ReplicaUI.credits();
+  }
+  var seq = ++imageAnalysisSeq;
+  var reader = new FileReader();
+  reader.onload = function () {
+    if (seq !== imageAnalysisSeq) return;
+    var src = String(reader.result || "");
+    previewRailSrc = src;
+    var preview = document.getElementById("f-preview");
+    preview.innerHTML = '<img class="five-view-sheet" src="' + src + '" alt="本地上传图片">';
+    preview.closest(".look-current-output").classList.remove("is-empty");
+    renderPreviewRail(editingLook, false);
+    lookDirty = true;
+    document.querySelector(".draft-hint").textContent = "存在未保存的草稿修改";
+    if (!shouldReverse) {
+      document.getElementById("image-analyze-badge").hidden = true;
+      document.getElementById("image-prompt-state").hidden = true;
+      ReplicaUI.toast("图片上传成功");
+      return;
+    }
+    setImageAnalysis("loading", "✦ AI 正在反推提示词");
+    ReplicaUI.toast("已扣除 1 积分，正在反推提示词");
+    setTimeout(function () {
+      if (seq !== imageAnalysisSeq) return;
+      reversePromptFromImage();
+      setImageAnalysis("done", "");
+      ReplicaUI.toast("已根据图片生成提示词，可以继续修改");
+    }, 1200);
+  };
+  reader.readAsDataURL(file);
+};
+
 document.getElementById("upload-audio").onclick = function () { ReplicaUI.toast("演示：上传参考音频"); };
-document.getElementById("local-upload").onclick = function () { ReplicaUI.toast("演示：本地上传"); };
-document.getElementById("replace-view").onclick = function () { ReplicaUI.toast("演示：更换当前五视图"); };
+document.getElementById("local-upload").onclick = function () { openLookImagePicker("upload"); };
+document.getElementById("reverse-image").onclick = function () { openLookImagePicker("reverse"); };
+document.getElementById("replace-view").onclick = function () { openLookImagePicker("upload"); };
 document.getElementById("preview-side-toggle").onclick = function () {
   previewRailOpen = !previewRailOpen;
   renderPreviewRail(editingLook, !!previewRailSrc || !document.querySelector(".look-current-output").classList.contains("is-empty"));
@@ -1154,7 +1261,9 @@ document.getElementById("preview-side").onclick = function (e) {
 document.getElementById("f-preview").onclick = function (e) {
   var button = e.target.closest("[data-empty-upload]");
   if (!button) return;
-  ReplicaUI.toast(button.dataset.emptyUpload === "local" ? "演示：本地上传形象图" : "演示：从资产库选择形象图");
+  if (button.dataset.emptyUpload === "local") openLookImagePicker("upload");
+  else if (button.dataset.emptyUpload === "reverse") openLookImagePicker("reverse");
+  else ReplicaUI.toast("演示：从资产库选择形象图");
 };
 document.getElementById("pick-asset").onclick = openReferenceDialog;
 document.getElementById("reference-dialog-x").onclick = closeReferenceDialog;

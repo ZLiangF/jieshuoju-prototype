@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>资产库 · 离婚后（15集）</title>
-  <link rel="stylesheet" href="css/product.css?v=202610132257" />
+  <link rel="stylesheet" href="css/product.css?v=202610141116" />
 </head>
 <body class="asset-page">
 <div class="app">
@@ -31,7 +31,6 @@
       <div class="asset-command-top">
         <div class="asset-heading">
           <h2>已识别总资产 <span class="asset-total-tail"><b id="asset-total"></b>个</span></h2>
-          <span class="asset-progress" id="asset-progress"></span>
         </div>
         <div class="asset-tools">
           <label class="asset-query">
@@ -48,9 +47,9 @@
       </div>
       <div class="asset-command-tabs">
         <div class="tabs">
-          <button class="on" data-tab="char">角色 <b class="tab-count" id="count-char"></b></button>
-          <button data-tab="scene">场景 <b class="tab-count" id="count-scene"></b></button>
-          <button data-tab="prop">道具 <b class="tab-count" id="count-prop"></b></button>
+          <button class="on" data-tab="char">角色 <span class="tab-stats"><b class="tab-count" id="count-char"></b><span class="tab-pending" id="pending-char"></span></span></button>
+          <button data-tab="scene">场景 <span class="tab-stats"><b class="tab-count" id="count-scene"></b><span class="tab-pending" id="pending-scene"></span></span></button>
+          <button data-tab="prop">道具 <span class="tab-stats"><b class="tab-count" id="count-prop"></b><span class="tab-pending" id="pending-prop"></span></span></button>
         </div>
         <div class="asset-actions">
           <button class="btn asset-add" id="add" type="button" aria-label="新增形象" title="新增形象"><span>＋</span></button>
@@ -169,9 +168,15 @@
           </aside>
           <div class="output-actions">
             <button class="btn" id="local-upload" type="button">本地上传</button>
+            <button class="btn upload-reverse" id="reverse-image" type="button" title="上传图片并由 AI 反推提示词，消耗 1 积分">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6.2 2.3.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7.7-1.9ZM11.3 7.2l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2ZM4.2 10.1l.4 1.1 1.1.4-1.1.4-.4 1.1-.4-1.1-1.1-.4 1.1-.4.4-1.1Z" fill="currentColor"/></svg>
+              反推图片 <span>✦1</span>
+            </button>
             <button class="btn" id="replace-view" type="button">更换</button>
           </div>
+          <span class="image-analyze-badge" id="image-analyze-badge" hidden></span>
         </div>
+        <input id="look-image-input" type="file" accept="image/png,image/jpeg,image/webp" hidden />
 
         <div class="prompt-composer" id="prompt-composer">
           <div class="composer-main">
@@ -194,7 +199,10 @@
               <div class="prompt-field">
                 <textarea class="look-area" id="f-prompt" maxlength="600" aria-label="提示词" placeholder="描述服装、发型、体态和情绪，保持五视图一致"></textarea>
                 <div class="prompt-field-foot">
-                  <button class="text-btn" id="rewrite" type="button">AI 改写</button>
+                  <div class="prompt-ai-actions">
+                    <button class="text-btn" id="rewrite" type="button">AI 改写</button>
+                    <span class="image-prompt-state" id="image-prompt-state" hidden></span>
+                  </div>
                   <span class="prompt-count" id="prompt-count">0 / 600</span>
                 </div>
               </div>
@@ -442,7 +450,7 @@
   </div>
 </div>
 
-<script src="js/data.js?v=202610132257"></script>
-<script src="js/assets.js?v=202610132257"></script>
+<script src="js/data.js?v=202610141116"></script>
+<script src="js/assets.js?v=202610141116"></script>
 </body>
 </html>
