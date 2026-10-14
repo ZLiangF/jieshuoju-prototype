@@ -54,7 +54,7 @@ window.ReplicaData = {
   },
   characters: [
     {
-      id: "xiaoming", name: "萧铭", tag: "主角", looks: 27, status: "partial", pendingLooks: 25, eps: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], desc: "隐姓埋名的商界大佬，前期隐忍退让",
+      id: "xiaoming", name: "萧铭", role: "主角", looks: 27, status: "partial", pendingLooks: 25, eps: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], desc: "隐姓埋名的商界大佬，前期隐忍退让",
       image: "media/characters/xiaoming.png", sheet: "media/characters/sheets/xiaoming.jpg", look: "外卖服戴头巾", voice: "沉稳低沉，语速偏慢，隐忍时压着怒气。",
       looksList: [
         { id: "delivery", name: "萧铭-外卖服戴头巾", eps: "1", image: "media/characters/xiaoming.png", prompt: "30岁中国男性，短发，亮黄外卖外套，黑裤，手持白色头巾，白底全身三视图。" },
@@ -87,7 +87,7 @@ window.ReplicaData = {
       ]
     },
     {
-      id: "hezhi", name: "贺芷", looks: 4, status: "partial", pendingLooks: 2, eps: [1,3,4,6,8,9,10,12,14], desc: "贺家掌权人，为家族利益放弃婚姻",
+      id: "hezhi", name: "贺芷", role: "主角", looks: 4, status: "partial", pendingLooks: 2, eps: [1,3,4,6,8,9,10,12,14], desc: "贺家掌权人，为家族利益放弃婚姻",
       image: "media/characters/hezhi.png", sheet: "media/characters/sheets/hezhi.jpg", look: "黑色女总裁装", voice: "清冷利落，带命令口吻。",
       looksList: [
         { id: "ceo", name: "贺芷-黑色女总裁装", eps: "1,3,4,6,8,10,12,14", image: "media/characters/hezhi.png", prompt: "28岁中国女性，黑色西装套装，手持黑伞，白底全身三视图。" },
@@ -97,38 +97,45 @@ window.ReplicaData = {
       ]
     },
     {
-      id: "cuiguihua", name: "崔桂华", looks: 1, status: "ready", eps: [2,3,6,7,11], desc: "贺家主母，势利贪婪，看不起萧铭",
+      id: "cuiguihua", name: "崔桂华", role: "配角", tag: "贺家", looks: 1, status: "ready", eps: [2,3,6,7,11], desc: "贺家主母，势利贪婪，看不起萧铭",
       image: "media/characters/cuiguihua.png", sheet: "media/characters/sheets/cuiguihua.jpg", look: "黑色旗袍", voice: "尖细，爱抱怨。",
       looksList: [
         { id: "qipao", name: "崔桂华-黑色旗袍", eps: "2,3,6,7,11", image: "media/characters/cuiguihua.png", prompt: "50岁中国女性，黑色旗袍，白底全身三视图。" }
       ]
     },
     {
-      id: "heyi", name: "贺毅", looks: 1, status: "pending", eps: [2,3,7,11,13], desc: "贺芷弟弟，纨绔子弟，欺软怕硬",
+      id: "heyi", name: "贺毅", role: "配角", tag: "贺家", looks: 1, status: "pending", eps: [2,3,7,11,13], desc: "贺芷弟弟，纨绔子弟，欺软怕硬",
       image: "media/characters/heyi.png", sheet: "media/characters/sheets/heyi.jpg", look: "花衬衫", voice: "嚣张，语速快。",
       looksList: [
         { id: "shirt", name: "贺毅-花衬衫", eps: "2,3,7,11,13", image: "media/characters/heyi.png", prompt: "25岁中国男性，花衬衫，白底全身三视图。" }
       ]
     },
     {
-      id: "shen", name: "沈妍妍", looks: 1, status: "generating", eps: [1,4,5,9], desc: "贺芷的助理，趋炎附势，多次羞辱萧铭",
+      id: "shen", name: "沈妍妍", role: "配角", looks: 1, status: "generating", eps: [1,4,5,9], desc: "贺芷的助理，趋炎附势，多次羞辱萧铭",
       image: "media/characters/shen.png", sheet: "media/characters/sheets/shen.jpg", look: "都市通勤装", voice: "轻蔑，爱接话。",
       looksList: [
         { id: "office", name: "沈妍妍-都市通勤装", eps: "1,4,5,9", image: "media/characters/shen.png", prompt: "26岁中国女性，都市通勤装，白底全身三视图。" }
       ]
     },
     {
-      id: "sucheng", name: "苏承", tag: "苏家", looks: 1, status: "ready", eps: [5,8,14,15], desc: "苏家少爷，贺芷想攀附的对象",
+      id: "sucheng", name: "苏承", role: "配角", tag: "苏家", looks: 1, status: "ready", eps: [5,8,14,15], desc: "苏家少爷，贺芷想攀附的对象",
       image: "media/characters/gushen.png", sheet: "media/characters/sheets/sucheng.jpg", look: "黑色西装", voice: "温和，话里有刺。",
       looksList: [
         { id: "suit", name: "苏承-黑色西装", eps: "5,8,14,15", image: "media/characters/gushen.png", sheet: "media/characters/sheets/sucheng.jpg", prompt: "27岁中国男性，黑色西装，白底全身三视图。" }
       ]
     },
     {
-      id: "dong", name: "董总", tag: "董家", looks: 1, status: "pending", eps: [10,12,15], desc: "董家实际话事人，订单的真正主人",
+      id: "dong", name: "董总", role: "配角", tag: "董家", looks: 1, status: "pending", eps: [10,12,15], desc: "董家实际话事人，订单的真正主人",
       image: "media/characters/gushen.png", look: "深色大衣", voice: "沉，不多话。",
       looksList: [
         { id: "coat", name: "董总-深色大衣", eps: "10,12,15", image: "media/characters/gushen.png", prompt: "45岁中国男性，深色大衣，白底全身三视图。" }
+      ]
+    },
+    {
+      id: "guests", name: "宴会宾客", role: "群演", looks: 1, status: "pending", eps: [8,14], desc: "苏家宴会上的围观宾客，衬托摊牌氛围",
+      image: "media/characters/gushen.png", look: "宴会礼服", voice: "",
+      looksList: [
+        { id: "party", name: "宴会宾客-宴会礼服", eps: "8,14", image: "media/characters/gushen.png", prompt: "20-40岁中国男女，宴会礼服，白底全身三视图。" }
       ]
     }
   ],
@@ -167,18 +174,18 @@ window.ReplicaData = {
   ],
   episodes: [
     { id: "ep1", no: 1, title: "第1集：墓地贺芷提离婚协议", roles: 3, scenes: 1, props: 4, shots: 19, status: "ready" },
-    { id: "ep2", no: 2, title: "第2集：贺家人上门索要补偿", roles: 3, scenes: 1, props: 2, shots: 3, status: "ready" },
+    { id: "ep2", no: 2, title: "第2集：贺家人上门索要补偿", roles: 3, scenes: 1, props: 2, shots: 3, status: "done", duration: "00:48" },
     { id: "ep3", no: 3, title: "第3集：萧铭断贺毅手放狠话", roles: 4, scenes: 2, props: 1, shots: 0, status: "parse" },
     { id: "ep4", no: 4, title: "第4集：贺芷拿协议去董家", roles: 3, scenes: 1, props: 2, shots: 6, status: "ready" },
     { id: "ep5", no: 5, title: "第5集：苏承车里见萧铭", roles: 3, scenes: 2, props: 1, shots: 4, status: "ready" },
     { id: "ep6", no: 6, title: "第6集：崔桂华再上门", roles: 3, scenes: 1, props: 1, shots: 3, status: "ready" },
     { id: "ep7", no: 7, title: "第7集：贺毅叫人堵门", roles: 3, scenes: 1, props: 1, shots: 2, status: "ready" },
     { id: "ep8", no: 8, title: "第8集：苏家宴会", roles: 3, scenes: 2, props: 2, shots: 5, status: "ready" },
-    { id: "ep9", no: 9, title: "第9集：沈妍妍雨夜传话", roles: 2, scenes: 1, props: 1, shots: 0, status: "running", task: "oneclick", pct: 46 },
+    { id: "ep9", no: 9, title: "第9集：沈妍妍雨夜传话", roles: 2, scenes: 1, props: 1, shots: 0, status: "running", task: "oc", pct: 46 },
     { id: "ep10", no: 10, title: "第10集：董总露面", roles: 3, scenes: 1, props: 1, shots: 0, status: "parse" },
     { id: "ep11", no: 11, title: "第11集：医院对质", roles: 3, scenes: 1, props: 1, shots: 0, status: "parse" },
     { id: "ep12", no: 12, title: "第12集：合同改名", roles: 3, scenes: 2, props: 2, shots: 0, status: "parse" },
-    { id: "ep13", no: 13, title: "第13集：贺毅雨夜追车", roles: 2, scenes: 1, props: 1, shots: 0, status: "parse" },
+    { id: "ep13", no: 13, title: "第13集：贺毅雨夜追车", roles: 2, scenes: 1, props: 1, shots: 0, status: "failed", task: "oc", failStep: 1, failReason: "部分画面审核未通过" },
     { id: "ep14", no: 14, title: "第14集：宴会摊牌前夜", roles: 3, scenes: 1, props: 1, shots: 0, status: "parse" },
     { id: "ep15", no: 15, title: "第15集：萧铭办公室摊牌", roles: 3, scenes: 1, props: 1, shots: 8, status: "ready" }
   ],

@@ -38,6 +38,11 @@ function listForTab() {
 var query = "";
 var episodeFilterNumbers = [];
 var multiOn = false;
+var expandSubs = false;
+var roleTier = "配角";
+var ROLE_TONES = { "主角": "lead", "配角": "support", "群演": "extra" };
+var SUB_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4.6" y="2.2" width="9.2" height="7.6" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2.2 6.2v6c0 .9.7 1.6 1.6 1.6h6.4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+var READY_MARK = '<span class="asset-done" role="img" aria-label="已完成" title="已完成"><svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="7" fill="currentColor"/><path d="M4.2 7.2 6.1 9 9.8 5.2" fill="none" stroke="#0f1f17" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
 var selectedAssets = {};
 var revealedAssets = {};
 var revealedLooks = {};
@@ -108,17 +113,23 @@ function renderProgress() {
     props += stats.total - stats.done;
   });
   [["char", roles], ["scene", scenes], ["prop", props]].forEach(function (entry) {
-    var el = document.getElementById("pending-" + entry[0]);
-    el.hidden = !entry[1];
-    el.textContent = entry[1] ? "待 " + entry[1] : "";
-    el.parentElement.classList.toggle("is-done", !entry[1]);
+    paintPending(entry[0], entry[1]);
   });
+}
+
+var TAB_WORDS = { char: "角色", scene: "场景", prop: "道具" };
+
+function paintPending(kind, n) {
+  var el = document.getElementById("pending-" + kind);
+  el.hidden = !n;
+  el.querySelector("em").textContent = n || "";
+  el.title = n ? "还有 " + n + " 项待生成" : "";
 }
 
 function matchesQuery(row) {
   var q = query.trim().toLowerCase();
   if (!q) return true;
-  return ((row.item.name || "") + " " + (row.item.desc || "") + " " + (row.item.tag || "")).toLowerCase().indexOf(q) !== -1;
+  return ((row.item.name || "") + " " + (row.item.desc || "") + " " + (row.item.tag || "") + " " + (row.item.role || "")).toLowerCase().indexOf(q) !== -1;
 }
 
 function matchedRows(kind) {
@@ -127,17 +138,16 @@ function matchedRows(kind) {
 
 function renderTabCounts() {
   ["char", "scene", "prop"].forEach(function (kind) {
-    document.getElementById("count-" + kind).textContent = matchedRows(kind).length;
+    var count = document.getElementById("count-" + kind);
+    var n = matchedRows(kind).length;
+    count.textContent = n;
+    count.title = n + " 个" + TAB_WORDS[kind];
   });
   if (!query.trim()) {
     renderProgress();
     return;
   }
-  ["char", "scene", "prop"].forEach(function (kind) {
-    var el = document.getElementById("pending-" + kind);
-    el.hidden = true;
-    el.parentElement.classList.add("is-done");
-  });
+  ["char", "scene", "prop"].forEach(function (kind) { paintPending(kind, 0); });
 }
 
 function setActiveTab(kind) {
@@ -149,6 +159,69 @@ function setActiveTab(kind) {
   var add = document.getElementById("add");
   add.title = "新增" + word;
   add.setAttribute("aria-label", "新增" + word);
+  document.getElementById("asset-expand").hidden = kind !== "char";
+}
+
+function paintExpandButton() {
+  var btn = document.getElementById("asset-expand");
+  var label = expandSubs ? "收起子角色" : "展开子角色";
+  btn.classList.toggle("on", expandSubs);
+  btn.setAttribute("aria-pressed", expandSubs ? "true" : "false");
+  btn.setAttribute("aria-label", label);
+  btn.title = expandSubs ? "收起子角色：放回主角色下面" : "展开子角色：平铺所有子角色";
+}
+
+function roleTagsHtml(a, kind) {
+  var role = kind === "char" && a.role ? '<span class="tag asset-role is-' + ROLE_TONES[a.role] + '">' + a.role + "</span>" : "";
+  return role + (a.tag ? '<span class="tag asset-faction">' + a.tag + "</span>" : "");
+}
+
+function primaryLookOf(item) {
+  var looks = item.looksList || [];
+  return looks.filter(function (look) { return item.look && look.name.indexOf(item.look) !== -1; })[0] || looks[0] || null;
+}
+
+function subLooksOf(item) {
+  var primary = primaryLookOf(item);
+  return orderedLooks(item.looksList || []).filter(function (entry) {
+    if (entry.look === primary) return false;
+    if (!episodeFilterNumbers.length) return true;
+    var eps = parseEpisodeNumbers(entry.look.eps);
+    return episodeFilterNumbers.some(function (n) { return eps.indexOf(n) !== -1; });
+  });
+}
+
+function subLookState(item, look) {
+  if (look.status === "generating" || look.status === "failed") return look.status;
+  return isLookRevealed(item, look) ? "ready" : "pending";
+}
+
+function subCardHtml(row, entry) {
+  var item = row.item;
+  var look = entry.look;
+  var state = subLookState(item, look);
+  var parent = lookParent(item.looksList || [], look);
+  var primary = primaryLookOf(item);
+  var shortName = look.name.replace(item.name + "-", "");
+  var parentName = parent && parent !== primary ? parent.name.replace(item.name + "-", "") : "";
+  var key = row.kind + ":" + row.i;
+  var visual = state === "ready"
+    ? '<img src="' + (look.sheet || look.image) + '" alt="' + look.name + '" loading="lazy" decoding="async">'
+    : '<div class="asset-empty-state" aria-label="子角色尚未生成">' + EMPTY_PERSON_ICON + "</div>";
+  var flag = state === "ready"
+    ? ""
+    : state === "generating"
+    ? '<span class="asset-flag generating">' + lookStateIcon("generating") + "生成中</span>"
+    : multiOn
+    ? '<span class="asset-flag ' + state + '">' + lookStateIcon(state) + "待生成</span>"
+    : '<button type="button" class="asset-flag is-action ' + state + '" data-gen-look="' + key + "|" + look.id + '" title="生成这个子角色">' + lookStateIcon(state) + (state === "failed" ? "重新生成" : "生成") + "</button>";
+  var chip = episodeChip(look.eps);
+  return '<article class="char-card asset-card asset-char asset-sub is-' + state + '" data-kind="char" data-i="' + row.i + '" data-key="' + key + '" data-look="' + look.id + '"' + (multiOn ? ' title="多选按角色整体选择"' : "") + ">" +
+    '<div class="asset-card-media is-' + state + (state === "ready" ? " is-sheet" : state === "pending" ? " is-empty" : "") + '">' + visual + flag + "</div>" +
+    '<div class="asset-card-info"><div class="asset-card-title"><h3 title="' + look.name + '">' + (state === "ready" ? READY_MARK : "") + '<span class="asset-name">' + shortName + '</span><span class="tag asset-sub-tag">子角色</span></h3>' +
+    '<span class="looks" title="' + chip.title + '">' + chip.html.replace(/<[^>]+>/g, "") + "</span></div>" +
+    '<p class="asset-sub-owner">' + SUB_ICON + "隶属 " + item.name + (parentName ? " · 上级：" + parentName : "") + "</p>" +
+    "</div></article>";
 }
 
 function visibleAssets() {
@@ -194,13 +267,18 @@ function cardHtml(row) {
     : "";
   var delBtn = multiOn ? "" : '<button type="button" class="card-del" data-del-key="' + key + '" title="删除资产" aria-label="删除' + a.name + '">' + TRASH_ICON + "</button>";
   var actionable = pending && !generatingLooks && state !== "generating";
-  var flag = actionable && !multiOn
+  var subCount = kind === "char" && !expandSubs ? subLooksOf(a).length : 0;
+  var badges = (subCount ? '<button type="button" class="asset-sub-count" data-expand-subs="1" title="展开查看全部子角色">' + SUB_ICON + "子角色 " + subCount + "</button>" : "");
+  var flag = state === "ready"
+    ? ""
+    : actionable && !multiOn
     ? '<button type="button" class="asset-flag is-action ' + flagState + '" data-gen-asset="' + key + '" title="' + (failedLooks ? "重新生成失败内容" : "生成该资产还未完成的内容") + '">' + flagIcon + flagText + "</button>"
     : '<span class="asset-flag ' + flagState + '">' + flagIcon + (multiOn && actionable ? (state === "partial" ? pending + " 个待生成" : "待生成") : flagText) + "</span>";
+  if (state === "ready" && looks > 1) lookText = "共 " + looks + " 个" + unit;
   return '<article class="char-card asset-card asset-' + kind + " is-" + state + (picked ? " is-picked" : "") + '" data-kind="' + kind + '" data-i="' + row.i + '" data-key="' + key + '">' +
-    '<div class="' + mediaClass + '">' + visual + check + delBtn + flag + "</div>" +
-    '<div class="asset-card-info"><div class="asset-card-title"><h3>' + a.name +
-    (a.tag ? ' <span class="tag">' + a.tag + "</span>" : "") + '</h3><span class="looks">' + lookText + "</span></div>" +
+    '<div class="' + mediaClass + '">' + visual + check + delBtn + (badges ? '<div class="asset-badges">' + badges + "</div>" : "") + flag + "</div>" +
+    '<div class="asset-card-info"><div class="asset-card-title"><h3>' + (state === "ready" ? READY_MARK : "") + '<span class="asset-name">' + a.name + "</span>" +
+    roleTagsHtml(a, kind) + "</h3>" + (looks > 1 ? '<span class="looks">' + lookText + "</span>" : "") + "</div>" +
     (a.desc ? "<p>" + a.desc + "</p>" : '<p class="asset-empty-desc">点击卡片直接编辑资产</p>') +
     "</div></article>";
 }
@@ -209,8 +287,16 @@ function render() {
   var rows = visibleAssets();
   renderTabCounts();
   document.getElementById("grid").innerHTML = rows.length
-    ? rows.map(cardHtml).join("")
+    ? rows.map(function (row) {
+        var html = cardHtml(row);
+        if (expandSubs && row.kind === "char") {
+          html += subLooksOf(row.item).map(function (entry) { return subCardHtml(row, entry); }).join("");
+        }
+        return html;
+      }).join("")
     : '<p class="asset-none">没有找到相关资产</p>';
+  document.getElementById("grid").classList.toggle("is-expanded", expandSubs && tab === "char");
+  paintExpandButton();
   document.getElementById("grid").classList.toggle("is-multiselect", multiOn);
   syncGenButton();
 }
@@ -1090,6 +1176,25 @@ document.getElementById("grid").onclick = function (e) {
     openDeleteConfirm(del.dataset.delKey);
     return;
   }
+  if (e.target.closest("[data-expand-subs]")) {
+    var ownerKey = e.target.closest(".char-card").dataset.key;
+    expandSubs = true;
+    render();
+    var owner = document.querySelector('#grid [data-key="' + ownerKey + '"]');
+    if (owner) owner.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    return;
+  }
+  var genLook = e.target.closest("[data-gen-look]");
+  if (genLook) {
+    var lookParts = genLook.dataset.genLook.split("|");
+    var owner2 = D.characters[Number(lookParts[0].split(":")[1])];
+    var lookId = lookParts[1];
+    var target = (owner2.looksList || []).filter(function (look) { return look.id === lookId; })[0];
+    revealItemLooks(owner2, function (look) { return look && look.id === lookId; });
+    render();
+    ReplicaUI.toast("已生成「" + (target ? target.name : owner2.name) + "」");
+    return;
+  }
   var gen = e.target.closest("[data-gen-asset]");
   if (gen) {
     var parts = gen.dataset.genAsset.split(":");
@@ -1104,6 +1209,7 @@ document.getElementById("grid").onclick = function (e) {
   var card = e.target.closest(".char-card");
   if (!card) return;
   if (multiOn) {
+    if (card.dataset.look) return;
     var pick = card.dataset.key;
     var on = !selectedAssets[pick];
     if (on) selectedAssets[pick] = true;
@@ -1126,10 +1232,32 @@ document.getElementById("grid").onclick = function (e) {
     var primaryLook = looks.find(function (look) {
       return item.look && look.name.indexOf(item.look) !== -1;
     }) || looks[0] || null;
-    fillLookForm(primaryLook);
+    var subLook = card.dataset.look && looks.filter(function (look) { return look.id === card.dataset.look; })[0];
+    fillLookForm(subLook || primaryLook);
     return;
   }
 };
+
+document.getElementById("asset-expand").onclick = function () {
+  expandSubs = !expandSubs;
+  render();
+  ReplicaUI.toast(expandSubs ? "已平铺所有子角色" : "子角色已收回主角色下");
+};
+
+document.getElementById("role-tier").onclick = function (e) {
+  var b = e.target.closest("[data-role-tier]");
+  if (!b) return;
+  roleTier = b.dataset.roleTier;
+  paintRoleTier();
+};
+
+function paintRoleTier() {
+  document.querySelectorAll("#role-tier [data-role-tier]").forEach(function (b) {
+    var on = b.dataset.roleTier === roleTier;
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-checked", on ? "true" : "false");
+  });
+}
 
 document.querySelector(".tabs").onclick = function (e) {
   var b = e.target.closest("[data-tab]");
@@ -2076,6 +2204,9 @@ function openCreateDialog(mode) {
   document.getElementById("role-name").placeholder = "请输入" + (child ? "子" : "") + word + "名称";
   document.getElementById("role-desc").value = "";
   document.getElementById("role-desc-wrap").hidden = child || kind !== "char";
+  document.getElementById("role-tier-wrap").hidden = child || kind !== "char";
+  roleTier = "配角";
+  paintRoleTier();
   document.getElementById("role-voice").value = "";
   document.getElementById("role-voice-wrap").hidden = kind !== "char";
   roleEpsNumbers = [];
@@ -2133,6 +2264,7 @@ document.getElementById("role-save").onclick = function () {
   var item = {
     id: kind + "-" + Date.now(),
     name: name,
+    role: kind === "char" ? roleTier : undefined,
     desc: document.getElementById("role-desc").value.trim(),
     voice: kind === "char" ? voice : "",
     status: "pending",

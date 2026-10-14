@@ -1,5 +1,4 @@
 var D = ReplicaData;
-var promoClosed = false;
 var RATE = { "480P": 2, "720P": 3, "1080P": 5 };
 var EP_SEC = 60;
 var AUDIO_SEC = 72;
@@ -7,56 +6,143 @@ var creditsEl = document.getElementById("credits");
 var epsEl = document.getElementById("eps");
 creditsEl.textContent = ReplicaUI.credits();
 
-function directorBtn(showPromo) {
-  return '<div class="comment-promo is-on">' +
-      '<span class="promo-halo" aria-hidden="true"></span>' +
-      '<button class="btn" type="button" data-act="director">导演级分镜</button>' +
-      (showPromo
-        ? '<div class="promo-bubble' + (promoClosed ? "" : " show") + '" role="status">' +
-            "<span>解说剧导演级分镜 V 2.5<br>焕新上线，成片效果全面升级</span>" +
-            '<button type="button" class="promo-x" aria-label="关闭提示">✕</button>' +
-            '<i class="promo-arrow"></i>' +
-          "</div>"
-        : "") +
+var FLOWS = {
+  oc: { name: "一键成片", steps: ["拆分镜", "生成画面", "配音合成", "视频合成"], minutes: 12 },
+  ds: { name: "导演级分镜", steps: ["解析剧本", "设计镜头", "生成提示词"], minutes: 4 }
+};
+var STATES = {
+  parse: { label: "待制作", tone: "idle" },
+  running: { label: "生成中", tone: "run" },
+  failed: { label: "生成失败", tone: "bad" },
+  ready: { label: "可创作", tone: "ready" },
+  done: { label: "已成片", tone: "done" }
+};
+var FILTERS = [
+  { id: "all", label: "全部" },
+  { id: "parse", label: "待制作" },
+  { id: "running", label: "生成中" },
+  { id: "failed", label: "失败" },
+  { id: "ready", label: "可创作" },
+  { id: "done", label: "已成片" }
+];
+var view = { filter: "all", query: "" };
+var ICON_PLAY = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 3.6v8.8L12.4 8 5.5 3.6Z" fill="currentColor"/></svg>';
+var ICON_RETRY = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12.8 6.2A5 5 0 1 0 13 9.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M13.2 2.8v3.6H9.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+function flowOf(ep) { return FLOWS[ep.task === "ds" ? "ds" : "oc"]; }
+
+function epById(id) { return D.episodes.filter(function (x) { return x.id === id; })[0]; }
+
+function coverOf(ep) {
+  var scene = D.scenes.filter(function (s) { return s.image && s.eps.indexOf(ep.no) >= 0; })[0];
+  return scene ? scene.image : "media/scenes/office.png";
+}
+
+function shortTitle(ep) { return ep.title.split("：")[1] || ep.title; }
+
+function progressInfo(ep) {
+  var flow = flowOf(ep);
+  var n = flow.steps.length;
+  var share = 100 / n;
+  var idx = Math.min(n - 1, Math.floor(ep.pct / share));
+  return {
+    flow: flow,
+    idx: idx,
+    fills: flow.steps.map(function (_, i) {
+      return i < idx ? 100 : i > idx ? 0 : Math.round((ep.pct - idx * share) / share * 100);
+    }),
+    left: Math.max(1, Math.ceil((100 - ep.pct) / 100 * flow.minutes))
+  };
+}
+
+function progressHtml(ep) {
+  var info = progressInfo(ep);
+  return '<div class="ep-progress">' +
+      '<div class="ep-progress-top"><span class="ep-progress-name"><i class="ep-pulse"></i><em class="ep-progress-flow">' + info.flow.name + "</em>·<em class=\"ep-progress-step\">" + info.flow.steps[info.idx] + "</em></span>" +
+        '<b class="ep-progress-pct">' + ep.pct + "%</b></div>" +
+      '<div class="ep-steps">' + info.flow.steps.map(function (name, i) {
+        return '<span class="ep-step' + (i < info.idx ? " is-done" : i === info.idx ? " is-current" : "") + '"><i><b style="width:' + info.fills[i] + '%"></b></i><em>' + name + "</em></span>";
+      }).join("") + "</div>" +
+      '<div class="ep-progress-foot"><span class="ep-progress-left">预计剩余约 ' + info.left + " 分钟</span><span>完成后通知</span></div>" +
     "</div>";
 }
 
-function actsHtml(ep, showPromo) {
+function updateProgress(ep) {
+  var card = epsEl.querySelector('[data-id="' + ep.id + '"]');
+  var box = card && card.querySelector(".ep-progress");
+  if (!box) return;
+  var info = progressInfo(ep);
+  box.querySelector(".ep-progress-step").textContent = info.flow.steps[info.idx];
+  box.querySelector(".ep-progress-pct").textContent = ep.pct + "%";
+  box.querySelector(".ep-progress-left").textContent = "预计剩余约 " + info.left + " 分钟";
+  [].forEach.call(box.querySelectorAll(".ep-step"), function (el, i) {
+    el.classList.toggle("is-done", i < info.idx);
+    el.classList.toggle("is-current", i === info.idx);
+    el.querySelector("b").style.width = info.fills[i] + "%";
+  });
+}
+
+function actsHtml(ep) {
   if (ep.status === "ready") {
-    return '<div class="ep-status">解析完成，开始制作视频</div><div class="ep-acts"><a class="btn" href="workspace.html">编辑</a></div>';
+    return '<div class="ep-acts"><a class="btn purple ep-main" href="workspace.html">创作</a></div>';
   }
   if (ep.status === "done") {
-    return '<div class="ep-status">已成片</div><div class="ep-acts"><a class="btn" href="workspace.html">进入编辑</a></div>';
+    return '<div class="ep-acts"><a class="btn ep-main" href="workspace.html">编辑</a>' +
+      '<button class="btn ep-ghost" type="button" data-act="preview">' + ICON_PLAY + "预览</button></div>";
   }
-  if (ep.status === "running") {
-    return '<div class="ep-running"><span>' + (ep.task === "ds" ? "导演级分镜生成中" : "一键成片生成中") + '</span><span class="bar"><i style="width:' + ep.pct + '%"></i></span><span>' + ep.pct + "%</span></div>";
+  if (ep.status === "running") return progressHtml(ep);
+  if (ep.status === "failed") {
+    var flow = flowOf(ep);
+    return '<p class="ep-note is-bad">' + flow.steps[ep.failStep || 0] + "失败：" + (ep.failReason || "服务繁忙") + "，积分已退回</p>" +
+      '<div class="ep-acts"><button class="btn oneclick" type="button" data-act="retry">' + ICON_RETRY + "重新生成</button></div>";
   }
   return '<div class="ep-acts">' +
       '<button class="btn oneclick" type="button" data-act="oneclick">' +
         '<svg viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M7 .8 2.9 6.7h2.3L4.8 11.2 9.1 5H6.6L7 .8Z" fill="currentColor"/></svg>' +
         "一键成片" +
       "</button>" +
-      directorBtn(showPromo) +
+      '<button class="btn" type="button" data-act="director">导演级分镜</button>' +
     "</div>";
 }
 
+function matchesView(ep) {
+  if (view.query && ep.title.indexOf(view.query) < 0) return false;
+  return view.filter === "all" || ep.status === view.filter;
+}
+
+function renderFilters() {
+  var pool = D.episodes.filter(function (ep) { return !view.query || ep.title.indexOf(view.query) >= 0; });
+  document.getElementById("ep-filters").innerHTML = FILTERS.map(function (f) {
+    var n = f.id === "all" ? pool.length : pool.filter(function (ep) { return ep.status === f.id; }).length;
+    if (!n && f.id !== "all" && f.id !== view.filter) return "";
+    var on = view.filter === f.id;
+    return '<button type="button" role="tab" data-filter="' + f.id + '" class="ep-filter' + (on ? " on" : "") + (f.id === "running" ? " is-live" : "") + (f.id === "failed" ? " is-bad" : "") + '" aria-selected="' + on + '">' +
+      (f.id === "running" ? '<i class="ep-pulse"></i>' : "") + f.label + "<em>" + n + "</em></button>";
+  }).join("");
+}
+
 function render() {
-  var promoUsed = false;
   document.getElementById("ep-count").textContent = "共 " + D.episodes.length + " 集";
-  epsEl.innerHTML = D.episodes.map(function (ep) {
+  renderFilters();
+  var list = D.episodes.filter(matchesView);
+  document.getElementById("ep-empty").hidden = list.length > 0;
+  epsEl.innerHTML = list.map(function (ep) {
+    var state = STATES[ep.status] || STATES.parse;
     var ready = ep.status === "ready" || ep.status === "done";
-    var idle = ep.status === "parse";
-    var showPromo = idle && !promoUsed;
-    if (showPromo) promoUsed = true;
-    return '<article class="ep-item' + (showPromo ? " has-promo" : "") + '" data-id="' + ep.id + '" data-ready="' + ready + '">' +
-      '<div class="ep-no">' + ep.no + "</div>" +
-      '<div class="ep-cover">' + (ready ? "☰" : "◷") + "</div>" +
-      "<div><h3>" + ep.title + "</h3>" +
-      '<div class="ep-meta"><span>' + ep.roles + " 角色</span><span>" + ep.scenes + " 场景</span><span>" + ep.props + " 道具</span>" +
-      (ep.shots ? "<span>" + ep.shots + " 片段</span>" : "") + "</div>" +
-      actsHtml(ep, showPromo) +
+    var meta = [ep.roles + " 角色", ep.scenes + " 场景", ep.props + " 道具"].concat(ep.shots ? [ep.shots + " 片段"] : []);
+    return '<article class="ep-item is-tone-' + state.tone + (ep.fresh ? " is-fresh" : "") + '" data-id="' + ep.id + '" data-ready="' + ready + '">' +
+      '<div class="ep-cover">' +
+        '<img src="' + coverOf(ep) + '" alt="" loading="lazy" decoding="async" />' +
+        '<span class="ep-cover-no">EP ' + (ep.no < 10 ? "0" : "") + ep.no + "</span>" +
+        (ep.status === "done" ? '<span class="ep-cover-play">' + ICON_PLAY + '</span><span class="ep-cover-dur">' + (ep.duration || "01:00") + "</span>" : "") +
+      "</div>" +
+      '<div class="ep-body">' +
+        '<div class="ep-head"><h3 title="' + ep.title + '">' + shortTitle(ep) + '</h3><span class="ep-badge">' + state.label + "</span></div>" +
+        '<div class="ep-meta">' + meta.map(function (m) { return "<span>" + m + "</span>"; }).join("") + "</div>" +
+        '<div class="ep-foot">' + actsHtml(ep) + "</div>" +
       "</div></article>";
   }).join("");
+  D.episodes.forEach(function (ep) { ep.fresh = false; });
 }
 
 var oc = {
@@ -130,29 +216,52 @@ function ocClose() {
 
 function ocSubmit() {
   var ep = oc.ep;
-  if (!ep || oc.ok.disabled || ep.status !== "parse") return;
+  if (!ep || oc.ok.disabled || (ep.status !== "parse" && ep.status !== "failed")) return;
   oc.ok.disabled = true;
   D.credits -= ocCost();
   creditsEl.textContent = ReplicaUI.credits();
   ocClose();
   ReplicaUI.toast("已提交一键成片，预扣积分，结束后按实际成功秒数多退少补");
-  runTask(ep, "oc", "done", "已成片");
+  runTask(ep, "oc");
 }
 
-function runTask(ep, task, doneStatus, doneMsg) {
+function finishTask(ep) {
+  var label = ep.title.split("：")[0];
+  if (ep.task === "ds") {
+    ep.status = "ready";
+    ep.shots = ep.shots || 4 + ep.no % 5;
+    ReplicaUI.toast(label + " 导演级分镜已生成，可以开始创作");
+  } else {
+    ep.status = "done";
+    ep.shots = ep.shots || 4 + ep.no % 5;
+    ep.duration = ep.duration || "00:" + (40 + ep.no % 20);
+    ReplicaUI.toast(label + " 已成片，可预览或继续编辑");
+  }
+  ep.fresh = true;
+  render();
+}
+
+function tick(ep) {
+  var timer = setInterval(function () {
+    ep.pct = Math.min(100, ep.pct + 3);
+    if (ep.pct >= 100) {
+      clearInterval(timer);
+      finishTask(ep);
+      return;
+    }
+    updateProgress(ep);
+  }, 600);
+}
+
+function runTask(ep, task) {
   ep.status = "running";
   ep.task = task;
   ep.pct = 0;
+  ep.failStep = null;
+  ep.failReason = null;
+  if (view.filter !== "all" && view.filter !== "running") view.filter = "all";
   render();
-  var timer = setInterval(function () {
-    ep.pct = Math.min(100, ep.pct + 10);
-    if (ep.pct >= 100) {
-      clearInterval(timer);
-      ep.status = doneStatus;
-      ReplicaUI.toast(ep.title.split("：")[0] + " " + doneMsg);
-    }
-    render();
-  }, 800);
+  tick(ep);
 }
 
 var DS_COST = { "480P": 40, "720P": 60, "1080P": 100 };
@@ -189,13 +298,13 @@ function dsClose() {
 
 function dsSubmit() {
   var ep = ds.ep;
-  if (!ep || ds.ok.disabled || ep.status !== "parse") return;
+  if (!ep || ds.ok.disabled || (ep.status !== "parse" && ep.status !== "failed")) return;
   ds.ok.disabled = true;
   D.credits -= dsCost();
   creditsEl.textContent = ReplicaUI.credits();
   dsClose();
   ReplicaUI.toast("已提交导演级分镜任务");
-  runTask(ep, "ds", "ready", "导演级分镜已生成");
+  runTask(ep, "ds");
 }
 
 ds.res.onchange = dsRefresh;
@@ -219,23 +328,30 @@ document.getElementById("oc-play").onclick = function () { ReplicaUI.toast("演�
 document.getElementById("oc-del").onclick = function () { oc.hasAudio = false; ocRefresh(); };
 
 render();
+D.episodes.forEach(function (ep) { if (ep.status === "running") tick(ep); });
+
+document.getElementById("ep-filters").onclick = function (e) {
+  var btn = e.target.closest("[data-filter]");
+  if (!btn) return;
+  view.filter = btn.dataset.filter;
+  render();
+};
+document.getElementById("ep-search").oninput = function () {
+  view.query = this.value.trim();
+  render();
+};
 
 epsEl.onclick = function (e) {
-  var close = e.target.closest(".promo-x");
-  if (close) {
-    e.preventDefault();
-    e.stopPropagation();
-    promoClosed = true;
-    close.closest(".promo-bubble").classList.remove("show");
-    return;
-  }
   var card = e.target.closest(".ep-item");
   if (!card) return;
   var act = e.target.closest("[data-act]");
   if (act) {
-    var ep = D.episodes.filter(function (x) { return x.id === card.dataset.id; })[0];
-    if (act.getAttribute("data-act") === "oneclick") ocOpen(ep);
-    else if (act.getAttribute("data-act") === "director") dsOpen(ep);
+    var ep = epById(card.dataset.id);
+    var name = act.getAttribute("data-act");
+    if (name === "oneclick") ocOpen(ep);
+    else if (name === "director") dsOpen(ep);
+    else if (name === "retry") (ep.task === "ds" ? dsOpen : ocOpen)(ep);
+    else if (name === "preview") ReplicaUI.toast("演示：播放" + ep.title.split("：")[0] + "成片");
     return;
   }
   if (e.target.closest("a")) return;
