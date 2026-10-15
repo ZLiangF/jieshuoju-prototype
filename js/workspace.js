@@ -21,6 +21,8 @@
     promptShot: null,
     activeScene: {},
     selected: null,
+    peopleOpen: false,
+    peopleQuery: "",
     pendingScene: null
   };
   var finalResolution = "1080P";
@@ -95,8 +97,17 @@
   }
 
   function sceneCard(s) {
+    var inShot = (shot().scenes || []).indexOf(s.key) > -1;
+    var hot = "";
+    if (inShot) {
+      var st = stageOf(shot());
+      var n = (st.boards[s.key] && st.boards[s.key].marks.length) || 0;
+      hot = '<span class="ws-stage-hot ' + (st.apply ? "is-on" : "is-off") + '" data-stage-open="' + s.key + '" role="button" tabindex="0" aria-label="站位图，当前' + (st.apply ? "已启用" : "已关闭") + '" data-tip="站位图">' +
+        stageStatusIcon(st.apply) + (n ? "<em>" + n + "</em>" : "") + "</span>";
+    }
     return '<button class="acard ws-acard is-scene" data-asset="' + s.key + '" data-kind="scene">' +
-      '<span class="thumb"><img loading="lazy" decoding="async" src="' + s.image + '" alt=""></span><span class="name">' + s.name + "</span></button>";
+      '<span class="thumb"><img loading="lazy" decoding="async" src="' + s.image + '" alt=""></span>' + hot +
+      '<span class="name">' + s.name + "</span></button>";
   }
 
   function propCard(p) {
@@ -159,8 +170,15 @@
   /* ---------- 提示词 ---------- */
 
   var CHIP_ICONS = { c: ICON_CHAR, s: ICON_SCENE, p: ICON_PROP };
-  var ICON_STAGE = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="6" cy="7" r="1.3" fill="currentColor"/><path d="M4.4 11.2c0-1.1.7-1.9 1.6-1.9s1.6.8 1.6 1.9" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="10.6" cy="7.6" r="1.1" fill="currentColor"/></svg>';
+  var ICON_STAGE = '<svg viewBox="0 0 18 18" aria-hidden="true"><path d="M3 6V3h3M12 3h3v3M15 12v3h-3M6 15H3v-3" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/><circle cx="9" cy="7" r="2" fill="none" stroke="currentColor" stroke-width="1.35"/><path d="M5.8 13c.5-2.1 1.6-3.2 3.2-3.2s2.7 1.1 3.2 3.2" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg>';
   var STATION_RULE = "是站位图参考，严禁生成任何标记服装块到正式视频生成中。";
+
+  function stageStatusIcon(on) {
+    var status = on
+      ? '<path class="ws-stage-status-path" d="m11.6 13.5 1.5 1.5 2.8-3.1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>'
+      : '<path class="ws-stage-status-path" d="M4 4l10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>';
+    return ICON_STAGE.replace("</svg>", status + "</svg>");
+  }
 
   function markPlace(key, m) {
     var name = pointName(key, m.point);
@@ -232,7 +250,7 @@
         var pt = info && info.points.find(function (p) { return p.id === a.point; });
         if (pt && boards[a.scene]) boards[a.scene].marks.push(newMark(a.asset, pt, a.dir));
       });
-      stages[s.id] = { apply: (s.anchors || []).length > 0, boards: boards, past: [], future: [] };
+      stages[s.id] = { apply: false, boards: boards, past: [], future: [] };
     }
     return stages[s.id];
   }
@@ -311,7 +329,7 @@
     return { used: used, nearest: byDistance[0], free: byDistance.filter(function (p) { return !used[p.id]; }) };
   }
 
-  function placeAsset(assetId, at) {
+  function placeAsset(assetId, at, addedToShot) {
     var s = shot();
     var key = activeKey(s);
     var board = boardOf(s);
@@ -332,12 +350,10 @@
     var mark = newMark(assetId, pt, 0);
     board.marks.push(mark);
     state.selected = mark.id;
-    var st = stageOf(s);
-    if (!st.apply) st.apply = true;
     renderAll();
     if (!free.length) ReplicaUI.toast("预设点位都有人了，已放在松手的位置");
     else if (at && nearest && used[nearest.id]) ReplicaUI.toast("「" + nearest.name + "」已有人，已吸附到旁边的「" + pt.name + "」");
-    else ReplicaUI.toast(c.name + " 已放到「" + pt.name + "」");
+    else ReplicaUI.toast((addedToShot ? c.name + " 已加入当前片段，并放到「" : c.name + " 已放到「") + pt.name + "」");
   }
 
   function overlapping(marks, p, canvasW, canvasH) {
@@ -366,7 +382,7 @@
   function fitCanvas() {
     var wrap = $("#sv-wrap");
     var canvas = $("#sv-canvas");
-    if (!wrap || !canvas || $("#stage-view").hidden) return;
+    if (!wrap || !canvas || !$("#stage-modal").classList.contains("open")) return;
     var w = wrap.clientWidth, h = wrap.clientHeight;
     var cw = Math.min(w, h * 16 / 9);
     canvas.style.width = Math.floor(cw) + "px";
@@ -402,8 +418,8 @@
     if (!empty.hidden) {
       var parsed = (s.anchors || []).length > 0;
       empty.innerHTML = parsed
-        ? "<b>这张图还没有站位</b><span>把左侧或下方的角色拖进来，会吸附到最近的空位</span>"
-        : "<b>分镜里没有描述人物站位</b><span>没有自动摆放。把角色拖进来，会吸附到最近的预设点位</span>";
+        ? "<b>这张图还没有站位</b><span>把下方的角色拖进来，会吸附到最近的空位</span>"
+        : "<b>分镜里没有描述人物站位</b><span>没有自动摆放。把下方的角色拖进来，会吸附到最近的预设点位</span>";
     }
     $("#sv-off").hidden = !off;
 
@@ -511,6 +527,47 @@
         "<i></i><b>" + c.name + "</b><small>" + note + "</small></button>";
     }).join("") + (chars.length ? "" : '<small class="sv-tray-none">这个片段没有引用角色</small>');
     if (!sceneInfo(key)) $("#sv-tray").innerHTML = "";
+    renderPeoplePicker();
+  }
+
+  function renderPeoplePicker() {
+    var picker = $("#sv-person-picker");
+    var toggle = $(".sv-add-person");
+    picker.hidden = !state.peopleOpen;
+    toggle.classList.toggle("on", state.peopleOpen);
+    toggle.setAttribute("aria-expanded", state.peopleOpen ? "true" : "false");
+    if (!state.peopleOpen) return;
+
+    var input = $("#sv-person-search");
+    if (input.value !== state.peopleQuery) input.value = state.peopleQuery;
+    var s = shot();
+    var refs = s.refs || [];
+    var board = boardOf(s);
+    var q = state.peopleQuery.trim().toLowerCase();
+    var chars = D.characters.filter(inEpisode).filter(function (c) {
+      return !q || (c.name + " " + charLabel(c) + " " + (c.role || "")).toLowerCase().indexOf(q) > -1;
+    });
+    $("#sv-person-list").innerHTML = chars.length ? chars.map(function (c) {
+      var placed = board.marks.some(function (m) { return m.asset === c.id; });
+      var referenced = refs.indexOf(c.id) > -1;
+      return '<button type="button" class="sv-person-row' + (placed ? " is-placed" : "") + '" data-stage-person="' + c.id + '"' + (placed ? " disabled" : "") + ">" +
+        '<img src="' + outfitImage(c) + '" alt="" loading="lazy" decoding="async">' +
+        '<span><b>' + c.name + "</b><small>" + (c.role || "角色") + (referenced ? " · 本片段" : " · 角色库") + "</small></span>" +
+        '<em>' + (placed ? "已在图中" : referenced ? "添加" : "加入并添加") + "</em></button>";
+    }).join("") : '<div class="sv-person-empty">没有找到角色</div>';
+  }
+
+  function addStagePerson(assetId) {
+    var s = shot();
+    var c = charById(assetId);
+    if (!c) return;
+    if (!s.refs) s.refs = [];
+    var added = (s.refs || []).indexOf(assetId) < 0;
+    if (added) s.refs.push(assetId);
+    s.offscreen = (s.offscreen || []).filter(function (item) { return item.asset !== assetId; });
+    state.peopleOpen = false;
+    state.peopleQuery = "";
+    placeAsset(assetId, null, added);
   }
 
   /* ---------- 编辑区 / 播放器 / 时间线 ---------- */
@@ -547,12 +604,6 @@
     sw.disabled = state.generating === s.id || state.upgrading === s.id;
     sw.title = sw.disabled ? "生成中，暂不可切换" : st.apply ? "生成视频时使用站位信息" : "生成视频时不使用站位信息，已有站位会保留";
 
-    var n = markCount(s);
-    $("#view-prompt").classList.toggle("on", state.view === "prompt");
-    $("#view-stage").classList.toggle("on", state.view === "stage");
-    $("#view-prompt").setAttribute("aria-selected", state.view === "prompt" ? "true" : "false");
-    $("#view-stage").setAttribute("aria-selected", state.view === "stage" ? "true" : "false");
-    $("#view-stage").innerHTML = "站位" + (st.apply ? (n ? " <b>" + n + "</b>" : "") : ' <small>未应用</small>');
   }
 
   function renderEditor() {
@@ -564,8 +615,7 @@
       if (state.promptShot === null || state.promptShot.split("|")[0] !== s.id) $("#dur").value = s.duration;
       state.promptShot = promptKey;
     }
-    $("#prompt-box").hidden = state.view !== "prompt";
-    $("#stage-view").hidden = state.view !== "stage";
+    $("#stage-modal").classList.toggle("open", state.view === "stage");
     renderToolbar();
     renderPlayer();
     if (state.view === "stage") renderStage();
@@ -616,14 +666,30 @@
 
   function renderAll() { renderAssets(); renderEditor(); renderTimeline(); }
 
-  function setView(view) {
-    var st = stageOf(shot());
-    if (view === "stage" && !st.apply && markCount(shot()) > 0) {
-      st.apply = true;
-      ReplicaUI.toast("已开启「应用站位」");
+  function openStage(key, turnOn) {
+    var s = shot();
+    if ((s.scenes || []).indexOf(key) < 0) {
+      ReplicaUI.toast("这张场景图不在当前片段里");
+      return;
     }
-    state.view = view;
+    state.activeScene[s.id] = key;
+    var st = stageOf(s);
+    var turned = !!(turnOn && !st.apply);
+    if (turned) st.apply = true;
+    state.view = "stage";
     state.selected = null;
+    state.peopleOpen = false;
+    state.peopleQuery = "";
+    renderAll();
+    if (turned) ReplicaUI.toast("已开启应用站位");
+  }
+
+  function closeStage() {
+    if (state.view !== "stage") return;
+    state.view = "prompt";
+    state.selected = null;
+    state.peopleOpen = false;
+    state.peopleQuery = "";
     renderAll();
   }
 
@@ -635,14 +701,20 @@
   /* ---------- 事件 ---------- */
 
   document.addEventListener("click", function (e) {
-    var t = e.target.closest("[data-act],[data-shot],[data-tab],[data-asset],[data-model],[data-resolution],[data-view],[data-sv],[data-scene],[data-select]");
+    var t = e.target.closest("[data-act],[data-shot],[data-tab],[data-asset],[data-model],[data-resolution],[data-sv],[data-scene],[data-select],[data-stage-open],[data-stage-person]");
+    if (state.peopleOpen && !e.target.closest("#sv-person-picker") && !e.target.closest(".sv-add-person")) {
+      state.peopleOpen = false;
+      state.peopleQuery = "";
+      renderPeoplePicker();
+    }
     if (!e.target.closest(".model-wrap") && (state.modelOpen || state.resolutionOpen)) {
       state.modelOpen = false;
       state.resolutionOpen = false;
       renderToolbar();
     }
     if (!t) return;
-    if (t.dataset.view) { setView(t.dataset.view); return; }
+    if (t.dataset.stageOpen) { openStage(t.dataset.stageOpen, false); return; }
+    if (t.dataset.stagePerson) { addStagePerson(t.dataset.stagePerson); return; }
     if (t.dataset.scene) {
       state.activeScene[state.shotId] = t.dataset.scene;
       state.selected = null;
@@ -705,6 +777,20 @@
       var on = !t.classList.contains("on");
       t.classList.toggle("on", on);
       t.setAttribute("aria-checked", on ? "true" : "false");
+    }
+    if (act === "close-stage") { closeStage(); return; }
+    if (act === "toggle-stage-people") {
+      state.peopleOpen = !state.peopleOpen;
+      state.peopleQuery = "";
+      renderPeoplePicker();
+      if (state.peopleOpen) setTimeout(function () { $("#sv-person-search").focus(); }, 0);
+      return;
+    }
+    if (act === "close-stage-people") {
+      state.peopleOpen = false;
+      state.peopleQuery = "";
+      renderPeoplePicker();
+      return;
     }
     if (act === "stage-switch") {
       if (t.disabled) return;
@@ -1002,14 +1088,32 @@
   }
 
   document.addEventListener("keydown", function (e) {
+    var hotKey = e.target.closest && e.target.closest("[data-stage-open]");
+    if (hotKey && (e.key === "Enter" || e.key === " ")) {
+      e.preventDefault();
+      openStage(hotKey.dataset.stageOpen, false);
+      return;
+    }
     if (e.key === "Escape" && state.full && !selectedMark() && !document.querySelector(".modal-mask.open")) { setFull(false); return; }
     if (state.view !== "stage") return;
+    if (e.key === "Escape" && state.peopleOpen) {
+      state.peopleOpen = false;
+      state.peopleQuery = "";
+      renderPeoplePicker();
+      return;
+    }
     var tag = (e.target.tagName || "").toLowerCase();
     if (tag === "input" || tag === "textarea" || e.target.isContentEditable) return;
     var meta = e.metaKey || e.ctrlKey;
     if (meta && e.key.toLowerCase() === "z") {
       e.preventDefault();
       if (restore(e.shiftKey ? "redo" : "undo")) renderAll();
+      return;
+    }
+    if (e.key === "Escape") {
+      if ($("#scene-changed-modal").classList.contains("open")) return;
+      if (selectedMark()) { state.selected = null; renderStage(); return; }
+      closeStage();
       return;
     }
     var m = selectedMark();
@@ -1029,14 +1133,19 @@
     if (e.key === "Delete" || e.key === "Backspace") {
       e.preventDefault();
       stageAction("remove");
-      return;
     }
-    if (e.key === "Escape") { state.selected = null; renderStage(); }
   });
+
+  $("#stage-modal").addEventListener("click", function (e) { if (e.target === this) closeStage(); });
 
   window.addEventListener("resize", function () { if (state.view === "stage") renderStage(); });
   $("#sv-image").addEventListener("load", function () { if (state.view === "stage") renderStage(); });
 
   $("#asset-search").oninput = function () { state.query = this.value; renderAssets(); };
+  $("#sv-person-search").oninput = function () {
+    state.peopleQuery = this.value;
+    renderPeoplePicker();
+    $("#sv-person-search").focus();
+  };
   renderAll();
 })();
