@@ -182,8 +182,7 @@ function paintExpandButton() {
 }
 
 function roleTagsHtml(a, kind) {
-  var role = kind === "char" && a.role ? '<span class="tag asset-role is-' + ROLE_TONES[a.role] + '">' + a.role + "</span>" : "";
-  return role + (a.tag ? '<span class="tag asset-faction">' + a.tag + "</span>" : "");
+  return kind === "char" && a.role ? '<span class="tag asset-role is-' + ROLE_TONES[a.role] + '">' + a.role + "</span>" : "";
 }
 
 function primaryLookOf(item) {
