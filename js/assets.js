@@ -507,10 +507,10 @@ function lookCardHtml(look, index, flat) {
       : state === "generating"
       ? '<span class="look-card-empty is-generating" aria-hidden="true"><i></i><small>' + (look.generationProgress || 8) + "%</small></span>"
       : '<span class="look-card-empty" aria-hidden="true">' + (editorKind === "char" ? EMPTY_PERSON_ICON : EMPTY_IMAGE_ICON) + "</span>") + check +
-    '<span class="look-state-tag ' + state + '">' + lookStateIcon(state) + lookStateText(state) + "</span>" +
+    (state === "ready" ? "" : '<span class="look-state-tag ' + state + '">' + lookStateIcon(state) + lookStateText(state) + "</span>") +
     (editorKind === "char" && lookMultiOn ? "" : '<button type="button" class="look-card-del" data-del-look="' + look.id + '" title="删除' + assetWord() + '" aria-label="删除' + shortName + '">' + TRASH_ICON + "</button>") +
     "</div>" +
-    '<div class="look-card-info"><div class="look-card-copy"><strong>' + shortName + "</strong>" +
+    '<div class="look-card-info"><div class="look-card-copy"><strong>' + (state === "ready" ? READY_MARK : "") + '<span class="look-card-name">' + shortName + "</span></strong>" +
     '<button type="button" class="look-card-eps' + (chip.compact ? " is-compact" : "") + '" data-look-eps="' + index + '" title="' + chip.title + '">' + chip.html + "</button>" +
     '<div class="look-card-meta"><span class="look-kind-tag ' + (isPrimary ? "is-primary" : "is-child") + '">' + kindText + "</span>" +
     (parentName ? '<span class="look-parent-name">' + parentName + "</span>" : "") +
@@ -559,8 +559,10 @@ function renderLookTreeNodes(looks, parent, primary) {
         ? '<button type="button" class="look-tree-toggle' + (open ? " is-open" : "") + '" data-toggle-look="' + look.id + '" aria-label="展开子' + assetWord() + '">›</button>'
         : '<span class="look-tree-toggle is-leaf"></span>') +
       '<button type="button" class="look-tree-main" data-look-index="' + index + '">' + check + thumb +
-      '<span class="look-tree-copy"><strong>' + lookShortName(look) + '</strong><small>' +
-      '<i class="look-kind-inline">子' + assetWord() + '</i><i class="state ' + state + '">' + lookStateText(state) + "</i><i>" + chipText + "</i>" +
+      '<span class="look-tree-copy"><strong>' + (state === "ready" ? READY_MARK : "") + '<span class="look-tree-name">' + lookShortName(look) + "</span></strong><small>" +
+      '<i class="look-kind-inline">子' + assetWord() + "</i>" +
+      (state === "ready" ? "" : '<i class="state ' + state + '">' + lookStateText(state) + "</i>") +
+      "<i>" + chipText + "</i>" +
       (childCount ? "<i>" + childCount + " 个子" + assetWord() + "</i>" : "") +
       "</small></span></button>" +
       '<button type="button" class="look-tree-voice' + (look.voice ? " bound" : "") + '" data-look-voice="' + index + '" title="' + (look.voice || "绑定音色") + '"><span>♪</span>' + voiceLabel(look.voice) + "</button>" +
@@ -723,8 +725,9 @@ function renderCurrentLookOutput(look) {
   var preview = document.getElementById("f-preview");
   var state = look ? lookVisualState(look, (currentChar.looksList || []).indexOf(look)) : "pending";
   var stateBadge = document.getElementById("current-look-state");
+  stateBadge.hidden = state === "ready";
   stateBadge.className = "current-look-state " + state;
-  stateBadge.textContent = lookStateText(state);
+  stateBadge.textContent = state === "ready" ? "" : lookStateText(state);
 
   var hasSheet = !!(look && sheetForLook(look) && state === "ready");
   previewRailSrc = hasSheet ? sheetForLook(look) : "";
@@ -1838,6 +1841,18 @@ document.getElementById("upload-audio").onclick = function () { ReplicaUI.toast(
 document.getElementById("local-upload").onclick = function () { openLookImagePicker("upload"); };
 document.getElementById("reverse-image").onclick = function () { openLookImagePicker("reverse"); };
 document.getElementById("replace-view").onclick = function () { openLookImagePicker("upload"); };
+document.getElementById("download-view").onclick = function () {
+  var src = previewRailSrc || (editingLook ? sheetForLook(editingLook) : "");
+  if (!src) return;
+  var link = document.createElement("a");
+  var name = editingLook ? lookShortName(editingLook) : currentChar.name;
+  link.href = src;
+  link.download = String(name || "形象").replace(/[\\/:*?"<>|]/g, "-") + ".jpg";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  ReplicaUI.toast("已开始下载");
+};
 document.getElementById("preview-side-toggle").onclick = function () {
   previewRailOpen = !previewRailOpen;
   renderPreviewRail(editingLook, !!previewRailSrc || !document.querySelector(".look-current-output").classList.contains("is-empty"));

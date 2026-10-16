@@ -968,15 +968,33 @@ select.search { appearance: none; padding-right: 28px; background-image: linear-
   font-weight: 400;
 }
 .look-card-info strong {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
   overflow: hidden;
   color: #e7e2eb;
   font-size: 12px;
   font-weight: 600;
   line-height: 1.35;
+}
+.look-card-name {
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.look-card-info .asset-done,
+.look-card-info .look-card-name {
+  margin: 0;
+  gap: 0;
+  font-size: inherit;
+}
+.look-card-info .look-card-name { color: inherit; }
+.look-card-info .asset-done,
+.look-tree-copy .asset-done { color: #4fd98f; }
+.look-card-info .asset-done::before,
+.look-card-info .look-card-name::before { content: none; }
 .look-card-info span {
   margin-top: 5px;
   display: inline-flex;
@@ -4413,6 +4431,10 @@ body.asset-editor-page-open { overflow: hidden; }
 .asset-page #look-dialog .look-current-output.is-empty .output-actions {
   display: none;
 }
+.look-current-output:not(.is-empty) #local-upload,
+.look-current-output:not(.is-empty) #reverse-image {
+  display: none;
+}
 .look-generation-live {
   width: min(360px, calc(100% - 40px));
   display: flex;
@@ -5655,14 +5677,23 @@ body.asset-editor-page-open { overflow: hidden; }
 .look-tree-avatar svg { width: 16px; height: 16px; }
 .look-tree-copy { min-width: 0; }
 .look-tree-copy strong {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
   overflow: hidden;
   color: #e7e2eb;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
+}
+.look-tree-name {
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.look-tree-copy .asset-done,
+.look-tree-copy .asset-done svg { width: 12px; height: 12px; }
 .look-tree-copy small {
   display: flex;
   gap: 6px;
