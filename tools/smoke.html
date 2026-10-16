@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>交互冒烟检查</title>
+<style>
+  body { margin: 0; padding: 24px; font: 13px/1.6 -apple-system, "PingFang SC", sans-serif; color: #e8e6ee; background: #121217; }
+  h1 { margin: 0 0 6px; font-size: 18px; }
+  p { margin: 0 0 16px; color: #9a96a6; }
+  button { height: 32px; padding: 0 14px; border: 0; border-radius: 8px; color: #fff; background: #6b46e5; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  table { width: 100%; margin-top: 18px; border-collapse: collapse; }
+  td, th { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,.08); text-align: left; vertical-align: top; }
+  .ok { color: #69d5aa; }
+  .bad { color: #ff788e; }
+  pre { margin: 4px 0 0; max-height: 260px; overflow: auto; white-space: pre-wrap; color: #c9c4d0; font-size: 11px; }
+  iframe { position: fixed; left: -3000px; top: 0; width: 1440px; height: 900px; border: 0; }
+</style>
+</head>
+<body>
+<h1>交互冒烟检查</h1>
+<p>依次打开每个场景，把页面上能看到的按钮、开关、标签逐个点一遍（离开页面的链接会被拦下），记录点哪一下之后出现了脚本报错。改完交互后跑一遍，全部「通过」才算没有引入新的报错。</p>
+<button id="run">开始检查</button>
+<span id="status"></span>
+<table><thead><tr><th>场景</th><th>点击次数</th><th>结果</th></tr></thead><tbody id="rows"></tbody></table>
+<iframe id="frame"></iframe>
+<script>
+  var ROOT = new URLSearchParams(location.search).get("root") || "../";
+  var MAX_CLICKS = 300;
+  var CLICKABLE = 'button, [role="button"], [role="tab"], [role="switch"], a[href], label, input[type="checkbox"], input[type="radio"], summary, [data-look-view], [data-del-look], [data-add-child]';
+
+  function openCharacter(w, name) {
+    var card = [].find.call(w.document.querySelectorAll("#grid .char-card"), function (node) { return node.textContent.indexOf(name) !== -1; });
+    if (!card) throw new Error("找不到角色 " + name);
+    card.click();
+  }
+  function revealFirst(w) {
+    var char = w.D.characters[0];
+    w.revealedAssets[char.id] = true;
+    char.looksList.slice(0, 2).forEach(function (look) { w.revealedLooks[char.id + "/" + look.id] = true; });
+  }
+
+  var SCENARIOS = [
+    { name: "首页", page: "index.html" },
+    { name: "剧本大纲", page: "outline.html" },
+    { name: "资产库列表", page: "assets.html", scope: ".app" },
+    { name: "资产详情 · 待生成", page: "assets.html", scope: "#look-dialog", run: function (w) { openCharacter(w, "萧铭"); } },
+    { name: "资产详情 · 已生成", page: "assets.html", scope: "#look-dialog", run: function (w) { revealFirst(w); openCharacter(w, "萧铭"); } },
+    { name: "资产详情 · 场景", page: "assets.html", scope: "#look-dialog", run: function (w) {
+      [].find.call(w.document.querySelectorAll("button"), function (b) { return b.textContent.indexOf("场景") !== -1; }).click();
+      w.document.querySelector("#grid .char-card").click();
+    } },
+    { name: "分集视频", page: "episodes.html" },
+    { name: "单集工作台", page: "workspace.html" }
+  ];
+
+  function describe(el) {
+    var label = (el.getAttribute("aria-label") || el.title || el.textContent || el.value || "").replace(/\s+/g, " ").trim().slice(0, 24);
+    var id = el.id ? "#" + el.id : "";
+    var cls = (el.getAttribute("class") || "").trim().split(/\s+/).filter(Boolean).slice(0, 2).map(function (c) { return "." + c; }).join("");
+    return el.tagName.toLowerCase() + id + cls + (label ? "「" + label + "」" : "");
+  }
+  function isExit(el) {
+    var label = (el.getAttribute("aria-label") || el.title || el.textContent || "").trim();
+    return /^(×|✕)$|返回|关闭|取消|完成/.test(label) || /-x$|close|back/.test(el.id || "");
+  }
+  function visible(w, el) {
+    if (el.disabled || el.closest("[hidden]") || el.closest(".toast-wrap")) return false;
+    var r = el.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) return false;
+    var cs = w.getComputedStyle(el);
+    return cs.visibility !== "hidden" && cs.display !== "none" && cs.pointerEvents !== "none";
+  }
+
+  function load(page) {
+    return new Promise(function (resolve) {
+      var frame = document.getElementById("frame");
+      var errors = [];
+      function hook(w) {
+        if (!w || w.__smokeHooked) return;
+        w.__smokeHooked = true;
+        w.addEventListener("error", function (e) { errors.push(e.message + (e.filename ? "（" + e.filename.split("/").pop().split("?")[0] + ":" + e.lineno + "）" : "")); });
+        w.addEventListener("unhandledrejection", function (e) { errors.push("未处理的 Promise：" + (e.reason && e.reason.message || e.reason)); });
+        var original = w.console.error;
+        w.console.error = function () { errors.push("console.error：" + [].map.call(arguments, String).join(" ")); return original.apply(this, arguments); };
+        w.alert = function () {};
+        w.confirm = function () { return true; };
+        w.prompt = function () { return ""; };
+        w.open = function () { return null; };
+      }
+      var poll = setInterval(function () { hook(frame.contentWindow); }, 0);
+      frame.onload = function () {
+        clearInterval(poll);
+        hook(frame.contentWindow);
+        var w = frame.contentWindow;
+        w.document.addEventListener("click", function (e) {
+          var a = e.target.closest && e.target.closest("a[href]");
+          if (a && !/^#/.test(a.getAttribute("href"))) e.preventDefault();
+        }, true);
+        setTimeout(function () { resolve({ w: w, errors: errors }); }, 300);
+      };
+      frame.src = ROOT + page + "?smoke=" + Date.now();
+    });
+  }
+
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  async function runScenario(s) {
+    var ctx = await load(s.page);
+    var w = ctx.w;
+    var log = [];
+    var seen = {};
+    var clicks = 0;
+    try { if (s.run) s.run(w); } catch (e) { log.push("准备步骤失败：" + e.message); }
+    await wait(200);
+    while (clicks < MAX_CLICKS) {
+      var root = s.scope ? w.document.querySelector(s.scope) : w.document.body;
+      var overlay = [].find.call(w.document.querySelectorAll(".open, [aria-modal='true']"), function (node) {
+        return node !== root && root && !root.contains(node) && visible(w, node);
+      });
+      var pool = [].slice.call((overlay || root || w.document.body).querySelectorAll(CLICKABLE)).filter(function (el) { return visible(w, el); });
+      var fresh = pool.filter(function (el) { return !seen[describe(el)]; });
+      var next = fresh.find(function (el) { return !isExit(el); }) || fresh[0];
+      if (!next) {
+        if (overlay) {
+          w.document.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+          await wait(80);
+          var stillOpen = overlay.classList.contains("open") && visible(w, overlay);
+          if (stillOpen) overlay.classList.remove("open");
+          continue;
+        }
+        break;
+      }
+      var key = describe(next);
+      seen[key] = true;
+      var before = ctx.errors.length;
+      try { next.click(); } catch (e) { ctx.errors.push(e.message); }
+      clicks++;
+      await wait(60);
+      ctx.errors.slice(before).forEach(function (msg) { log.push("点击 " + key + " → " + msg); });
+    }
+    await wait(400);
+    var late = ctx.errors.filter(function (msg) { return !log.some(function (line) { return line.indexOf(msg) !== -1; }); });
+    late.forEach(function (msg) { log.push("延迟报错 → " + msg); });
+    return { clicks: clicks, log: log };
+  }
+
+  function row(name, clicks, log) {
+    var tr = document.createElement("tr");
+    var ok = !log.length;
+    tr.innerHTML = "<td>" + name + "</td><td>" + clicks + "</td><td class='" + (ok ? "ok" : "bad") + "'>" + (ok ? "通过" : log.length + " 处报错") + (ok ? "" : "<pre></pre>") + "</td>";
+    if (!ok) tr.querySelector("pre").textContent = log.join("\n");
+    document.getElementById("rows").appendChild(tr);
+  }
+
+  document.getElementById("run").onclick = async function () {
+    var button = this;
+    button.disabled = true;
+    document.getElementById("rows").innerHTML = "";
+    var summary = { ok: 0, bad: 0, details: {} };
+    for (var i = 0; i < SCENARIOS.length; i++) {
+      var s = SCENARIOS[i];
+      document.getElementById("status").textContent = "正在检查：" + s.name;
+      var result = await runScenario(s);
+      row(s.name, result.clicks, result.log);
+      summary[result.log.length ? "bad" : "ok"]++;
+      if (result.log.length) summary.details[s.name] = result.log;
+    }
+    document.getElementById("status").textContent = summary.bad ? summary.bad + " 个场景有报错" : "全部通过";
+    window.__smokeDone = summary;
+    button.disabled = false;
+  };
+</script>
+</body>
+</html>

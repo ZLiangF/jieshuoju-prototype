@@ -37,6 +37,30 @@ def bump():
     print("版本号已统一为 v=" + version)
 
 
+def check_page_scripts(page, sources, errors):
+    """脚本按 id 取的元素要在这一页存在；同一页加载的脚本之间不能重名定义全局函数。"""
+    html = sources[page]
+    files = [m.group(1) for m in re.finditer(r'<script src="(js/[\w.-]+\.js)', html)]
+    inline = "".join(re.findall(r"<script>(.*?)</script>", html, flags=re.S))
+    scripts = [(f, sources.get(f, "")) for f in files] + ([(page + " 内联脚本", inline)] if inline.strip() else [])
+    js = "".join(text for _, text in scripts)
+    known = set(re.findall(r'\sid="([^"]+)"', html)) | set(re.findall(r'id=\\?["\']([\w-]+)', js))
+    known |= set(re.findall(r'\.id\s*=\s*["\']([\w-]+)', js))
+    for name, text in scripts:
+        refs = re.findall(r'(?:getElementById|\$id)\(\s*["\']([\w-]+)["\']\s*\)', text)
+        refs += re.findall(r'querySelector(?:All)?\(\s*["\']#([\w-]+)["\' .:\[>]', text)
+        missing = sorted(set(refs) - known)
+        if missing:
+            errors.append(page + " 的 " + name + " 引用了页面里不存在的 id：" + "、".join(missing))
+    defined = {}
+    for name, text in scripts:
+        for fn, var in re.findall(r"^(?:function\s+([\w$]+)\s*\(|var\s+([\w$]+))", text, flags=re.M):
+            defined.setdefault(fn or var, []).append(name)
+    for fn, where in sorted(defined.items()):
+        if len(where) > 1:
+            errors.append(page + " 的全局变量或函数 " + fn + " 定义了多次，后加载的会覆盖前面的：" + "、".join(where))
+
+
 def main():
     if "--bump" in sys.argv:
         bump()
@@ -74,6 +98,9 @@ def main():
     for path in sorted(glob.glob("media/**/*.*", recursive=True)):
         if path.replace(os.sep, "/") not in code + css_text:
             notes.append("没有页面使用的媒体：" + path)
+
+    for page in PAGES:
+        check_page_scripts(page, sources, errors)
 
     css_body = re.sub(r"\{[^{}]*\}", "{}", re.sub(r"/\*.*?\*/", "", css_text, flags=re.S))
     tokens = set(re.findall(r"[.#]([A-Za-z_][\w-]*)", css_body))

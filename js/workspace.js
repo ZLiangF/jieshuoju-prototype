@@ -813,7 +813,12 @@
     if (act === "rewrite") ReplicaUI.toast("演示：AI 改写提示词");
     if (act === "timer") ReplicaUI.toast("演示：定时生成");
     if (act === "full") setFull(!state.full);
+    if ((act === "upgrade" || act === "generate") && (state.generating || state.upgrading)) {
+      ReplicaUI.toast("上一个片段还在生成，请稍候");
+      return;
+    }
     if (act === "upgrade") {
+      if (D.credits < finalCost) { ReplicaUI.toast("积分不足，生成正片需要 " + finalCost + " 积分"); return; }
       var upgradingShot = state.shotId;
       var keepStation = (state.videos[upgradingShot] || {}).station;
       state.upgrading = upgradingShot;
@@ -831,6 +836,7 @@
     if (act === "generate") {
       var generatingShot = state.shotId;
       var generatingModel = model();
+      if (D.credits < generatingModel.cost) { ReplicaUI.toast("积分不足，本次生成需要 " + generatingModel.cost + " 积分"); return; }
       var generatingResolution = state.resolution;
       var st2 = stageOf(shot());
       var useStation = stationSnapshot(shot());

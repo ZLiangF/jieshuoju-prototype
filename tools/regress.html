@@ -43,6 +43,12 @@
   function openCharacter(w, name) {
     clickText(w, "#grid .char-card", name);
   }
+  function openGenerated(w) {
+    var char = w.D.characters[0];
+    w.revealedAssets[char.id] = true;
+    char.looksList.slice(0, 2).forEach(function (look) { w.revealedLooks[char.id + "/" + look.id] = true; });
+    openCharacter(w, char.name);
+  }
 
   var SCENARIOS = [
     { name: "首页 · 空态", page: "index.html" },
@@ -62,6 +68,12 @@
     { name: "资产详情 · 多选", page: "assets.html", run: function (w) { openCharacter(w, "贺芷"); click(w, "#look-multi"); click(w, "#look-select-all"); } },
     { name: "资产详情 · 音色", page: "assets.html", run: function (w) { openCharacter(w, "萧铭"); click(w, "[data-look-voice]"); } },
     { name: "资产详情 · 场景", page: "assets.html", run: function (w) { click(w, "#gen-all"); clickText(w, "button", "场景"); click(w, "#grid .char-card"); } },
+    { name: "资产详情 · 已生成", page: "assets.html", run: function (w) { openGenerated(w); } },
+    { name: "资产详情 · 已生成结构", page: "assets.html", run: function (w) { openGenerated(w); click(w, '[data-look-view="structure"]'); } },
+    { name: "资产详情 · 集数", page: "assets.html", run: function (w) { openCharacter(w, "萧铭"); click(w, "[data-look-eps]"); } },
+    { name: "资产详情 · 历史记录", page: "assets.html", run: function (w) { openGenerated(w); click(w, "#preview-side-toggle"); } },
+    { name: "资产详情 · 新增子形象", page: "assets.html", run: function (w) { openCharacter(w, "萧铭"); click(w, "[data-add-child]"); } },
+    { name: "资产详情 · 图片编辑", page: "assets.html", run: function (w) { openGenerated(w); click(w, "[data-edit-image]"); } },
     { name: "分集视频", page: "episodes.html" },
     { name: "单集工作台", page: "workspace.html" }
   ];

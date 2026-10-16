@@ -326,8 +326,12 @@ window.ReplicaUI = {
       wrap.className = "toast-wrap";
       document.body.appendChild(wrap);
     }
+    var last = wrap.lastElementChild;
+    if (last && last.textContent === msg) last.remove();
+    while (wrap.children.length >= 3) wrap.firstElementChild.remove();
     var el = document.createElement("div");
     el.className = "toast";
+    el.setAttribute("role", "status");
     el.textContent = msg;
     wrap.appendChild(el);
     setTimeout(function () { el.remove(); }, 2000);
@@ -336,3 +340,18 @@ window.ReplicaUI = {
     return ReplicaData.credits.toLocaleString("en-US");
   }
 };
+
+(function () {
+  var lastShown = 0;
+  function report() {
+    var now = Date.now();
+    if (now - lastShown < 5000 || !document.body) return;
+    lastShown = now;
+    ReplicaUI.toast("页面出了点问题，刷新后再试");
+  }
+  window.addEventListener("error", function (e) {
+    if (e.target && e.target !== window) return;
+    report();
+  });
+  window.addEventListener("unhandledrejection", report);
+})();
