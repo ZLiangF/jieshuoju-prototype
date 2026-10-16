@@ -13,6 +13,7 @@ var selectedLooks = {};
 var previewRailOpen = false;
 var previewRailTab = "history";
 var previewRailSrc = "";
+var imgEdit = { scale: 1, rotate: 0, x: 0, y: 0, locked: false, cropping: false, crop: null };
 var historySelectedId = "";
 var newLookParentId = "";
 var roleCreateMode = "asset";
@@ -42,6 +43,9 @@ var expandedChars = {};
 var roleTier = "配角";
 var ROLE_TONES = { "主角": "lead", "配角": "support", "群演": "extra" };
 var SUB_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4.6" y="2.2" width="9.2" height="7.6" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2.2 6.2v6c0 .9.7 1.6 1.6 1.6h6.4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+var VOICE_OFF_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.2 11.6V4.1l6.4-1.3v7.3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="4.6" cy="11.6" r="1.55" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="11" cy="10.1" r="1.55" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>';
+var VOICE_ON_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.2 11.5V3.9l6.4-1.3v7.4" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/><circle cx="4.6" cy="11.5" r="1.7" fill="currentColor"/><circle cx="11" cy="10" r="1.7" fill="currentColor"/></svg>';
+var PLUS_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
 var READY_MARK = '<span class="asset-done" role="img" aria-label="已完成" title="已完成"><svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="7" fill="currentColor"/><path d="M4.2 7.2 6.1 9 9.8 5.2" fill="none" stroke="#0f1f17" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
 var selectedAssets = {};
 var revealedAssets = {};
@@ -492,7 +496,7 @@ function lookCardHtml(look, index, flat) {
   var primary = looks[primaryLookIndex(looks)];
   var isPrimary = primary === look;
   var kindText = isPrimary ? "主" + assetWord() : "子" + assetWord();
-  var parentText = !flat || isPrimary ? "" : "上级：" + lookShortName(parent || primary);
+  var parentName = !flat || isPrimary ? "" : lookShortName(parent || primary);
   var checked = editorKind === "char" && lookMultiOn && !!selectedLooks[look.id];
   var check = editorKind === "char" && lookMultiOn ? '<span class="asset-check look-pick' + (checked ? " is-on" : "") + '" role="checkbox" aria-checked="' + (checked ? "true" : "false") + '" aria-label="选择形象"></span>' : "";
   return '<article class="look-library-card ' + (editingLook === look ? "on " : "") + state + (checked ? " is-look-picked" : "") +
@@ -503,13 +507,18 @@ function lookCardHtml(look, index, flat) {
       : state === "generating"
       ? '<span class="look-card-empty is-generating" aria-hidden="true"><i></i><small>' + (look.generationProgress || 8) + "%</small></span>"
       : '<span class="look-card-empty" aria-hidden="true">' + (editorKind === "char" ? EMPTY_PERSON_ICON : EMPTY_IMAGE_ICON) + "</span>") + check +
+    '<span class="look-state-tag ' + state + '">' + lookStateIcon(state) + lookStateText(state) + "</span>" +
+    (editorKind === "char" && lookMultiOn ? "" : '<button type="button" class="look-card-del" data-del-look="' + look.id + '" title="删除' + assetWord() + '" aria-label="删除' + shortName + '">' + TRASH_ICON + "</button>") +
+    "</div>" +
+    '<div class="look-card-info"><div class="look-card-copy"><strong>' + shortName + "</strong>" +
     '<button type="button" class="look-card-eps' + (chip.compact ? " is-compact" : "") + '" data-look-eps="' + index + '" title="' + chip.title + '">' + chip.html + "</button>" +
-    '<span class="look-kind-tag ' + (isPrimary ? "is-primary" : "is-child") + '">' + kindText + "</span>" +
-    '<span class="look-state-tag ' + state + '">' + lookStateIcon(state) + lookStateText(state) + "</span></div>" +
-    '<div class="look-card-info"><strong>' + shortName + '</strong>' +
-    (parentText ? '<em class="look-card-parent">' + parentText + "</em>" : "") +
-    '<button type="button" class="look-card-voice ' + (look.voice ? "bound" : "") + '" data-look-voice="' + index + '" title="' + (look.voice || "绑定音色") + '">' +
-    '<span>♪</span>' + voiceLabel(look.voice) + "</button></div></article>";
+    '<div class="look-card-meta"><span class="look-kind-tag ' + (isPrimary ? "is-primary" : "is-child") + '">' + kindText + "</span>" +
+    (parentName ? '<span class="look-parent-name">' + parentName + "</span>" : "") +
+    "</div></div>" +
+    '<button type="button" class="look-card-voice' + (look.voice ? " bound" : "") + '" data-look-voice="' + index + '" title="' + (look.voice || "绑定音色") + '" aria-label="' + (look.voice ? "已绑定音色：" + voiceLabel(look.voice) : "未绑定音色") + '">' +
+    (look.voice ? VOICE_ON_ICON : VOICE_OFF_ICON) + "</button>" +
+    (flat && !(editorKind === "char" && lookMultiOn) ? '<button type="button" class="look-add-child" data-add-child="' + look.id + '" title="新增子' + assetWord() + '" aria-label="新增子' + assetWord() + '">' + PLUS_ICON + "</button>" : "") +
+    "</div></article>";
 }
 
 function orderedLooks(looks) {
@@ -555,7 +564,9 @@ function renderLookTreeNodes(looks, parent, primary) {
       (childCount ? "<i>" + childCount + " 个子" + assetWord() + "</i>" : "") +
       "</small></span></button>" +
       '<button type="button" class="look-tree-voice' + (look.voice ? " bound" : "") + '" data-look-voice="' + index + '" title="' + (look.voice || "绑定音色") + '"><span>♪</span>' + voiceLabel(look.voice) + "</button>" +
-      '<button type="button" class="look-tree-add" data-add-child="' + look.id + '" aria-label="新增子' + assetWord() + '">＋</button></div>' +
+      '<button type="button" class="look-tree-add" data-add-child="' + look.id + '" aria-label="新增子' + assetWord() + '">＋</button>' +
+      (editorKind === "char" && lookMultiOn ? "" : '<button type="button" class="look-tree-del" data-del-look="' + look.id + '" title="删除' + assetWord() + '" aria-label="删除' + lookShortName(look) + '">' + TRASH_ICON + "</button>") +
+      "</div>" +
       (open && childCount ? '<div class="look-tree-kids">' + renderLookTreeNodes(looks, look, primary) + "</div>" : "") +
       "</div>";
   });
@@ -703,6 +714,11 @@ function failedLookBoardHtml() {
     '<strong>生成失败</strong><span>可以调整提示词或参考图后重新生成</span></div>';
 }
 
+function previewImageHtml(src, alt) {
+  return '<img class="five-view-sheet" src="' + src + '" alt="' + alt + '">' +
+    '<button type="button" class="img-edit-hover" data-edit-image="1">编辑</button>';
+}
+
 function renderCurrentLookOutput(look) {
   var preview = document.getElementById("f-preview");
   var state = look ? lookVisualState(look, (currentChar.looksList || []).indexOf(look)) : "pending";
@@ -714,7 +730,7 @@ function renderCurrentLookOutput(look) {
   previewRailSrc = hasSheet ? sheetForLook(look) : "";
   historySelectedId = "";
   preview.innerHTML = hasSheet
-    ? '<img class="five-view-sheet" src="' + previewRailSrc + '" alt="' + currentChar.name + '五视图">'
+    ? previewImageHtml(previewRailSrc, currentChar.name + "五视图")
     : state === "generating" && look
     ? generationLookBoardHtml(look)
     : state === "failed"
@@ -845,7 +861,7 @@ function showHistoryImage(item) {
   historySelectedId = item.id;
   previewRailSrc = item.src;
   var preview = document.getElementById("f-preview");
-  preview.innerHTML = '<img class="five-view-sheet" src="' + item.src + '" alt="V' + item.version + '">';
+  preview.innerHTML = previewImageHtml(item.src, "V" + item.version);
   preview.closest(".look-current-output").classList.remove("is-empty");
   renderPreviewRail(editingLook, true);
 }
@@ -1305,7 +1321,42 @@ document.getElementById("look-board").onclick = function (e) {
   fillLookForm(currentChar.looksList[Number(node.dataset.look)]);
 };
 
+function deleteLooks(removing) {
+  var looks = currentChar.looksList || [];
+  if (!removing.length) {
+    ReplicaUI.toast("请先勾选要删除的形象");
+    return;
+  }
+  if (removing.length >= looks.length) {
+    ReplicaUI.toast("至少保留一个形象");
+    return;
+  }
+  var removedIds = {};
+  removing.forEach(function (look) { removedIds[look.id] = look.parentId || ""; });
+  var primaryGone = removing.some(function (look) {
+    return currentChar.look && look.name.indexOf(currentChar.look) !== -1;
+  });
+  currentChar.looksList = looks.filter(function (look) { return !Object.prototype.hasOwnProperty.call(removedIds, look.id); });
+  currentChar.looksList.forEach(function (look) {
+    if (look.parentId && Object.prototype.hasOwnProperty.call(removedIds, look.parentId)) look.parentId = removedIds[look.parentId] || "";
+  });
+  if (primaryGone && currentChar.looksList[0]) currentChar.look = lookShortName(currentChar.looksList[0]);
+  if (currentChar.looks != null) currentChar.looks = currentChar.looksList.length;
+  var editingRemoved = editingLook && Object.prototype.hasOwnProperty.call(removedIds, editingLook.id);
+  selectedLooks = {};
+  render();
+  fillLookForm(editingRemoved ? currentChar.looksList[0] : editingLook);
+  ReplicaUI.toast(removing.length === 1 ? "已删除「" + lookShortName(removing[0]) + "」" : "已删除 " + removing.length + " 个形象");
+}
+
 document.getElementById("look-library").onclick = function (e) {
+  var delLook = e.target.closest("[data-del-look]");
+  if (delLook) {
+    e.stopPropagation();
+    var target = (currentChar.looksList || []).filter(function (look) { return look.id === delLook.dataset.delLook; })[0];
+    if (target) deleteLooks([target]);
+    return;
+  }
   var episodeButton = e.target.closest("[data-look-eps]");
   if (episodeButton) {
     e.stopPropagation();
@@ -1760,7 +1811,7 @@ document.getElementById("look-image-input").onchange = function () {
     var src = String(reader.result || "");
     previewRailSrc = src;
     var preview = document.getElementById("f-preview");
-    preview.innerHTML = '<img class="five-view-sheet" src="' + src + '" alt="本地上传图片">';
+    preview.innerHTML = previewImageHtml(src, "本地上传图片");
     preview.closest(".look-current-output").classList.remove("is-empty");
     renderPreviewRail(editingLook, false);
     lookDirty = true;
@@ -1812,15 +1863,21 @@ document.getElementById("preview-side").onclick = function (e) {
   }
   previewRailSrc = card.dataset.previewSrc;
   var preview = document.getElementById("f-preview");
-  preview.innerHTML = '<img class="five-view-sheet" src="' + previewRailSrc + '" alt="五视图">';
+  preview.innerHTML = previewImageHtml(previewRailSrc, "五视图");
   renderPreviewRail(editingLook, true);
 };
 document.getElementById("f-preview").onclick = function (e) {
   var button = e.target.closest("[data-empty-upload]");
-  if (!button) return;
-  if (button.dataset.emptyUpload === "local") openLookImagePicker("upload");
-  else if (button.dataset.emptyUpload === "reverse") openLookImagePicker("reverse");
-  else ReplicaUI.toast("演示：从资产库选择形象图");
+  if (button) {
+    if (button.dataset.emptyUpload === "local") openLookImagePicker("upload");
+    else if (button.dataset.emptyUpload === "reverse") openLookImagePicker("reverse");
+    else ReplicaUI.toast("演示：从资产库选择形象图");
+    return;
+  }
+  var edit = e.target.closest("[data-edit-image]");
+  if (!edit) return;
+  var img = edit.parentElement.querySelector("img");
+  if (img && img.getAttribute("src")) openImageEditor(img.getAttribute("src"), img.alt);
 };
 document.getElementById("pick-asset").onclick = openReferenceDialog;
 document.getElementById("reference-dialog-x").onclick = closeReferenceDialog;
@@ -1910,28 +1967,7 @@ document.getElementById("look-select-rest").onclick = function () {
 };
 document.getElementById("look-delete").onclick = function () {
   if (this.disabled) return;
-  var looks = currentChar.looksList || [];
-  var removing = looks.filter(function (look) { return selectedLooks[look.id]; });
-  if (!removing.length) {
-    ReplicaUI.toast("请先勾选要删除的形象");
-    return;
-  }
-  if (removing.length >= looks.length) {
-    ReplicaUI.toast("至少保留一个形象");
-    return;
-  }
-  var removedIds = {};
-  removing.forEach(function (look) { removedIds[look.id] = look.parentId || ""; });
-  currentChar.looksList = looks.filter(function (look) { return !Object.prototype.hasOwnProperty.call(removedIds, look.id); });
-  currentChar.looksList.forEach(function (look) {
-    if (look.parentId && Object.prototype.hasOwnProperty.call(removedIds, look.parentId)) look.parentId = removedIds[look.parentId] || "";
-  });
-  if (currentChar.looks != null) currentChar.looks = currentChar.looksList.length;
-  var editingRemoved = editingLook && Object.prototype.hasOwnProperty.call(removedIds, editingLook.id);
-  selectedLooks = {};
-  render();
-  fillLookForm(editingRemoved ? currentChar.looksList[0] : editingLook);
-  ReplicaUI.toast("已删除 " + removing.length + " 个形象");
+  deleteLooks((currentChar.looksList || []).filter(function (look) { return selectedLooks[look.id]; }));
 };
 document.getElementById("look-gen-selected").onclick = function () {
   var targets = (currentChar.looksList || []).filter(function (look) { return selectedLooks[look.id]; });
@@ -2781,8 +2817,228 @@ document.getElementById("gen-selected").onclick = function () {
   openGenerationConfirm("selected");
 };
 
+function paintImageEditor() {
+  var root = document.getElementById("img-edit");
+  var img = document.getElementById("img-edit-img");
+  var box = document.getElementById("img-edit-cropbox");
+  var cropBtn = document.getElementById("img-edit-crop");
+  root.classList.toggle("is-locked", imgEdit.locked);
+  root.classList.toggle("is-cropping", imgEdit.cropping);
+  img.style.transform = "translate(calc(-50% + " + imgEdit.x + "px), calc(-50% + " + imgEdit.y + "px)) rotate(" + imgEdit.rotate + "deg) scale(" + imgEdit.scale + ")";
+  box.hidden = !imgEdit.cropping;
+  if (imgEdit.cropping && imgEdit.crop) {
+    box.style.left = imgEdit.crop.x + "px";
+    box.style.top = imgEdit.crop.y + "px";
+    box.style.width = imgEdit.crop.w + "px";
+    box.style.height = imgEdit.crop.h + "px";
+  }
+  cropBtn.textContent = imgEdit.cropping ? "完成" : "裁剪";
+  cropBtn.disabled = imgEdit.locked;
+  root.querySelector("[data-img-act='lock']").setAttribute("aria-pressed", imgEdit.locked ? "true" : "false");
+  root.querySelector("[data-img-act='lock']").classList.toggle("on", imgEdit.locked);
+  root.querySelectorAll(".img-edit-bar [data-img-act]").forEach(function (button) {
+    var act = button.dataset.imgAct;
+    button.disabled = imgEdit.locked && act !== "lock" && act !== "close";
+  });
+}
+
+function openImageEditor(src, alt) {
+  var img = document.getElementById("img-edit-img");
+  imgEdit.scale = 1;
+  imgEdit.rotate = 0;
+  imgEdit.x = 0;
+  imgEdit.y = 0;
+  imgEdit.locked = false;
+  imgEdit.cropping = false;
+  imgEdit.crop = null;
+  img.alt = alt || "编辑图片";
+  img.src = src;
+  document.getElementById("img-edit").hidden = false;
+  paintImageEditor();
+}
+
+function closeImageEditor(force) {
+  if (imgEdit.cropping && !force) {
+    imgEdit.cropping = false;
+    paintImageEditor();
+    return;
+  }
+  imgEdit.cropping = false;
+  document.getElementById("img-edit").hidden = true;
+}
+
+function saveEditedSheet(url) {
+  var primary = currentChar ? primaryLookOf(currentChar) : null;
+  if (editingLook) editingLook.sheet = url;
+  if (currentChar && (!editingLook || editingLook === primary)) currentChar.sheet = url;
+  var previewImg = document.querySelector("#f-preview img");
+  if (previewImg) previewImg.src = url;
+  previewRailSrc = url;
+  document.getElementById("img-edit-img").src = url;
+  imgEdit.scale = 1;
+  imgEdit.rotate = 0;
+  imgEdit.x = 0;
+  imgEdit.y = 0;
+  imgEdit.cropping = false;
+  paintImageEditor();
+  var y = window.scrollY;
+  render();
+  window.scrollTo(0, y);
+}
+
+function rotateEditedImage() {
+  var img = document.getElementById("img-edit-img");
+  if (!img.naturalWidth) return;
+  var canvas = document.createElement("canvas");
+  canvas.width = img.naturalHeight;
+  canvas.height = img.naturalWidth;
+  var ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+  var url = "";
+  try { url = canvas.toDataURL("image/jpeg", 0.92); } catch (err) { url = ""; }
+  if (!url) { ReplicaUI.toast("这张图片暂时不能编辑"); return; }
+  saveEditedSheet(url);
+}
+
+function applyImageCrop() {
+  var img = document.getElementById("img-edit-img");
+  var stage = document.getElementById("img-edit-stage");
+  var box = document.getElementById("img-edit-cropbox");
+  var stageRect = stage.getBoundingClientRect();
+  var boxRect = box.getBoundingClientRect();
+  var dpr = Math.min(2, window.devicePixelRatio || 1);
+  var canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(stageRect.width * dpr));
+  canvas.height = Math.max(1, Math.round(stageRect.height * dpr));
+  var ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.scale(dpr, dpr);
+  ctx.translate(stageRect.width / 2 + imgEdit.x, stageRect.height / 2 + imgEdit.y);
+  ctx.rotate(imgEdit.rotate * Math.PI / 180);
+  ctx.scale(imgEdit.scale, imgEdit.scale);
+  ctx.drawImage(img, -img.offsetWidth / 2, -img.offsetHeight / 2, img.offsetWidth, img.offsetHeight);
+  ctx.restore();
+  var out = document.createElement("canvas");
+  var sx = (boxRect.left - stageRect.left) * dpr;
+  var sy = (boxRect.top - stageRect.top) * dpr;
+  var sw = Math.max(1, boxRect.width * dpr);
+  var sh = Math.max(1, boxRect.height * dpr);
+  out.width = Math.max(1, Math.round(sw));
+  out.height = Math.max(1, Math.round(sh));
+  out.getContext("2d").drawImage(canvas, sx, sy, sw, sh, 0, 0, out.width, out.height);
+  var url = "";
+  try { url = out.toDataURL("image/jpeg", 0.92); } catch (err) { url = ""; }
+  if (!url) { ReplicaUI.toast("这张图片暂时不能编辑"); return; }
+  saveEditedSheet(url);
+  ReplicaUI.toast("已裁剪图片");
+}
+
+function startImageCrop() {
+  var stage = document.getElementById("img-edit-stage").getBoundingClientRect();
+  var img = document.getElementById("img-edit-img").getBoundingClientRect();
+  var left = Math.max(stage.left, img.left);
+  var top = Math.max(stage.top, img.top);
+  var right = Math.min(stage.right, img.right);
+  var bottom = Math.min(stage.bottom, img.bottom);
+  var width = Math.max(80, right - left);
+  var height = Math.max(80, bottom - top);
+  var insetX = width * 0.08;
+  var insetY = height * 0.08;
+  imgEdit.crop = {
+    x: left - stage.left + insetX,
+    y: top - stage.top + insetY,
+    w: Math.max(48, width - insetX * 2),
+    h: Math.max(48, height - insetY * 2)
+  };
+  imgEdit.cropping = true;
+  paintImageEditor();
+}
+
+function clampImageCrop(crop) {
+  var stage = document.getElementById("img-edit-stage");
+  var min = 48;
+  crop.w = Math.max(min, crop.w);
+  crop.h = Math.max(min, crop.h);
+  if (crop.x < 8) crop.x = 8;
+  if (crop.y < 8) crop.y = 8;
+  if (crop.x + crop.w > stage.clientWidth - 8) crop.x = stage.clientWidth - 8 - crop.w;
+  if (crop.y + crop.h > stage.clientHeight - 8) crop.y = stage.clientHeight - 8 - crop.h;
+  if (crop.x < 8) { crop.x = 8; crop.w = stage.clientWidth - 16; }
+  if (crop.y < 8) { crop.y = 8; crop.h = stage.clientHeight - 16; }
+  return crop;
+}
+
+document.getElementById("img-edit").onclick = function (e) {
+  if (e.target === this) closeImageEditor(true);
+  var button = e.target.closest("[data-img-act]");
+  if (!button || button.disabled) return;
+  var act = button.dataset.imgAct;
+  if (act === "close") closeImageEditor(true);
+  else if (act === "lock") { imgEdit.locked = !imgEdit.locked; if (imgEdit.locked) imgEdit.cropping = false; paintImageEditor(); }
+  else if (imgEdit.locked) return;
+  else if (act === "zoom-in") { imgEdit.scale = Math.min(5, imgEdit.scale * 1.2); paintImageEditor(); }
+  else if (act === "zoom-out") { imgEdit.scale = Math.max(0.25, imgEdit.scale / 1.2); paintImageEditor(); }
+  else if (act === "fit") { imgEdit.scale = 1; imgEdit.rotate = 0; imgEdit.x = 0; imgEdit.y = 0; paintImageEditor(); }
+  else if (act === "rotate") rotateEditedImage();
+  else if (act === "crop") { if (imgEdit.cropping) applyImageCrop(); else startImageCrop(); }
+};
+
+(function () {
+  var stage = document.getElementById("img-edit-stage");
+  var drag = null;
+  stage.addEventListener("pointerdown", function (e) {
+    if (imgEdit.locked || e.target.closest("button")) return;
+    var handle = e.target.closest("[data-crop-handle]");
+    if (imgEdit.cropping && (handle || e.target.closest("#img-edit-cropbox"))) {
+      drag = { type: handle ? handle.dataset.cropHandle : "move", x: e.clientX, y: e.clientY, crop: { x: imgEdit.crop.x, y: imgEdit.crop.y, w: imgEdit.crop.w, h: imgEdit.crop.h } };
+    } else if (!imgEdit.cropping) {
+      drag = { type: "pan", x: e.clientX, y: e.clientY, ox: imgEdit.x, oy: imgEdit.y };
+      stage.classList.add("is-panning");
+    } else return;
+    stage.setPointerCapture(e.pointerId);
+  });
+  stage.addEventListener("pointermove", function (e) {
+    if (!drag) return;
+    if (drag.type === "pan") {
+      imgEdit.x = drag.ox + e.clientX - drag.x;
+      imgEdit.y = drag.oy + e.clientY - drag.y;
+      paintImageEditor();
+      return;
+    }
+    var dx = e.clientX - drag.x;
+    var dy = e.clientY - drag.y;
+    var next = { x: drag.crop.x, y: drag.crop.y, w: drag.crop.w, h: drag.crop.h };
+    if (drag.type === "move") { next.x += dx; next.y += dy; }
+    else {
+      if (drag.type.indexOf("e") !== -1) next.w = drag.crop.w + dx;
+      if (drag.type.indexOf("s") !== -1) next.h = drag.crop.h + dy;
+      if (drag.type.indexOf("w") !== -1) { next.x = drag.crop.x + dx; next.w = drag.crop.w - dx; }
+      if (drag.type.indexOf("n") !== -1) { next.y = drag.crop.y + dy; next.h = drag.crop.h - dy; }
+      if (next.w < 48) { if (drag.type.indexOf("w") !== -1) next.x = drag.crop.x + drag.crop.w - 48; next.w = 48; }
+      if (next.h < 48) { if (drag.type.indexOf("n") !== -1) next.y = drag.crop.y + drag.crop.h - 48; next.h = 48; }
+    }
+    imgEdit.crop = clampImageCrop(next);
+    paintImageEditor();
+  });
+  stage.addEventListener("pointerup", function () { drag = null; stage.classList.remove("is-panning"); });
+  stage.addEventListener("pointercancel", function () { drag = null; stage.classList.remove("is-panning"); });
+  stage.addEventListener("wheel", function (e) {
+    if (document.getElementById("img-edit").hidden || imgEdit.locked) return;
+    e.preventDefault();
+    imgEdit.scale = Math.min(5, Math.max(0.25, imgEdit.scale * (e.deltaY < 0 ? 1.08 : 0.92)));
+    paintImageEditor();
+  }, { passive: false });
+})();
+
 document.addEventListener("keydown", function (e) {
   if (e.key !== "Escape") return;
+  if (!document.getElementById("img-edit").hidden) { closeImageEditor(false); return; }
   if (document.getElementById("asset-generate-dialog").classList.contains("open")) { closeGenerationConfirm(); return; }
   if (document.getElementById("asset-delete-dialog").classList.contains("open")) { closeDeleteConfirm(); return; }
   if (!document.getElementById("episode-filter-menu").hidden) { closeEpisodeFilter(); return; }
