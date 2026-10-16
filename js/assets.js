@@ -247,7 +247,9 @@ function cardHtml(row) {
   var pending = lookStats.total - lookStats.done;
   var showSheet = kind === "char" && a.sheet && state !== "pending";
   var unit = kind === "char" ? "形象" : kind === "scene" ? "场景" : "道具";
-  var lookText = looks > 1
+  var lookText = kind === "char"
+    ? "形象 " + lookStats.done + "/" + looks
+    : looks > 1
     ? "已生成 " + lookStats.done + "/" + looks + " 个" + unit
     : kind === "scene" ? "共 1 个场景图" : "共 1 个" + unit;
   var generatingLooks = (a.looksList || []).filter(function (look) { return look.status === "generating"; }).length;
@@ -279,17 +281,17 @@ function cardHtml(row) {
   var actionable = pending && !generatingLooks && state !== "generating";
   var subCount = kind === "char" ? subLooksOf(a).length : 0;
   var subOpen = subCount && expandedChars[key];
-  var badges = (subCount ? '<button type="button" class="asset-sub-count' + (subOpen ? " on" : "") + '" data-expand-subs="1" aria-pressed="' + (subOpen ? "true" : "false") + '" title="' + (subOpen ? "收起这个角色的子形象" : "展开这个角色的子形象") + '">' + SUB_ICON + (subOpen ? "收起 " : "子角色 ") + subCount + "</button>" : "");
+  var subBtn = subCount ? '<button type="button" class="asset-sub-count' + (subOpen ? " on" : "") + '" data-expand-subs="1" aria-pressed="' + (subOpen ? "true" : "false") + '" title="' + (subOpen ? "收起这个角色的子形象" : "展开这个角色的子形象") + '">' + SUB_ICON + (subOpen ? "收起 " : "子角色 ") + subCount + "</button>" : "";
   var flag = state === "ready"
     ? ""
     : actionable && !multiOn
     ? '<button type="button" class="asset-flag is-action ' + flagState + '" data-gen-asset="' + key + '" title="' + (failedLooks ? "重新生成失败内容" : "生成该资产还未完成的内容") + '">' + flagIcon + flagText + "</button>"
     : '<span class="asset-flag ' + flagState + '">' + flagIcon + (multiOn && actionable ? (state === "partial" ? pending + " 个待生成" : "待生成") : flagText) + "</span>";
-  if (state === "ready" && looks > 1) lookText = "共 " + looks + " 个" + unit;
+  if (kind !== "char" && state === "ready" && looks > 1) lookText = "共 " + looks + " 个" + unit;
   return '<article class="char-card asset-card asset-' + kind + " is-" + state + (picked ? " is-picked" : "") + '" data-kind="' + kind + '" data-i="' + row.i + '" data-key="' + key + '">' +
-    '<div class="' + mediaClass + '">' + visual + check + delBtn + (badges ? '<div class="asset-badges">' + badges + "</div>" : "") + flag + "</div>" +
+    '<div class="' + mediaClass + '">' + visual + check + delBtn + (subBtn ? '<div class="asset-badges">' + subBtn + "</div>" : "") + flag + "</div>" +
     '<div class="asset-card-info"><div class="asset-card-title"><h3>' + (state === "ready" ? READY_MARK : "") + '<span class="asset-name">' + a.name + "</span>" +
-    roleTagsHtml(a, kind) + "</h3>" + (looks > 1 ? '<span class="looks">' + lookText + "</span>" : "") + "</div>" +
+    roleTagsHtml(a, kind) + "</h3>" + (kind === "char" || looks > 1 ? '<span class="looks">' + lookText + "</span>" : "") + "</div>" +
     (a.desc ? "<p>" + a.desc + "</p>" : '<p class="asset-empty-desc">点击卡片直接编辑资产</p>') +
     "</div></article>";
 }
@@ -2410,8 +2412,6 @@ document.addEventListener("click", function (e) {
   if (e.target.closest("#episode-detail") || e.target.closest("[data-look-eps]") || e.target.closest("#episode-editor")) return;
   closeEpisodeDetail();
 });
-
-document.getElementById("upload-asset").onclick = function () { ReplicaUI.toast("演示：上传资产"); };
 
 function lookHasImage(item, look) {
   if (!look) return !!(item.sheet || item.image);

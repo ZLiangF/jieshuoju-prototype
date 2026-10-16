@@ -3183,6 +3183,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 }
 
 .asset-bulk-generate { margin-left: auto; }
+.asset-bulk-generate #upload-asset { flex: none; padding: 0 12px; }
 .asset-bulk-generate #gen-all {
   height: 34px;
   min-height: 34px;
@@ -3681,17 +3682,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 }
 .asset-page .char-card.asset-card .asset-empty-desc { color: #7a7584; }
 
-/* 已完成：角标代替遮挡画面的居中胶囊 */
-.asset-badges {
-  position: absolute;
-  left: 8px;
-  top: 8px;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  max-width: calc(100% - 52px);
-}
 .asset-done {
   flex: none;
   display: inline-flex;
@@ -3700,6 +3690,23 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   color: #4fd98f;
 }
 .asset-done svg { width: 14px; height: 14px; }
+.asset-badges {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  max-width: calc(100% - 52px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .15s ease;
+}
+.asset-card:hover .asset-badges,
+.asset-badges:focus-within {
+  opacity: 1;
+  pointer-events: auto;
+}
 .asset-sub-count {
   flex: none;
   height: 22px;
