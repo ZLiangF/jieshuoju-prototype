@@ -48,8 +48,21 @@ function cleanText(value, limit) {
 }
 
 var selectedAssets = {};
-var revealedAssets = {};
-var revealedLooks = {};
+var revealedAssets = {
+  xiaoming: true, hezhi: true, cuiguihua: true, sucheng: true,
+  cemetery: true, meeting: true, banquet: true, rainst: true, xmoffice: true,
+  ebike: true, incense: true, phone: true
+};
+var revealedLooks = {
+  "xiaoming/delivery": true,
+  "xiaoming/suit": true,
+  "hezhi/ceo": true,
+  "hezhi/banquet": true,
+  "cuiguihua/qipao": true,
+  "sucheng/suit": true,
+  "cemetery/cemetery-main": true,
+  "cemetery/tomb": true
+};
 var ASSET_GENERATION_COSTS = {
   "gpt-25-flare": { "1K": 2, "2K": 3, "4K": 5 },
   "gpt-25-sunburst": { "1K": 3, "2K": 5, "4K": 8 },

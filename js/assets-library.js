@@ -40,18 +40,41 @@ function matchedRows(kind) {
   return rowsOf(kind).filter(matchesQuery);
 }
 
+function renderReadyBanner() {
+  var total = 0;
+  var done = 0;
+  ["char", "scene", "prop"].forEach(function (kind) {
+    rowsOf(kind).forEach(function (row) {
+      var stats = assetLookStats(row.item);
+      total += stats.total;
+      done += stats.done;
+    });
+  });
+  var title = document.getElementById("asset-ready-title");
+  var desc = document.getElementById("asset-ready-desc");
+  var bar = document.getElementById("asset-ready-bar");
+  if (!title || !desc || !bar) return;
+  var pct = total ? Math.round(done / total * 100) : 0;
+  if (total && done >= total) {
+    title.textContent = "资产已就绪，下一步确认成片方案";
+    desc.textContent = done + "/" + total + " 项资产已就绪。请检查角色、场景与道具。";
+  } else {
+    title.textContent = "资产还在补齐，完成后再进入成片";
+    desc.textContent = done + "/" + total + " 项已就绪，还有 " + (total - done) + " 项待生成。";
+  }
+  bar.style.width = pct + "%";
+}
+
 function renderTabCounts() {
   ["char", "scene", "prop"].forEach(function (kind) {
     var count = document.getElementById("count-" + kind);
-    var n = matchedRows(kind).length;
-    count.textContent = n;
-    count.title = n + " 个" + TAB_WORDS[kind];
+    var rows = matchedRows(kind);
+    var ready = rows.filter(function (row) { return assetState(row.item) === "ready"; }).length;
+    var pending = rows.length - ready;
+    count.textContent = ready + "/" + rows.length;
+    count.title = ready + " 个已完成，共 " + rows.length + " 个" + TAB_WORDS[kind];
+    paintPending(kind, query.trim() ? 0 : pending);
   });
-  if (!query.trim()) {
-    renderProgress();
-    return;
-  }
-  ["char", "scene", "prop"].forEach(function (kind) { paintPending(kind, 0); });
 }
 
 function setActiveTab(kind) {
@@ -184,17 +207,19 @@ function cardHtml(row) {
   var actionable = pending && !generatingLooks && state !== "generating";
   var subCount = kind === "char" ? subLooksOf(a).length : 0;
   var subOpen = subCount && expandedChars[key];
-  var subBtn = subCount ? '<button type="button" class="asset-sub-count' + (subOpen ? " on" : "") + '" data-expand-subs="1" aria-pressed="' + (subOpen ? "true" : "false") + '" title="' + (subOpen ? "收起这个角色的子形象" : "展开这个角色的子形象") + '">' + SUB_ICON + (subOpen ? "收起 " : "子角色 ") + subCount + "</button>" : "";
+  if (kind !== "char" && state === "ready" && looks > 1) lookText = "共 " + looks + " 个" + unit;
+  var lookMeta = subCount
+    ? '<button type="button" class="looks asset-sub-count' + (subOpen ? " on" : "") + '" data-expand-subs="1" aria-pressed="' + (subOpen ? "true" : "false") + '" title="' + (subOpen ? "收起这个角色的子形象" : "展开这个角色的子形象") + '">' + SUB_ICON + lookText + '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4.2 2.4 7.8 6 4.2 9.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>'
+    : '<span class="looks">' + lookText + "</span>";
   var flag = state === "ready"
     ? ""
     : actionable && !multiOn
     ? '<button type="button" class="asset-flag is-action ' + flagState + '" data-gen-asset="' + key + '" title="' + (failedLooks ? "重新生成失败内容" : "生成该资产还未完成的内容") + '">' + flagIcon + flagText + "</button>"
     : '<span class="asset-flag ' + flagState + '">' + flagIcon + (multiOn && actionable ? (state === "partial" ? pending + " 个待生成" : "待生成") : flagText) + "</span>";
-  if (kind !== "char" && state === "ready" && looks > 1) lookText = "共 " + looks + " 个" + unit;
   return '<article class="char-card asset-card asset-' + kind + " is-" + state + (picked ? " is-picked" : "") + '" data-kind="' + kind + '" data-i="' + row.i + '" data-key="' + key + '">' +
-    '<div class="' + mediaClass + '">' + visual + check + delBtn + (subBtn ? '<div class="asset-badges">' + subBtn + "</div>" : "") + flag + "</div>" +
+    '<div class="' + mediaClass + '">' + visual + check + delBtn + flag + "</div>" +
     '<div class="asset-card-info"><div class="asset-card-title"><h3>' + (state === "ready" ? READY_MARK : "") + '<span class="asset-name">' + a.name + "</span>" +
-    roleTagsHtml(a, kind) + "</h3>" + (kind === "char" || looks > 1 ? '<span class="looks">' + lookText + "</span>" : "") + "</div>" +
+    roleTagsHtml(a, kind) + "</h3>" + (kind === "char" || looks > 1 ? lookMeta : "") + "</div>" +
     (a.desc ? "<p>" + a.desc + "</p>" : '<p class="asset-empty-desc">点击卡片直接编辑资产</p>') +
     "</div></article>";
 }
@@ -212,8 +237,12 @@ function render() {
       }).join("")
     : '<p class="asset-none">没有找到相关资产</p>';
   document.getElementById("grid").classList.toggle("is-expanded", tab === "char" && allCharsOpen());
+  document.getElementById("grid").classList.toggle("is-square", tab === "prop");
   paintExpandButton();
+  renderReadyBanner();
   document.getElementById("grid").classList.toggle("is-multiselect", multiOn);
+  var footer = document.querySelector(".guide-footer");
+  if (footer) footer.classList.toggle("is-away", multiOn);
   syncGenButton();
 }
 
@@ -484,7 +513,6 @@ function submitGeneration(mode) {
 
 function syncGenButton() {
   var button = document.getElementById("gen-all");
-  var genSelected = document.getElementById("gen-selected");
   var multi = document.getElementById("asset-multi");
   var picked = document.getElementById("asset-picked");
   var stats = assetImageStats(null, true);
@@ -508,6 +536,10 @@ function syncGenButton() {
   var assets = {};
   generationTargets("selected").forEach(function (entry) { assets[entry.kind + ":" + entry.index] = true; });
   var assetCount = Object.keys(assets).length;
+  document.getElementById("asset-expand").hidden = tab !== "char" || multiOn;
+  document.getElementById("add").hidden = multiOn;
+  document.getElementById("upload-asset").hidden = multiOn;
+  var genSelected = document.getElementById("gen-selected");
   genSelected.hidden = !multiOn;
   genSelected.textContent = assetCount ? "生成所选 " + assetCount : "生成所选";
   genSelected.disabled = !assetCount;
@@ -515,6 +547,7 @@ function syncGenButton() {
 
   var label = document.getElementById("gen-all-label");
   var pendingCount = document.getElementById("gen-all-count");
+  button.hidden = multiOn;
   button.classList.remove("is-complete");
   if (!stats.remaining) {
     label.textContent = scope ? scope + "资产已完成" : "全量资产已完成";

@@ -4,23 +4,34 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>资产库 · 离婚后（15集）</title>
-  <link rel="stylesheet" href="css/common.css?v=202610161810" />
-  <link rel="stylesheet" href="css/asset-library.css?v=202610161810" />
-  <link rel="stylesheet" href="css/asset-detail.css?v=202610161810" />
+  <link rel="stylesheet" href="css/common.css?v=202610202133" />
+  <link rel="stylesheet" href="css/asset-library.css?v=202610202133" />
+  <link rel="stylesheet" href="css/asset-detail.css?v=202610202133" />
 </head>
 <body class="asset-page">
 <div class="app">
   <header class="topbar">
     <div class="tb-left">
-      <a class="tb-back" href="index.html">‹ 离婚后（15集）</a>
+      <a class="tb-back" href="index.html" aria-label="返回">‹</a>
+      <strong class="asset-top-title">离婚后（15集）</strong>
+      <span class="asset-top-badge">短剧</span>
     </div>
-    <div class="tb-center steps">
-      <a class="step" href="outline.html">剧本大纲</a>
-      <span style="color:#555">›</span>
-      <a class="step on" href="assets.html">资产库</a>
-      <span style="color:#555">›</span>
-      <a class="step" href="episodes.html">分集视频</a>
-    </div>
+    <nav class="tb-center steps" aria-label="一键成片步骤">
+      <a class="step is-done" href="outline.html">
+        <span class="step-ico" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3 2.5h7.2L13 5.2V13.5H3Z" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M10 2.6V5.2H12.6M5 8h6M5 10.5h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span>
+        <span class="step-text"><strong>剧本大纲</strong><small>已完成</small></span>
+      </a>
+      <span class="step-sep" aria-hidden="true">›</span>
+      <a class="step on" href="assets.html" aria-current="step">
+        <span class="step-ico" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M2.5 4.2 8 2.2l5.5 2v7.2L8 13.8 2.5 11.4Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M2.5 4.2 8 6.4l5.5-2.2M8 6.4v7.4" stroke="currentColor" stroke-width="1.3"/></svg></span>
+        <span class="step-text"><strong>资产库</strong><small>调整角色、场景、道具</small></span>
+      </a>
+      <span class="step-sep" aria-hidden="true">›</span>
+      <a class="step" href="episodes.html">
+        <span class="step-ico" aria-hidden="true"><svg viewBox="0 0 16 16"><rect x="2.2" y="3.2" width="11.6" height="9.6" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M7 6.2 10.2 8 7 9.8Z" fill="currentColor"/></svg></span>
+        <span class="step-text"><strong>分集视频</strong><small>待确认成片方案</small></span>
+      </a>
+    </nav>
     <div class="tb-right">
       <div class="credit">✦ <span id="credits"></span></div>
       <button class="bell" aria-label="通知"></button>
@@ -29,29 +40,11 @@
   </header>
 
   <div class="page asset-page-main">
+    <div class="asset-ready" id="asset-ready">
+      <p class="asset-ready-line"><strong id="asset-ready-title">正在统计资产</strong><span id="asset-ready-desc"></span></p>
+      <i id="asset-ready-bar"></i>
+    </div>
     <div class="asset-commandbar">
-      <div class="asset-command-top">
-        <div class="asset-tools asset-finder">
-          <label class="asset-query">
-            <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="6" cy="6" r="4.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M9.2 9.2 12 12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-            <input id="asset-search" type="search" placeholder="搜索资产" aria-label="搜索全部资产" />
-          </label>
-          <div class="episode-filter" id="episode-filter">
-            <button class="asset-episode" id="episode-filter-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
-              <span id="episode-filter-label">全部集数</span>
-            </button>
-            <div class="episode-filter-menu" id="episode-filter-menu" hidden role="listbox" aria-label="集数筛选" aria-multiselectable="true"></div>
-          </div>
-        </div>
-        <div class="asset-actions asset-bulk-generate">
-          <button class="btn asset-multi" id="upload-asset" type="button">上传资产</button>
-          <button class="btn purple" id="gen-all" type="button">
-            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 9.3 6.1 13.6 7.4 9.3 8.7 8 13 6.7 8.7 2.4 7.4 6.7 6.1Z" fill="currentColor"/><path d="m12.6 10.6.5 1.4 1.4.5-1.4.5-.5 1.4-.5-1.4-1.4-.5 1.4-.5Z" fill="currentColor"/></svg>
-            <em class="gen-all-label" id="gen-all-label">全量生成</em>
-            <i class="gen-all-count" id="gen-all-count"></i>
-          </button>
-        </div>
-      </div>
       <div class="asset-command-tabs">
         <div class="tabs">
           <button class="on" data-tab="char">角色 <b class="tab-count" id="count-char"></b><span class="tab-pending" id="pending-char" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 5.1V8.2l2.1 1.3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>待生成 <em></em></span></button>
@@ -59,11 +52,25 @@
           <button data-tab="prop">道具 <b class="tab-count" id="count-prop"></b><span class="tab-pending" id="pending-prop" hidden><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 5.1V8.2l2.1 1.3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>待生成 <em></em></span></button>
         </div>
         <div class="asset-actions">
+          <div class="asset-tools asset-finder">
+            <label class="asset-query">
+              <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="6" cy="6" r="4.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M9.2 9.2 12 12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+              <input id="asset-search" type="search" placeholder="搜索资产名称" aria-label="搜索全部资产" />
+            </label>
+            <div class="episode-filter" id="episode-filter">
+              <button class="asset-episode" id="episode-filter-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+                <span id="episode-filter-label">全部集数</span>
+              </button>
+              <div class="episode-filter-menu" id="episode-filter-menu" hidden role="listbox" aria-label="集数筛选" aria-multiselectable="true"></div>
+            </div>
+          </div>
           <button class="btn asset-icon-btn" id="asset-expand" type="button" aria-pressed="false" aria-label="展开子角色" title="展开子角色：平铺所有子角色">
             <svg class="when-collapsed" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.2" y="2.2" width="4.6" height="4.6" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="9.2" y="2.2" width="4.6" height="4.6" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="2.2" y="9.2" width="4.6" height="4.6" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="9.2" y="9.2" width="4.6" height="4.6" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
             <svg class="when-expanded" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.2" y="2.4" width="11.6" height="5" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4.2 10.2h7.6M5.6 13h4.8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
           </button>
           <button class="btn asset-add" id="add" type="button" aria-label="新增角色" title="新增角色"><span>＋</span></button>
+          <button class="btn asset-multi" id="upload-asset" type="button">上传资产</button>
+          <span class="asset-tool-sep" aria-hidden="true"></span>
           <span class="asset-picked" id="asset-picked" hidden>已选 0</span>
           <button class="btn" id="asset-select-all" type="button" hidden>全选</button>
           <button class="btn asset-delete" id="asset-delete" type="button" hidden>删除</button>
@@ -71,6 +78,11 @@
           <button class="btn asset-multi" id="asset-multi" type="button" aria-pressed="false">
             <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2" width="12" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="m5.2 8.2 1.9 1.9 3.8-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <em id="asset-multi-label">多选</em>
+          </button>
+          <button class="btn purple" id="gen-all" type="button">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 9.3 6.1 13.6 7.4 9.3 8.7 8 13 6.7 8.7 2.4 7.4 6.7 6.1Z" fill="currentColor"/><path d="m12.6 10.6.5 1.4 1.4.5-1.4.5-.5 1.4-.5-1.4-1.4-.5 1.4-.5Z" fill="currentColor"/></svg>
+            <em class="gen-all-label" id="gen-all-label">全量生成</em>
+            <i class="gen-all-count" id="gen-all-count"></i>
           </button>
         </div>
       </div>
@@ -566,14 +578,14 @@
   </div>
 </div>
 
-<script src="js/data.js?v=202610161810"></script>
-<script src="js/assets-core.js?v=202610161810"></script>
-<script src="js/assets-library.js?v=202610161810"></script>
-<script src="js/assets-dialogs.js?v=202610161810"></script>
-<script src="js/assets-detail.js?v=202610161810"></script>
-<script src="js/assets-preview.js?v=202610161810"></script>
-<script src="js/assets-composer.js?v=202610161810"></script>
-<script src="js/image-editor.js?v=202610161810"></script>
-<script src="js/assets-boot.js?v=202610161810"></script>
+<script src="js/data.js?v=202610202133"></script>
+<script src="js/assets-core.js?v=202610202133"></script>
+<script src="js/assets-library.js?v=202610202133"></script>
+<script src="js/assets-dialogs.js?v=202610202133"></script>
+<script src="js/assets-detail.js?v=202610202133"></script>
+<script src="js/assets-preview.js?v=202610202133"></script>
+<script src="js/assets-composer.js?v=202610202133"></script>
+<script src="js/image-editor.js?v=202610202133"></script>
+<script src="js/assets-boot.js?v=202610202133"></script>
 </body>
 </html>
