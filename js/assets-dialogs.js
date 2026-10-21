@@ -3,6 +3,7 @@ function createKind() {
 }
 
 function createWord() {
+  if (roleCreateMode === "child") return assetWord();
   var kind = createKind();
   return kind === "scene" ? "场景" : kind === "prop" ? "道具" : "角色";
 }
@@ -45,12 +46,12 @@ function openCreateDialog(mode) {
   document.getElementById("role-tier-wrap").hidden = child || kind !== "char";
   roleTier = "配角";
   paintRoleTier();
-  document.getElementById("role-voice").value = "";
-  document.getElementById("role-voice-wrap").hidden = kind !== "char";
+  document.getElementById("role-voice-wrap").hidden = child || kind !== "char";
   roleEpsNumbers = [];
   document.getElementById("role-eps").value = "";
   paintRoleEps();
   document.getElementById("role-dialog").classList.add("open");
+  setTimeout(function () { document.getElementById("role-name").focus(); }, 50);
 }
 
 document.getElementById("add").onclick = function () { openCreateDialog("asset"); };
@@ -58,6 +59,9 @@ function closeRole() { document.getElementById("role-dialog").classList.remove("
 document.getElementById("role-x").onclick = closeRole;
 document.getElementById("role-cancel").onclick = closeRole;
 document.getElementById("role-eps").oninput = syncRoleEpsFromInput;
+document.getElementById("role-name").onkeydown = function (e) {
+  if (e.key === "Enter" && !e.isComposing) document.getElementById("role-save").click();
+};
 document.getElementById("role-eps-grid").onclick = function (e) {
   var cell = e.target.closest("[data-role-episode]");
   if (!cell) return;
@@ -76,7 +80,6 @@ document.getElementById("role-save").onclick = function () {
   var word = createWord();
   if (!name) { ReplicaUI.toast("请填写" + word + "名称"); return; }
   var epsText = roleEpsNumbers.length ? serializeEpisodes(roleEpsNumbers) : "待分配";
-  var voice = cleanText(document.getElementById("role-voice").value, 200);
   var kind = createKind();
   var siblings = roleCreateMode === "child"
     ? (currentChar.looksList || []).map(lookShortName)
@@ -88,7 +91,7 @@ document.getElementById("role-save").onclick = function () {
       id: "new-" + Date.now(),
       name: name,
       eps: epsText,
-      voice: kind === "char" ? voice : "",
+      voice: "",
       image: currentChar.image || placeholderPortrait(name),
       prompt: "",
       status: "pending"
@@ -109,7 +112,7 @@ document.getElementById("role-save").onclick = function () {
     name: name,
     role: kind === "char" ? roleTier : undefined,
     desc: desc,
-    voice: kind === "char" ? voice : "",
+    voice: "",
     status: "pending",
     eps: roleEpsNumbers.slice(),
     image: portrait,
@@ -119,7 +122,7 @@ document.getElementById("role-save").onclick = function () {
       id: "main-" + Date.now(),
       name: name,
       eps: epsText,
-      voice: kind === "char" ? voice : "",
+      voice: "",
       image: portrait,
       prompt: desc
     }]

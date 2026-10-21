@@ -606,6 +606,24 @@
 
   }
 
+  function renderShotVoices() {
+    var s = shot();
+    var chars = (s.refs || []).map(charById).filter(Boolean);
+    var box = $("#shot-voices");
+    if (!chars.length) {
+      box.innerHTML = "";
+      return;
+    }
+    var missing = chars.filter(function (c) { return !c.voiceBind; });
+    box.innerHTML = '<span class="shot-voices-label">对白</span>' + chars.map(function (c) {
+      if (!c.voiceBind) {
+        return '<span class="shot-voice is-empty"><b>' + c.name + '</b><small>尚未绑定音色</small><a href="assets.html">去绑定</a></span>';
+      }
+      var src = c.voiceBind.source === "upload" ? "上传" : c.voiceBind.source === "generated" ? "生成" : "音色库";
+      return '<span class="shot-voice"><button type="button" data-preview-voice="' + c.id + '" aria-label="试听' + c.voiceBind.name + '">▶</button><b>' + c.name + "</b><strong>" + c.voiceBind.name + "</strong><i>" + src + "</i></span>";
+    }).join("") + (missing.length ? '<em>配音前需要先绑定，这里不能临时另选</em>' : '<em>旁白和对白默认用角色已绑定的音色</em>');
+  }
+
   function renderEditor() {
     var s = shot();
     $("#shot-title").textContent = "片段 " + s.no;
@@ -616,6 +634,7 @@
       state.promptShot = promptKey;
     }
     $("#stage-modal").classList.toggle("open", state.view === "stage");
+    renderShotVoices();
     renderToolbar();
     renderPlayer();
     if (state.view === "stage") renderStage();
@@ -711,6 +730,19 @@
       state.modelOpen = false;
       state.resolutionOpen = false;
       renderToolbar();
+    }
+    var previewVoice = e.target.closest("[data-preview-voice]");
+    if (previewVoice) {
+      var voiced = charById(previewVoice.dataset.previewVoice);
+      if (voiced && voiced.voiceBind && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        var utterance = new SpeechSynthesisUtterance(D.voiceSample || "这是一段统一试听。");
+        utterance.lang = "zh-CN";
+        utterance.pitch = voiced.voiceBind.pitch || 1;
+        utterance.rate = voiced.voiceBind.rate || 1;
+        window.speechSynthesis.speak(utterance);
+      }
+      return;
     }
     if (!t) return;
     if (t.dataset.stageOpen) { openStage(t.dataset.stageOpen, false); return; }
@@ -836,6 +868,8 @@
     if (act === "generate") {
       var generatingShot = state.shotId;
       var generatingModel = model();
+      var unboundVoices = (shot().refs || []).map(charById).filter(function (c) { return c && !c.voiceBind; });
+      if (unboundVoices.length) ReplicaUI.toast(unboundVoices.map(function (c) { return c.name; }).join("、") + "尚未绑定音色。旁白和对白需要先绑定，本次只生成画面");
       if (D.credits < generatingModel.cost) { ReplicaUI.toast("积分不足，本次生成需要 " + generatingModel.cost + " 积分"); return; }
       var generatingResolution = state.resolution;
       var st2 = stageOf(shot());

@@ -12,7 +12,7 @@ document.addEventListener("keydown", function (e) {
     if (!document.getElementById("rewrite-model-menu").hidden) closeRewriteModelMenu();
     else closeRewriteDialog();
   }
-  else if (document.getElementById("voice-dialog").classList.contains("open")) closeVoiceDialog(true);
+  else if (document.getElementById("voice-dialog").classList.contains("open")) document.getElementById("voice-cancel").onclick();
   else if (document.getElementById("role-dialog").classList.contains("open")) closeRole();
   else if (document.getElementById("plain-dialog").classList.contains("open")) closePlain();
   else if (document.getElementById("look-dialog").classList.contains("open") && lookMultiOn) {

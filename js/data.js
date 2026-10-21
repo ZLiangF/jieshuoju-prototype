@@ -56,6 +56,8 @@ window.ReplicaData = {
     {
       id: "xiaoming", name: "萧铭", role: "主角", looks: 27, status: "partial", pendingLooks: 25, eps: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15], desc: "隐姓埋名的商界大佬，前期隐忍退让",
       image: "media/characters/xiaoming.png", sheet: "media/characters/sheets/xiaoming.jpg", look: "外卖服戴头巾", voice: "沉稳低沉，语速偏慢，隐忍时压着怒气。",
+      voiceProfile: { gender: "男", age: "青年", style: "沉稳" },
+      voiceBind: { id: "steady-m", name: "沉稳男声", summary: "成熟克制，语速偏慢", source: "library", pitch: 0.85, rate: 0.92 },
       looksList: [
         { id: "delivery", name: "萧铭-外卖服戴头巾", eps: "1", image: "media/characters/xiaoming.png", prompt: "30岁中国男性，短发，亮黄外卖外套，黑裤，手持白色头巾，白底全身三视图。" },
         { id: "home", parentId: "delivery", name: "萧铭-居家常服", eps: "1-18,20,22,24,26,28,30,32,34,36,38,41-52,55,58,61,64,67,70,73,76,80,100", image: "media/characters/gushen.png", prompt: "30岁中国男性，短发，居家灰色T恤，深蓝牛仔裤，白底全身三视图。" },
@@ -89,6 +91,8 @@ window.ReplicaData = {
     {
       id: "hezhi", name: "贺芷", role: "主角", looks: 4, status: "partial", pendingLooks: 2, eps: [1,3,4,6,8,9,10,12,14], desc: "贺家掌权人，为家族利益放弃婚姻",
       image: "media/characters/hezhi.png", sheet: "media/characters/sheets/hezhi.jpg", look: "黑色女总裁装", voice: "清冷利落，带命令口吻。",
+      voiceProfile: { gender: "女", age: "青年", style: "清冷" },
+      voiceBind: { id: "gen-hezhi", name: "清冷女声", summary: "冷静利落，带命令口吻", source: "generated", pitch: 1.15, rate: 1 },
       looksList: [
         { id: "ceo", name: "贺芷-黑色女总裁装", eps: "1,3,4,6,8,10,12,14", image: "media/characters/hezhi.png", prompt: "28岁中国女性，黑色西装套装，手持黑伞，白底全身三视图。" },
         { id: "home2", name: "贺芷-日常便装", eps: "6,8,14", image: "media/characters/suwan.png", prompt: "28岁中国女性，深色连衣裙，白底全身三视图。" },
@@ -99,6 +103,7 @@ window.ReplicaData = {
     {
       id: "cuiguihua", name: "崔桂华", role: "配角", tag: "贺家", looks: 1, status: "ready", eps: [2,3,6,7,11], desc: "贺家主母，势利贪婪，看不起萧铭",
       image: "media/characters/cuiguihua.png", sheet: "media/characters/sheets/cuiguihua.jpg", look: "黑色旗袍", voice: "尖细，爱抱怨。",
+      voiceProfile: { gender: "女", age: "中年", style: "尖细" },
       looksList: [
         { id: "qipao", name: "崔桂华-黑色旗袍", eps: "2,3,6,7,11", image: "media/characters/cuiguihua.png", prompt: "50岁中国女性，黑色旗袍，白底全身三视图。" }
       ]
@@ -106,6 +111,7 @@ window.ReplicaData = {
     {
       id: "heyi", name: "贺毅", role: "配角", tag: "贺家", looks: 1, status: "pending", eps: [2,3,7,11,13], desc: "贺芷弟弟，纨绔子弟，欺软怕硬",
       image: "media/characters/heyi.png", sheet: "media/characters/sheets/heyi.jpg", look: "花衬衫", voice: "嚣张，语速快。",
+      voiceProfile: { gender: "男", age: "青年", style: "张扬" },
       looksList: [
         { id: "shirt", name: "贺毅-花衬衫", eps: "2,3,7,11,13", image: "media/characters/heyi.png", prompt: "25岁中国男性，花衬衫，白底全身三视图。" }
       ]
@@ -113,6 +119,7 @@ window.ReplicaData = {
     {
       id: "shen", name: "沈妍妍", role: "配角", looks: 1, status: "generating", eps: [1,4,5,9], desc: "贺芷的助理，趋炎附势，多次羞辱萧铭",
       image: "media/characters/shen.png", sheet: "media/characters/sheets/shen.jpg", look: "都市通勤装", voice: "轻蔑，爱接话。",
+      voiceProfile: { gender: "女", age: "青年", style: "清冷" },
       looksList: [
         { id: "office", name: "沈妍妍-都市通勤装", eps: "1,4,5,9", image: "media/characters/shen.png", prompt: "26岁中国女性，都市通勤装，白底全身三视图。" }
       ]
@@ -120,6 +127,7 @@ window.ReplicaData = {
     {
       id: "sucheng", name: "苏承", role: "配角", tag: "苏家", looks: 1, status: "ready", eps: [5,8,14,15], desc: "苏家少爷，贺芷想攀附的对象",
       image: "media/characters/gushen.png", sheet: "media/characters/sheets/sucheng.jpg", look: "黑色西装", voice: "温和，话里有刺。",
+      voiceProfile: { gender: "男", age: "青年", style: "沉稳" },
       looksList: [
         { id: "suit", name: "苏承-黑色西装", eps: "5,8,14,15", image: "media/characters/gushen.png", sheet: "media/characters/sheets/sucheng.jpg", prompt: "27岁中国男性，黑色西装，白底全身三视图。" }
       ]
@@ -127,6 +135,7 @@ window.ReplicaData = {
     {
       id: "dong", name: "董总", role: "配角", tag: "董家", looks: 1, status: "pending", eps: [10,12,15], desc: "董家实际话事人，订单的真正主人",
       image: "media/characters/gushen.png", look: "深色大衣", voice: "沉，不多话。",
+      voiceProfile: { gender: "男", age: "中年", style: "沉稳" },
       looksList: [
         { id: "coat", name: "董总-深色大衣", eps: "10,12,15", image: "media/characters/gushen.png", prompt: "45岁中国男性，深色大衣，白底全身三视图。" }
       ]
@@ -134,6 +143,7 @@ window.ReplicaData = {
     {
       id: "guests", name: "宴会宾客", role: "群演", looks: 1, status: "pending", eps: [8,14], desc: "苏家宴会上的围观宾客，衬托摊牌氛围",
       image: "media/characters/gushen.png", look: "宴会礼服", voice: "",
+      voiceProfile: { gender: "", age: "", style: "" },
       looksList: [
         { id: "party", name: "宴会宾客-宴会礼服", eps: "8,14", image: "media/characters/gushen.png", prompt: "20-40岁中国男女，宴会礼服，白底全身三视图。" }
       ]
@@ -315,6 +325,17 @@ window.ReplicaData = {
         "c01 {t:7.0} ,(姿态:{c:hezhi}-递出{p:papers}) 过肩拍，{c:hezhi}手臂伸进画面。\n" +
         "c02 {t:8.0} ,(姿态:{c:xiaoming}-盯着协议不动) {c:xiaoming}近景，雨水顺着头巾滴落。"
     }
+  ],
+  voiceSample: "这是一段统一试听，方便对比不同音色。",
+  voices: [
+    { id: "steady-m", name: "沉稳男声", summary: "成熟克制，语速偏慢", gender: "男", age: "青年", style: "沉稳", pitch: 0.85, rate: 0.92 },
+    { id: "cold-f", name: "清冷女声", summary: "冷静利落，带命令口吻", gender: "女", age: "青年", style: "清冷", pitch: 1.15, rate: 1 },
+    { id: "bright-m", name: "青年自然声", summary: "明亮轻快，情绪自然", gender: "男", age: "青年", style: "明亮", pitch: 1.05, rate: 1.06 },
+    { id: "sharp-f", name: "尖细女声", summary: "偏高偏快，带抱怨感", gender: "女", age: "中年", style: "尖细", pitch: 1.35, rate: 1.08 },
+    { id: "soft-f", name: "柔和女声", summary: "语速适中，干净清楚", gender: "女", age: "青年", style: "柔和", pitch: 1.2, rate: 0.96 },
+    { id: "low-m", name: "低沉男声", summary: "话少，尾音压着", gender: "男", age: "中年", style: "沉稳", pitch: 0.7, rate: 0.88 },
+    { id: "elder-m", name: "苍老男声", summary: "沙哑缓慢，气声偏多", gender: "男", age: "年长", style: "苍老", pitch: 0.75, rate: 0.8 },
+    { id: "brash-m", name: "嚣张男声", summary: "语速快，气势外放", gender: "男", age: "青年", style: "张扬", pitch: 1.1, rate: 1.15 }
   ]
 };
 

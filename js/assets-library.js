@@ -1,26 +1,3 @@
-function listForTab() {
-  return tab === "char" ? D.characters : tab === "scene" ? D.scenes : D.props;
-}
-
-function renderProgress() {
-  var roles = 0, scenes = 0, props = 0;
-  rowsOf("char").forEach(function (row) {
-    var stats = assetLookStats(row.item);
-    roles += stats.total - stats.done;
-  });
-  rowsOf("scene").forEach(function (row) {
-    var stats = assetLookStats(row.item);
-    scenes += stats.total - stats.done;
-  });
-  rowsOf("prop").forEach(function (row) {
-    var stats = assetLookStats(row.item);
-    props += stats.total - stats.done;
-  });
-  [["char", roles], ["scene", scenes], ["prop", props]].forEach(function (entry) {
-    paintPending(entry[0], entry[1]);
-  });
-}
-
 var TAB_WORDS = { char: "角色", scene: "场景", prop: "道具" };
 
 function paintPending(kind, n) {
@@ -154,7 +131,7 @@ function subCardHtml(row, entry) {
   var chip = episodeChip(look.eps);
   return '<article class="char-card asset-card asset-char asset-sub is-' + state + '" data-kind="char" data-i="' + row.i + '" data-key="' + key + '" data-look="' + look.id + '"' + (multiOn ? ' title="多选按角色整体选择"' : "") + ">" +
     '<div class="asset-card-media is-' + state + (state === "ready" ? " is-sheet" : state === "pending" ? " is-empty" : "") + '">' + visual + flag + "</div>" +
-    '<div class="asset-card-info"><div class="asset-card-title"><h3 title="' + look.name + '">' + (state === "ready" ? READY_MARK : "") + '<span class="asset-name">' + shortName + '</span><span class="tag asset-sub-tag">子角色</span></h3>' +
+    '<div class="asset-card-info"><div class="asset-card-title"><h3 title="' + look.name + '"><span class="asset-name">' + shortName + '</span><span class="tag asset-sub-tag">子角色</span></h3>' +
     '<span class="looks" title="' + chip.title + '">' + chip.html.replace(/<[^>]+>/g, "") + "</span></div>" +
     '<p class="asset-sub-owner">' + SUB_ICON + "隶属 " + item.name + (parentName ? " · 上级：" + parentName : "") + "</p>" +
     "</div></article>";
@@ -216,12 +193,21 @@ function cardHtml(row) {
     : actionable && !multiOn
     ? '<button type="button" class="asset-flag is-action ' + flagState + '" data-gen-asset="' + key + '" title="' + (failedLooks ? "重新生成失败内容" : "生成该资产还未完成的内容") + '">' + flagIcon + flagText + "</button>"
     : '<span class="asset-flag ' + flagState + '">' + flagIcon + (multiOn && actionable ? (state === "partial" ? pending + " 个待生成" : "待生成") : flagText) + "</span>";
+  var voiceBtn = kind === "char" && charVoiceReady(a) ? cardVoiceHtml(a) : "";
   return '<article class="char-card asset-card asset-' + kind + " is-" + state + (picked ? " is-picked" : "") + '" data-kind="' + kind + '" data-i="' + row.i + '" data-key="' + key + '">' +
-    '<div class="' + mediaClass + '">' + visual + check + delBtn + flag + "</div>" +
-    '<div class="asset-card-info"><div class="asset-card-title"><h3>' + (state === "ready" ? READY_MARK : "") + '<span class="asset-name">' + a.name + "</span>" +
+    '<div class="' + mediaClass + '">' + visual + check + voiceBtn + delBtn + flag + "</div>" +
+    '<div class="asset-card-info"><div class="asset-card-title"><h3><span class="asset-name">' + a.name + "</span>" +
     roleTagsHtml(a, kind) + "</h3>" + (kind === "char" || looks > 1 ? lookMeta : "") + "</div>" +
     (a.desc ? "<p>" + a.desc + "</p>" : '<p class="asset-empty-desc">点击卡片直接编辑资产</p>') +
     "</div></article>";
+}
+
+function cardVoiceHtml(char) {
+  var bind = char.voiceBind;
+  return '<button type="button" class="card-voice' + (bind ? " is-on" : "") + '" data-bind-voice="1" title="' +
+    (bind ? "音色：" + bind.name : "绑定音色") + '" aria-label="' +
+    (bind ? "已绑定音色「" + bind.name + "」，点击更换" : "绑定音色") + '">' +
+    (bind ? VOICE_ON_ICON : VOICE_OFF_ICON) + "</button>";
 }
 
 function render() {
@@ -290,10 +276,19 @@ document.getElementById("grid").onclick = function (e) {
     var parts = gen.dataset.genAsset.split(":");
     var source = parts[0] === "char" ? D.characters : parts[0] === "scene" ? D.scenes : D.props;
     var item = source[Number(parts[1])];
+    var wasUnbound = item && parts[0] === "char" && !item.voiceBind && assetState(item) === "pending";
     var generated = item ? revealItemLooks(item) : 0;
     render();
     if (item && document.getElementById("look-dialog").classList.contains("open") && currentChar === item) fillLookForm(editingLook);
     ReplicaUI.toast(generated ? "已生成「" + item.name + "」的 " + generated + " 项内容" : "这个资产没有待生成内容");
+    if (wasUnbound && generated) openVoiceDialog(item, true);
+    return;
+  }
+  var bindVoice = e.target.closest("[data-bind-voice]");
+  if (bindVoice) {
+    var bindCard = bindVoice.closest(".char-card");
+    var bindItem = D.characters[Number(bindCard.dataset.i)];
+    if (bindItem) openVoiceDialog(bindItem);
     return;
   }
   var card = e.target.closest(".char-card");

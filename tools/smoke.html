@@ -46,6 +46,11 @@
     { name: "资产库列表", page: "assets.html", scope: ".app" },
     { name: "资产详情 · 待生成", page: "assets.html", scope: "#look-dialog", run: function (w) { openCharacter(w, "萧铭"); } },
     { name: "资产详情 · 已生成", page: "assets.html", scope: "#look-dialog", run: function (w) { revealFirst(w); openCharacter(w, "萧铭"); } },
+    { name: "资产详情 · 结构图", page: "assets.html", scope: "#look-dialog", run: function (w) {
+      revealFirst(w);
+      openCharacter(w, "萧铭");
+      w.document.querySelector('[data-look-view="structure"]').click();
+    } },
     { name: "资产详情 · 场景", page: "assets.html", scope: "#look-dialog", run: function (w) {
       [].find.call(w.document.querySelectorAll("button"), function (b) { return b.textContent.indexOf("场景") !== -1; }).click();
       w.document.querySelector("#grid .char-card").click();

@@ -27,7 +27,16 @@ var PROMPT_LIMIT = 2000;
 var imageAnalysisSeq = 0;
 var lookImageMode = "upload";
 var lookGenerationSeq = 0;
-var voiceBeforeEdit = "";
+var voiceBindChar = null;
+var voiceBindTab = "library";
+var voiceBindPick = null;
+var voiceHeard = {};
+var voicePlayingId = "";
+var voiceDialogAuto = false;
+var voicePromptSkipped = {};
+var voiceFilters = { gender: "", age: "", style: "" };
+var voiceLibraryReady = false;
+var voiceGenerating = false;
 var pendingReferenceSrc = "";
 var referenceImageValue = "";
 var referenceAssetChoices = [];
@@ -45,6 +54,67 @@ var PLUS_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3
 var READY_MARK = '<span class="asset-done" role="img" aria-label="已完成" title="已完成"><svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="7" fill="currentColor"/><path d="M4.2 7.2 6.1 9 9.8 5.2" fill="none" stroke="#0f1f17" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
 function cleanText(value, limit) {
   return String(value || "").replace(/[<>"&]/g, "").replace(/\s+/g, " ").trim().slice(0, limit);
+}
+
+function voiceSourceLabel(source) {
+  return source === "upload" ? "上传" : source === "generated" ? "生成" : "音色库";
+}
+
+function voiceById(id) {
+  return (D.voices || []).filter(function (voice) { return voice.id === id; })[0] || null;
+}
+
+function recommendVoices(char) {
+  var profile = (char && char.voiceProfile) || {};
+  var list = (D.voices || []).filter(function (voice) {
+    if (profile.gender && voice.gender !== profile.gender) return false;
+    if (profile.age && voice.age !== profile.age) return false;
+    return true;
+  });
+  if (!list.length) list = (D.voices || []).slice();
+  if (profile.style) {
+    list = list.slice().sort(function (a, b) {
+      return (b.style === profile.style) - (a.style === profile.style);
+    });
+  }
+  return list;
+}
+
+function voiceDraftText(char) {
+  if (!char) return "";
+  if (char.voiceUploadNote) return char.voiceUploadNote;
+  var profile = char.voiceProfile || {};
+  var who = profile.age || "";
+  if (profile.gender === "男") who += "男性";
+  else if (profile.gender === "女") who += "女性";
+  return [who, profile.style, char.desc].filter(Boolean).join("，");
+}
+
+function stopVoicePreview() {
+  voicePlayingId = "";
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  document.querySelectorAll(".voice-play.is-playing, .asset-voice-play.is-playing").forEach(function (node) { node.classList.remove("is-playing"); });
+}
+
+function playVoiceSample(voice, button) {
+  if (!voice) return;
+  stopVoicePreview();
+  voiceHeard[voice.id] = true;
+  voicePlayingId = voice.id;
+  if (typeof paintVoiceConfirm === "function") paintVoiceConfirm();
+  if (button) button.classList.add("is-playing");
+  if (!window.speechSynthesis) {
+    ReplicaUI.toast("当前环境不能出声，已记为试听过");
+    return;
+  }
+  var utterance = new SpeechSynthesisUtterance(D.voiceSample || "这是一段统一试听。");
+  utterance.lang = "zh-CN";
+  utterance.pitch = voice.pitch || 1;
+  utterance.rate = voice.rate || 1;
+  utterance.onend = function () {
+    if (voicePlayingId === voice.id) stopVoicePreview();
+  };
+  window.speechSynthesis.speak(utterance);
 }
 
 var selectedAssets = {};
@@ -105,6 +175,10 @@ function assetLookStats(a) {
   if (!looks.length) return { total: 1, done: revealedAssets[a.id] ? 1 : 0 };
   var done = looks.filter(function (look) { return isLookRevealed(a, look); }).length;
   return { total: looks.length, done: done };
+}
+
+function charVoiceReady(char) {
+  return assetLookStats(char).done > 0;
 }
 
 function assetState(a) {

@@ -37,8 +37,10 @@ function finishLookGeneration(item, looks, taskId) {
   refreshPendingLooks();
   render();
   refreshLookGeneration(item);
-  var unit = D.characters.indexOf(item) !== -1 ? "形象" : D.scenes.indexOf(item) !== -1 ? "场景" : "道具";
+  var isChar = D.characters.indexOf(item) !== -1;
+  var unit = isChar ? "形象" : D.scenes.indexOf(item) !== -1 ? "场景" : "道具";
   if (completed) ReplicaUI.toast("生成完成 · " + item.name + " " + completed + " 个" + unit);
+  if (completed && isChar && !item.voiceBind) openVoiceDialog(item, true);
 }
 
 function cancelLookGeneration(looks) {

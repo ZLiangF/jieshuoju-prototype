@@ -104,21 +104,27 @@ function episodeChip(value) {
   return { title: "查看出现集数", compact: true, html: "共 " + numbers.length + " 集" };
 }
 
-function voiceLabel(voice) {
-  if (!voice) return "绑定音色";
-  var names = [
-    ["苍老沙哑", "年老状态"],
-    ["含糊拖长", "醉酒状态"],
-    ["虚弱低沉", "受伤状态"],
-    ["年轻明亮", "青年自然声"],
-    ["清冷利落", "清冷女声"],
-    ["沉稳低沉", "沉稳男声"]
-  ];
-  for (var i = 0; i < names.length; i++) {
-    if (voice.indexOf(names[i][0]) !== -1) return names[i][1];
+function paintPreviewVoice() {
+  var box = document.getElementById("preview-voice");
+  box.hidden = editorKind !== "char" || !charVoiceReady(currentChar);
+  if (box.hidden) {
+    box.innerHTML = "";
+    return;
   }
-  return voice.length > 8 ? voice.slice(0, 8) + "…" : voice;
+  var bind = currentChar.voiceBind;
+  box.classList.toggle("is-empty", !bind);
+  box.innerHTML = bind
+    ? '<button type="button" class="asset-voice-play" data-preview-voice-play aria-label="试听' + bind.name + '">▶</button>' +
+      "<strong>" + bind.name + "</strong><i>" + voiceSourceLabel(bind.source) + "</i>" +
+      '<button type="button" class="preview-voice-open" data-preview-voice-open>更换</button>'
+    : '<span>♪ 尚未绑定音色</span><button type="button" class="preview-voice-open" data-preview-voice-open>去绑定</button>';
 }
+
+document.getElementById("preview-voice").onclick = function (e) {
+  var play = e.target.closest("[data-preview-voice-play]");
+  if (play) playVoiceSample(currentChar.voiceBind, play);
+  else if (e.target.closest("[data-preview-voice-open]")) openVoiceDialog(currentChar);
+};
 
 function lookShortName(look) {
   return look.name.replace(currentChar.name + "-", "");
@@ -164,8 +170,6 @@ function lookCardHtml(look, index, flat) {
     '<div class="look-card-meta"><span class="look-kind-tag ' + (isPrimary ? "is-primary" : "is-child") + '">' + kindText + "</span>" +
     (parentName ? '<span class="look-parent-name">' + parentName + "</span>" : "") +
     "</div></div>" +
-    '<button type="button" class="look-card-voice' + (look.voice ? " bound" : "") + '" data-look-voice="' + index + '" title="' + (look.voice || "绑定音色") + '" aria-label="' + (look.voice ? "已绑定音色：" + voiceLabel(look.voice) : "未绑定音色") + '">' +
-    (look.voice ? VOICE_ON_ICON : VOICE_OFF_ICON) + "</button>" +
     (flat && !(editorKind === "char" && lookMultiOn) ? '<button type="button" class="look-add-child" data-add-child="' + look.id + '" title="新增子' + assetWord() + '" aria-label="新增子' + assetWord() + '">' + PLUS_ICON + "</button>" : "") +
     "</div></article>";
 }
@@ -189,41 +193,6 @@ function orderedLooks(looks) {
   return acc;
 }
 
-function renderLookTreeNodes(looks, parent, primary) {
-  var html = "";
-  looks.forEach(function (look, index) {
-    if (!isChildOf(look, parent, primary)) return;
-    var childCount = looks.filter(function (item) { return isChildOf(item, look, primary); }).length;
-    var open = !!expandedLooks[currentChar.id + ":" + look.id];
-    var state = lookVisualState(look, index);
-    var chipText = episodeChip(look.eps).html.replace(/<[^>]+>/g, "");
-    var thumb = state === "ready"
-      ? '<img src="' + look.image + '" alt="">'
-      : '<span class="look-tree-avatar' + (state === "generating" ? " is-generating" : "") + '">' + (editorKind === "char" ? EMPTY_PERSON_ICON : EMPTY_IMAGE_ICON) + "</span>";
-    var checked = editorKind === "char" && lookMultiOn && !!selectedLooks[look.id];
-    var check = editorKind === "char" && lookMultiOn ? '<span class="asset-check look-tree-check look-pick' + (checked ? " is-on" : "") + '" role="checkbox" aria-checked="' + (checked ? "true" : "false") + '" aria-label="选择形象"></span>' : "";
-    html += '<div class="look-tree-node">' +
-      '<div class="look-tree-row' + (editingLook === look ? " on" : "") + (checked ? " is-look-picked" : "") + '">' +
-      (childCount
-        ? '<button type="button" class="look-tree-toggle' + (open ? " is-open" : "") + '" data-toggle-look="' + look.id + '" aria-label="展开子' + assetWord() + '">›</button>'
-        : '<span class="look-tree-toggle is-leaf"></span>') +
-      '<button type="button" class="look-tree-main" data-look-index="' + index + '">' + check + thumb +
-      '<span class="look-tree-copy"><strong>' + (state === "ready" ? READY_MARK : "") + '<span class="look-tree-name">' + lookShortName(look) + "</span></strong><small>" +
-      '<i class="look-kind-inline">子' + assetWord() + "</i>" +
-      (state === "ready" ? "" : '<i class="state ' + state + '">' + lookStateText(state) + "</i>") +
-      "<i>" + chipText + "</i>" +
-      (childCount ? "<i>" + childCount + " 个子" + assetWord() + "</i>" : "") +
-      "</small></span></button>" +
-      '<button type="button" class="look-tree-voice' + (look.voice ? " bound" : "") + '" data-look-voice="' + index + '" title="' + (look.voice || "绑定音色") + '"><span>♪</span>' + voiceLabel(look.voice) + "</button>" +
-      '<button type="button" class="look-tree-add" data-add-child="' + look.id + '" aria-label="新增子' + assetWord() + '">＋</button>' +
-      (editorKind === "char" && lookMultiOn ? "" : '<button type="button" class="look-tree-del" data-del-look="' + look.id + '" title="删除' + assetWord() + '" aria-label="删除' + lookShortName(look) + '">' + TRASH_ICON + "</button>") +
-      "</div>" +
-      (open && childCount ? '<div class="look-tree-kids">' + renderLookTreeNodes(looks, look, primary) + "</div>" : "") +
-      "</div>";
-  });
-  return html;
-}
-
 function primaryLookIndex(looks) {
   var index = looks.findIndex(function (look) {
     return currentChar.look && look.name.indexOf(currentChar.look) !== -1;
@@ -237,6 +206,7 @@ function renderLookLibrary() {
   document.getElementById("editor-char-name").textContent = currentChar.name;
   document.getElementById("editor-char-desc").textContent = currentChar.desc || "";
   document.getElementById("editor-char-desc").title = currentChar.desc || "";
+  paintPreviewVoice();
   document.getElementById("editor-char-avatar").innerHTML = '<img src="' + currentChar.image + '" alt="">';
   document.getElementById("editor-role-switch").setAttribute("aria-label", editorKind === "char" ? "切换当前角色" : "切换当前" + assetWord());
   document.getElementById("editor-role-switch").innerHTML = editorItems().map(function (char) {
@@ -255,18 +225,15 @@ function renderLookLibrary() {
   var libraryScroll = library.dataset.char === currentChar.id ? library.scrollTop : 0;
   var primaryIndex = primaryLookIndex(looks);
   var primary = looks[primaryIndex];
-  var primaryCard = primary ? lookCardHtml(primary, primaryIndex) : "";
   if (expandedLooks._ready !== currentChar.id) {
     expandedLooks = { _ready: currentChar.id };
     expandedLooks[currentChar.id + ":home"] = true;
   }
+  document.getElementById("look-dialog").classList.toggle("is-mind-view", lookViewMode === "structure");
   if (lookViewMode === "structure") {
-    var childCount = looks.filter(function (look) { return isChildOf(look, primary, primary); }).length;
-    library.innerHTML = '<div class="look-structure look-tree">' +
-      '<div class="structure-root-look">' + primaryCard + "</div>" +
-      (childCount ? '<div class="structure-trunk"></div><div class="look-tree-head"><span>子' + assetWord() + '</span><b>' + childCount + '</b></div><div class="look-tree-children">' + renderLookTreeNodes(looks, primary, primary) + "</div>" : "") +
-      '<button type="button" class="structure-add" data-add-child="' + (primary ? primary.id : "") + '">＋ 新增子' + assetWord() + '</button></div>';
+    renderLookMindMap(library, looks, primary);
   } else {
+    library.classList.remove("is-mind");
     library.innerHTML = '<div class="look-flat-grid">' + orderedLooks(looks).map(function (item) {
       return lookCardHtml(item.look, item.index, true);
     }).join("") +
@@ -340,7 +307,6 @@ function fillLookForm(look) {
   document.getElementById("use-reference-image").parentElement.querySelector("span").textContent = "参考当前" + assetWord();
   document.getElementById("use-main-image").parentElement.querySelector("span").textContent = "主" + assetWord();
   document.getElementById("look-dialog").classList.toggle("is-asset-other", editorKind !== "char");
-  document.getElementById("f-voice").value = look ? (look.voice || currentChar.voice || "") : (currentChar.voice || "");
   updatePromptCount();
   renderLookLibrary();
 
@@ -359,7 +325,6 @@ function stashLookDraft() {
   editingLook.name = document.getElementById("f-look-name").value.trim() || editingLook.name;
   editingLook.eps = document.getElementById("f-look-eps").value.trim() || editingLook.eps;
   editingLook.prompt = document.getElementById("f-prompt").value.trim();
-  editingLook.voice = document.getElementById("f-voice").value.trim();
   lookDirty = false;
 }
 
@@ -634,14 +599,6 @@ document.getElementById("look-library").onclick = function (e) {
       else selectedLooks[pickLook.id] = true;
       renderLookLibrary();
     }
-    return;
-  }
-  var voiceButton = e.target.closest("[data-look-voice]");
-  if (voiceButton) {
-    newLookParentId = "";
-    stashLookDraft();
-    fillLookForm((currentChar.looksList || [])[Number(voiceButton.dataset.lookVoice)]);
-    openVoiceDialog();
     return;
   }
   var lookCard = e.target.closest("[data-look-index]");

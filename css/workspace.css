@@ -1457,3 +1457,52 @@ body.ws-full .ws-icon[data-act="full"] {
     font-size: 11px;
   }
 }
+.shot-voices {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.shot-voices:empty { display: none; }
+.shot-voices-label,
+.shot-voices em {
+  color: #8d8796;
+  font-size: 12px;
+  font-style: normal;
+}
+.shot-voices em {
+  flex: 1 0 100%;
+  line-height: 1.4;
+}
+.shot-voice {
+  height: 28px;
+  padding: 0 8px 0 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.08);
+  font-size: 12px;
+}
+.shot-voice.is-empty { border-color: rgba(240,176,92,.35); }
+.shot-voice b { color: #f4f1f8; font-weight: 620; }
+.shot-voice strong { color: #e4d8ff; font-weight: 560; }
+.shot-voice small { color: #f0c27a; }
+.shot-voice i {
+  color: #cbbcf2;
+  font-style: normal;
+  font-size: 10px;
+}
+.shot-voice button,
+.shot-voice a {
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  color: #fff;
+  background: #7c5cff;
+  font-size: 11px;
+  line-height: 20px;
+}
+.shot-voice a { text-decoration: none; }
