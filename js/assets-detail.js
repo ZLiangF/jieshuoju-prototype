@@ -295,6 +295,54 @@ workspaceSplitHandle.addEventListener("keydown", function (e) {
 window.addEventListener("resize", function () {
   if (workspaceLeft) setWorkspaceLeft(workspaceLeft);
   else placeWorkspaceSplit();
+  if (promptHeight) setPromptHeight(promptHeight);
+});
+
+var promptHeight = 0;
+
+function setPromptHeight(px) {
+  var box = document.getElementById("f-prompt");
+  var output = document.querySelector(".look-current-output");
+  if (!box || !output || !box.offsetHeight) return;
+  var minOutput = 180;
+  var max = box.offsetHeight + Math.max(0, output.offsetHeight - minOutput);
+  px = Math.max(48, Math.min(max, Math.round(px)));
+  promptHeight = px;
+  box.style.height = px + "px";
+  box.style.minHeight = px + "px";
+}
+
+var genSplitDrag = null;
+var genSplitHandle = document.getElementById("gen-split");
+genSplitHandle.addEventListener("pointerdown", function (e) {
+  if (e.button !== 0) return;
+  genSplitDrag = { y: e.clientY, height: document.getElementById("f-prompt").offsetHeight };
+  document.querySelector(".look-generation-panel").classList.add("is-splitting");
+  if (this.setPointerCapture) {
+    try { this.setPointerCapture(e.pointerId); } catch (err) { /* 没有真实指针时忽略 */ }
+  }
+  e.preventDefault();
+});
+genSplitHandle.addEventListener("pointermove", function (e) {
+  if (!genSplitDrag) return;
+  setPromptHeight(genSplitDrag.height - (e.clientY - genSplitDrag.y));
+});
+["pointerup", "pointercancel"].forEach(function (type) {
+  genSplitHandle.addEventListener(type, function () {
+    genSplitDrag = null;
+    document.querySelector(".look-generation-panel").classList.remove("is-splitting");
+  });
+});
+genSplitHandle.addEventListener("dblclick", function () {
+  var box = document.getElementById("f-prompt");
+  promptHeight = 0;
+  box.style.height = "";
+  box.style.minHeight = "";
+});
+genSplitHandle.addEventListener("keydown", function (e) {
+  if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+  e.preventDefault();
+  setPromptHeight(document.getElementById("f-prompt").offsetHeight + (e.key === "ArrowUp" ? 32 : -32));
 });
 
 function pendingLooksOf(item) {

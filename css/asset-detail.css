@@ -694,7 +694,51 @@
   font-size: 12px;
 }
 .look-generation-panel {
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+}
+.gen-split {
+  position: relative;
+  height: 12px;
+  margin: -11px 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: row-resize;
+  touch-action: none;
+  z-index: 3;
+}
+.gen-split::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 5px;
+  width: 36px;
+  height: 2px;
+  margin-left: -18px;
+  border-radius: 2px;
+  background: rgba(255,255,255,.14);
+  transition: background .15s ease, width .15s ease, margin .15s ease, height .15s ease, top .15s ease;
+}
+.gen-split:hover::after,
+.gen-split:focus-visible::after,
+.look-generation-panel.is-splitting .gen-split::after {
+  top: 4px;
+  width: 56px;
+  height: 4px;
+  margin-left: -28px;
+  background: #9e4cff;
+}
+.gen-split:focus-visible {
+  outline: none;
+}
+.look-generation-panel.is-splitting {
+  cursor: row-resize;
+  user-select: none;
+}
+.look-generation-panel:has(.prompt-composer.collapsed) .gen-split {
+  pointer-events: none;
+  opacity: 0;
 }
 .look-current-output {
   position: relative;
@@ -714,6 +758,7 @@
   background: transparent;
 }
 .prompt-composer {
+  container: composer / inline-size;
   flex: none;
   overflow: hidden;
   border-radius: 15px;
@@ -2280,6 +2325,19 @@ body.asset-editor-page-open {
 .asset-match:hover {
   background: rgba(139,92,246,.28);
 }
+@container composer (max-width: 540px) {
+  .asset-match {
+    width: 30px;
+    padding: 0;
+    justify-content: center;
+    gap: 0;
+    font-size: 0;
+  }
+  .asset-match svg {
+    width: 14px;
+    height: 14px;
+  }
+}
 .generation-action {
   height: 34px;
   padding-left: 9px;
@@ -3249,11 +3307,8 @@ body.asset-editor-page-open {
   background-image: radial-gradient(rgba(255,255,255,.07) 1px, transparent 1px);
   background-size: 18px 18px;
 }
-.mind-map.is-panning {
-  cursor: grabbing;
-}
-.mind-map.is-dragging-node,
-.mind-map.is-dragging-node .mind-node {
+.mind-map.is-panning,
+.mind-map.is-panning .mind-node.is-root {
   cursor: grabbing;
 }
 .mind-stage {
@@ -3302,7 +3357,7 @@ body.asset-editor-page-open {
   font-size: 12px;
   font-weight: 560;
   white-space: nowrap;
-  cursor: grab;
+  cursor: pointer;
   transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
 }
 .mind-node:hover {
@@ -3330,10 +3385,6 @@ body.asset-editor-page-open {
 .mind-node.is-look-picked {
   background: rgba(131,74,233,.22);
   border-color: rgba(190,147,255,.85);
-}
-.mind-node.is-dragging {
-  z-index: 4;
-  box-shadow: 0 10px 24px rgba(0,0,0,.4);
 }
 .mind-name {
   max-width: 148px;
@@ -3378,6 +3429,7 @@ body.asset-editor-page-open {
 .mind-node.is-root {
   max-width: none;
   width: 132px;
+  cursor: grab;
   height: auto;
   padding: 6px 6px 8px;
   border-radius: 14px;
@@ -3543,13 +3595,6 @@ body.asset-editor-page-open {
   border-color: rgba(255,120,140,.75);
   border-style: solid;
 }
-.mind-map.is-dragging-node .mind-add,
-.mind-map.is-dragging-node .mind-del,
-.mind-map.is-panning .mind-add,
-.mind-map.is-panning .mind-del {
-  opacity: 0;
-  pointer-events: none;
-}
 .mind-voice {
   position: absolute;
   left: 5px;
@@ -3679,6 +3724,21 @@ body.asset-editor-page-open {
 .mind-toolbar button:hover {
   background: rgba(255,255,255,.08);
 }
+.mind-toolbar .mind-flow {
+  width: 26px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: #7a45f5;
+}
+.mind-toolbar .mind-flow:hover {
+  background: #8d5cff;
+}
+.mind-toolbar .mind-flow svg {
+  width: 14px;
+  height: 14px;
+}
 .mind-toolbar span {
   min-width: 38px;
   color: #a39cae;
@@ -3693,12 +3753,23 @@ body.asset-editor-page-open {
 }
 .mind-hint {
   position: absolute;
-  left: 12px;
+  left: 10px;
+  right: 10px;
   bottom: 10px;
   z-index: 5;
+  width: fit-content;
+  max-width: calc(100% - 20px);
   margin: 0;
-  color: #77707f;
+  padding: 4px 10px;
+  border-radius: 8px;
+  overflow: hidden;
+  color: #8a8392;
+  background: rgba(22,21,28,.9);
+  border: 1px solid rgba(255,255,255,.06);
   font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   pointer-events: none;
 }
 @keyframes mind-pulse {

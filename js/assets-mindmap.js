@@ -1,5 +1,9 @@
 var MIND_GAP_X = 64;
 var MIND_GAP_Y = 12;
+var MIND_ROW_GAP_X = 18;
+var MIND_ROW_GAP_Y = 76;
+var ICON_FLOW_DOWN = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="6" y="1.4" width="4" height="4" rx="1" fill="currentColor"/><rect x="1.2" y="10.6" width="3.5" height="3.2" rx=".7" fill="currentColor"/><rect x="6.25" y="10.6" width="3.5" height="3.2" rx=".7" fill="currentColor"/><rect x="11.3" y="10.6" width="3.5" height="3.2" rx=".7" fill="currentColor"/></svg>';
+var ICON_FLOW_SIDE = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.4" y="6" width="4" height="4" rx="1" fill="currentColor"/><rect x="10.2" y="1.6" width="4.4" height="2.6" rx=".7" fill="currentColor"/><rect x="10.2" y="6.7" width="4.4" height="2.6" rx=".7" fill="currentColor"/><rect x="10.2" y="11.8" width="4.4" height="2.6" rx=".7" fill="currentColor"/></svg>';
 var mindSizes = {};
 var mindStates = {};
 var mindDrag = null;
@@ -8,8 +12,12 @@ var mindRevealedId = "";
 
 function mindState() {
   var key = editorKind + ":" + currentChar.id;
-  if (!mindStates[key]) mindStates[key] = { shift: {}, collapsed: {}, view: null };
+  if (!mindStates[key]) mindStates[key] = { shift: {}, collapsed: {}, view: null, flow: "down" };
   return mindStates[key];
+}
+
+function mindFlow() {
+  return mindState().flow === "side" ? "side" : "down";
 }
 
 function mindLooks() {
@@ -30,6 +38,10 @@ function mindSize(id) {
 }
 
 function mindLayout(looks, primary) {
+  return mindFlow() === "side" ? mindLayoutSide(looks, primary) : mindLayoutDown(looks, primary);
+}
+
+function mindLayoutSide(looks, primary) {
   var st = mindState();
   var nodes = [];
   var colWidth = [];
@@ -68,6 +80,55 @@ function mindLayout(looks, primary) {
   for (var d = 2; d < colWidth.length; d++) left[d] = left[d - 1] + colWidth[d - 1] + MIND_GAP_X;
   nodes.forEach(function (node) {
     if (node.parent) node.x = node.sx + left[node.depth] + mindSize(node.look.id).w / 2;
+  });
+  return nodes;
+}
+
+function mindLayoutDown(looks, primary) {
+  var st = mindState();
+  var nodes = [];
+  var rowHeight = [];
+  if (!primary) return nodes;
+  function span(look) {
+    var kids = st.collapsed[look.id] ? [] : mindChildren(looks, look, primary);
+    var own = mindSize(look.id).w + MIND_ROW_GAP_X;
+    if (!kids.length) return own;
+    return Math.max(own, kids.reduce(function (sum, kid) { return sum + span(kid); }, 0));
+  }
+  function place(look, parent, depth, left, sy) {
+    var own = st.shift[look.id] || { x: 0, y: 0 };
+    var wide = span(look);
+    var node = { look: look, parent: parent, depth: depth, sy: sy + own.y, x: left + wide / 2 + own.x, y: 0 };
+    rowHeight[depth] = Math.max(rowHeight[depth] || 0, mindSize(look.id).h);
+    nodes.push(node);
+    if (st.collapsed[look.id]) return;
+    var kids = mindChildren(looks, look, primary);
+    var kidsWide = kids.reduce(function (sum, kid) { return sum + span(kid); }, 0);
+    var cursor = left + own.x + (wide - kidsWide) / 2;
+    kids.forEach(function (kid) {
+      place(kid, node, depth + 1, cursor, sy + own.y);
+      cursor += span(kid);
+    });
+  }
+  var rootShift = st.shift[primary.id] || { x: 0, y: 0 };
+  var root = { look: primary, parent: null, depth: 0, sy: rootShift.y, x: rootShift.x, y: rootShift.y };
+  nodes.push(root);
+  rowHeight[0] = mindSize(primary.id).h;
+  if (!st.collapsed[primary.id]) {
+    var first = mindChildren(looks, primary, primary);
+    var width = first.reduce(function (sum, kid) { return sum + span(kid); }, 0);
+    var cursor = rootShift.x - width / 2;
+    first.forEach(function (kid) {
+      place(kid, root, 1, cursor, rootShift.y);
+      cursor += span(kid);
+    });
+  }
+  var top = [rootShift.y];
+  for (var d = 1; d < rowHeight.length; d++) {
+    top[d] = top[d - 1] + rowHeight[d - 1] / 2 + MIND_ROW_GAP_Y + rowHeight[d] / 2;
+  }
+  nodes.forEach(function (node) {
+    if (node.parent) node.y = top[node.depth] + node.sy - rootShift.y;
   });
   return nodes;
 }
@@ -133,15 +194,18 @@ function renderLookMindMap(library, looks, primary) {
   var st = mindState();
   var hadFocus = library.contains(document.activeElement);
   var all = mindLooks();
+  var flow = mindFlow();
   var nodes = mindLayout(all, primary);
   library.classList.add("is-mind");
   library.innerHTML =
-    '<div class="mind-map" id="mind-map" tabindex="0" aria-label="' + assetWord() + '思维导图">' +
+    '<div class="mind-map' + (flow === "down" ? " is-flow-down" : " is-flow-side") + '" id="mind-map" tabindex="0" aria-label="' + assetWord() + '思维导图">' +
       '<div class="mind-stage" id="mind-stage">' +
         '<svg class="mind-links" id="mind-links" aria-hidden="true"></svg>' +
         nodes.map(function (node) { return mindNodeHtml(node, all, primary); }).join("") +
       "</div>" +
       '<div class="mind-toolbar">' +
+        '<button type="button" class="mind-flow" data-mind-flow aria-label="' + (flow === "down" ? "改为左右排布" : "改为上下排布") + '" title="' + (flow === "down" ? "上下排布，子形象横向排列" : "左右排布，子形象纵向排列") + '">' + (flow === "down" ? ICON_FLOW_DOWN : ICON_FLOW_SIDE) + "</button>" +
+        '<i></i>' +
         '<button type="button" data-mind-zoom="-1" aria-label="缩小">−</button>' +
         '<span id="mind-zoom-label">100%</span>' +
         '<button type="button" data-mind-zoom="1" aria-label="放大">＋</button>' +
@@ -149,7 +213,7 @@ function renderLookMindMap(library, looks, primary) {
         '<button type="button" data-mind-fit>适应画布</button>' +
         '<button type="button" data-mind-reset>重置布局</button>' +
       "</div>" +
-      '<p class="mind-hint">拖动空白处移动画布，拖动节点调整整条分支 · 选中后 Tab 新增、Delete 删除</p>' +
+      '<p class="mind-hint">拖动空白处移动整体 · 按钮或 Ctrl 滚轮缩放 · 选中后 Tab 新增、Delete 删除</p>' +
     "</div>";
   if (measureMindNodes()) {
     nodes = mindLayout(all, primary);
@@ -165,20 +229,32 @@ function renderLookMindMap(library, looks, primary) {
   if (hadFocus) document.getElementById("mind-map").focus({ preventScroll: true });
 }
 
+function mindLinkPath(node) {
+  var from = node.parent;
+  var fromBox = mindSize(from.look.id);
+  var toBox = mindSize(node.look.id);
+  if (mindFlow() === "down") {
+    var x1 = from.x;
+    var y1 = from.y + fromBox.h / 2;
+    var x2 = node.x;
+    var y2 = node.y - toBox.h / 2;
+    var mid = (y1 + y2) / 2;
+    return "M" + x1 + " " + y1 + " C" + x1 + " " + mid + " " + x2 + " " + mid + " " + x2 + " " + y2;
+  }
+  var dir = node.x >= from.x ? 1 : -1;
+  var sx = from.x + dir * fromBox.w / 2;
+  var sy = from.y;
+  var tx = node.x - dir * toBox.w / 2;
+  var ty = node.y;
+  var mx = (sx + tx) / 2;
+  return "M" + sx + " " + sy + " C" + mx + " " + sy + " " + mx + " " + ty + " " + tx + " " + ty;
+}
+
 function drawMindLinks(nodes) {
   var svg = document.getElementById("mind-links");
   if (!svg) return;
   svg.innerHTML = nodes.filter(function (node) { return node.parent; }).map(function (node) {
-    var from = node.parent;
-    var fromBox = mindSize(from.look.id);
-    var toBox = mindSize(node.look.id);
-    var dir = node.x >= from.x ? 1 : -1;
-    var x1 = from.x + dir * fromBox.w / 2;
-    var y1 = from.y;
-    var x2 = node.x - dir * toBox.w / 2;
-    var y2 = node.y;
-    var mid = (x1 + x2) / 2;
-    return '<path class="' + (node.depth === 1 ? "is-main" : "") + '" data-link-to="' + node.look.id + '" d="M' + x1 + " " + y1 + " C" + mid + " " + y1 + " " + mid + " " + y2 + " " + x2 + " " + y2 + '"/>';
+    return '<path class="' + (node.depth === 1 ? "is-main" : "") + '" data-link-to="' + node.look.id + '" d="' + mindLinkPath(node) + '"/>';
   }).join("");
 }
 
@@ -257,12 +333,6 @@ function positionMindNodes(nodes) {
   });
 }
 
-function refreshMindPositions() {
-  var nodes = mindLayout(mindLooks(), mindPrimary());
-  positionMindNodes(nodes);
-  drawMindLinks(nodes);
-}
-
 function openMindChildDialog(parentId) {
   if (!(currentChar.looksList || []).some(function (look) { return look.id === parentId; })) return;
   newLookParentId = parentId;
@@ -292,8 +362,13 @@ lookLibraryEl.addEventListener("click", function (e) {
     var st = mindState();
     st.collapsed[fold.dataset.mindFold] = !st.collapsed[fold.dataset.mindFold];
     renderLookLibrary();
-  } else if (zoom) zoomMindView(Number(zoom.dataset.mindZoom) > 0 ? 1.2 : 1 / 1.2);
-  else if (e.target.closest("[data-mind-fit]")) fitMindView(mindLayout(mindLooks(), mindPrimary()));
+  }   else if (zoom) zoomMindView(Number(zoom.dataset.mindZoom) > 0 ? 1.2 : 1 / 1.2);
+  else if (e.target.closest("[data-mind-flow]")) {
+    var flowState = mindState();
+    flowState.flow = mindFlow() === "down" ? "side" : "down";
+    flowState.view = null;
+    renderLookLibrary();
+  } else if (e.target.closest("[data-mind-fit]")) fitMindView(mindLayout(mindLooks(), mindPrimary()));
   else if (e.target.closest("[data-mind-reset]")) {
     var state = mindState();
     state.shift = {};
@@ -320,13 +395,14 @@ lookLibraryEl.addEventListener("pointerdown", function (e) {
   if (e.button !== 0 || !e.target.closest("#mind-map")) return;
   if (e.target.closest("button, .mind-toolbar")) return;
   var node = e.target.closest("[data-mind-id]");
+  if (node && !node.classList.contains("is-root")) return;
   var st = mindState();
   if (!st.view) return;
   mindDrag = {
-    id: node ? node.dataset.mindId : "",
     startX: e.clientX,
     startY: e.clientY,
-    base: node ? Object.assign({ x: 0, y: 0 }, st.shift[node.dataset.mindId]) : { x: st.view.x, y: st.view.y },
+    baseX: st.view.x,
+    baseY: st.view.y,
     moved: false
   };
   mindSuppressClick = false;
@@ -344,19 +420,12 @@ window.addEventListener("pointermove", function (e) {
   }
   if (!mindDrag.moved) {
     mindDrag.moved = true;
-    map.classList.add(mindDrag.id ? "is-dragging-node" : "is-panning");
-    var dragged = mindDrag.id && map.querySelector('[data-mind-id="' + mindDrag.id + '"]');
-    if (dragged) dragged.classList.add("is-dragging");
+    map.classList.add("is-panning");
   }
   var st = mindState();
-  if (mindDrag.id) {
-    st.shift[mindDrag.id] = { x: mindDrag.base.x + dx / st.view.k, y: mindDrag.base.y + dy / st.view.k };
-    refreshMindPositions();
-  } else {
-    st.view.x = mindDrag.base.x + dx;
-    st.view.y = mindDrag.base.y + dy;
-    applyMindView();
-  }
+  st.view.x = mindDrag.baseX + dx;
+  st.view.y = mindDrag.baseY + dy;
+  applyMindView();
 });
 
 window.addEventListener("pointerup", function () {
@@ -365,10 +434,7 @@ window.addEventListener("pointerup", function () {
     mindSuppressClick = true;
     setTimeout(function () { mindSuppressClick = false; }, 0);
     var map = document.getElementById("mind-map");
-    if (map) {
-      map.classList.remove("is-dragging-node", "is-panning");
-      map.querySelectorAll(".is-dragging").forEach(function (el) { el.classList.remove("is-dragging"); });
-    }
+    if (map) map.classList.remove("is-panning");
   }
   mindDrag = null;
 });

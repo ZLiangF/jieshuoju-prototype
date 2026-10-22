@@ -3054,3 +3054,166 @@ select:focus-visible {
     padding-bottom: 140px;
   }
 }
+
+/* 剧本大纲、资产库、分集视频共用的步骤顶栏 */
+.flow-page .topbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  height: 64px;
+  padding: 0 20px;
+  background: #0d0d12;
+  border-bottom: 0;
+  backdrop-filter: none;
+}
+.flow-page .tb-left,
+.flow-page .tb-right {
+  min-width: 0;
+}
+.flow-page .tb-right {
+  justify-content: flex-end;
+}
+.flow-page .tb-back {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: #eceaf1;
+  font-size: 18px;
+}
+.flow-page .tb-back:hover {
+  background: rgba(255,255,255,.06);
+  transform: none;
+}
+.flow-page .flow-title {
+  overflow: hidden;
+  color: #f4f2f7;
+  font-size: 16px;
+  font-weight: 620;
+  line-height: 22px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.flow-page .flow-badge {
+  flex: none;
+  height: 18px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #7c5cff;
+  color: #fff;
+  font-size: 10px;
+  line-height: 18px;
+}
+.flow-page .steps {
+  gap: 4px;
+}
+.flow-page .step-sep {
+  color: #6d6878;
+  font-size: 14px;
+}
+.flow-page .step {
+  height: 44px;
+  padding: 0 14px 0 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.04);
+  color: #b7b2c0;
+  transform: none;
+}
+.flow-page .step:hover {
+  background: rgba(255,255,255,.07);
+  border-color: rgba(255,255,255,.14);
+  color: #eeeaf4;
+  transform: none;
+}
+.flow-page .step.on {
+  color: #f7f5fa;
+  background: rgba(255,255,255,.08);
+  border-color: rgba(255,255,255,.16);
+  box-shadow: none;
+}
+.flow-page .step.is-done {
+  color: #d8d4e0;
+}
+.flow-page .step-ico {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(255,255,255,.06);
+  color: inherit;
+}
+.flow-page .step-ico svg {
+  width: 14px;
+  height: 14px;
+}
+.flow-page .step-text {
+  display: grid;
+  text-align: left;
+}
+.flow-page .step-text strong {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+}
+.flow-page .step-text small {
+  color: #8d8796;
+  font-size: 10px;
+  line-height: 12px;
+  white-space: nowrap;
+}
+.flow-page .step.on .step-text small {
+  color: #b7b1c2;
+}
+.flow-page .credit {
+  height: 32px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.08);
+}
+
+/* 流程页底部胶囊：统一为深色玻璃 */
+body.flow-page .guide-footer .asset-capsule {
+  padding: 7px 7px 7px 20px;
+  background: rgba(30,28,38,.82);
+  border: 1px solid rgba(255,255,255,.09);
+  box-shadow: 0 18px 44px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.05);
+  backdrop-filter: blur(18px) saturate(1.2);
+}
+body.flow-page .guide-footer .asset-capsule::after {
+  display: block;
+  background: conic-gradient( from var(--asset-marquee), rgba(255,255,255,.04) 0deg, rgba(255,255,255,.04) 250deg, rgba(158,108,255,.55) 304deg, #d9c6ff 332deg, rgba(158,108,255,.55) 356deg, rgba(255,255,255,.04) 360deg );
+}
+body.flow-page .guide-footer .hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #d6d2de;
+}
+body.flow-page .guide-footer .hint svg {
+  color: #b28cff;
+}
+body.flow-page .guide-footer .btn {
+  color: #eceaf1;
+  background: rgba(255,255,255,.07);
+  border-color: rgba(255,255,255,.06);
+}
+body.flow-page .guide-footer .btn:hover {
+  color: #fff;
+  background: rgba(255,255,255,.12);
+}
+body.flow-page .guide-footer .btn.primary {
+  color: #16151a;
+  background: #f4f2f7;
+  border-color: transparent;
+  box-shadow: 0 6px 16px rgba(0,0,0,.28);
+}
+body.flow-page .guide-footer .btn.primary:hover {
+  color: #000;
+  background: #fff;
+}

@@ -29,6 +29,13 @@ var view = { filter: "all", query: "" };
 var ICON_PLAY = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 3.6v8.8L12.4 8 5.5 3.6Z" fill="currentColor"/></svg>';
 var ICON_RETRY = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12.8 6.2A5 5 0 1 0 13 9.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M13.2 2.8v3.6H9.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
+var META_ICONS = {
+  roles: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="5.4" r="2.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M3.2 13.2a4.8 4.8 0 0 1 9.6 0" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>',
+  scenes: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.4 13.6 5 8 7.6 2.4 5Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="m2.4 8 5.6 2.6L13.6 8M2.4 11 8 13.6l5.6-2.6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>',
+  props: '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.6" y="4.6" width="10.8" height="8.6" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5.8 4.6V3.4a.8.8 0 0 1 .8-.8h2.8a.8.8 0 0 1 .8.8v1.2" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>',
+  shots: '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="4" width="8.6" height="8" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="m10.6 7 3.4-1.8v5.6L10.6 9" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>'
+};
+
 function flowOf(ep) { return FLOWS[ep.task === "ds" ? "ds" : "oc"]; }
 
 function epById(id) { return D.episodes.filter(function (x) { return x.id === id; })[0]; }
@@ -129,7 +136,7 @@ function render() {
   epsEl.innerHTML = list.map(function (ep) {
     var state = STATES[ep.status] || STATES.parse;
     var ready = ep.status === "ready" || ep.status === "done";
-    var meta = [ep.roles + " 角色", ep.scenes + " 场景", ep.props + " 道具"].concat(ep.shots ? [ep.shots + " 片段"] : []);
+    var meta = [["roles", ep.roles + " 角色"], ["scenes", ep.scenes + " 场景"], ["props", ep.props + " 道具"]].concat(ep.shots ? [["shots", ep.shots + " 片段"]] : []);
     return '<article class="ep-item is-tone-' + state.tone + (ep.fresh ? " is-fresh" : "") + '" data-id="' + ep.id + '" data-ready="' + ready + '">' +
       '<div class="ep-cover">' +
         '<img src="' + coverOf(ep) + '" alt="" loading="lazy" decoding="async" />' +
@@ -138,7 +145,7 @@ function render() {
       "</div>" +
       '<div class="ep-body">' +
         '<div class="ep-head"><h3 title="' + ep.title + '">' + shortTitle(ep) + '</h3><span class="ep-badge">' + state.label + "</span></div>" +
-        '<div class="ep-meta">' + meta.map(function (m) { return "<span>" + m + "</span>"; }).join("") + "</div>" +
+        '<div class="ep-meta">' + meta.map(function (m) { return "<span>" + META_ICONS[m[0]] + m[1] + "</span>"; }).join("") + "</div>" +
         '<div class="ep-foot">' + actsHtml(ep) + "</div>" +
       "</div></article>";
   }).join("");

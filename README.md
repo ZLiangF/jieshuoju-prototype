@@ -66,7 +66,7 @@ js/assets-core.js      共享状态（当前 Tab、多选、已生成记录）�
 js/assets-library.js   列表页：卡片渲染 render()、Tab、集数筛选、搜索、多选、全量生成、删除确认
 js/assets-dialogs.js   新增角色 / 子形象弹窗、编辑名称描述弹窗
 js/assets-detail.js    详情页：打开关闭、平铺形象卡片、预览图上的音色条、多选、删除、切换角色、集数编辑
-js/assets-mindmap.js   详情页结构图（思维导图）：布局、拖动画布 / 分支、缩放、折叠、节点上的新增和删除
+js/assets-mindmap.js   详情页结构图（思维导图）：上下 / 左右两种排布、拖动整体、缩放、折叠、节点上的新增和删除。子节点不能拖动
 js/assets-preview.js   右侧预览：当前形象标题、五视图、历史记录、上传 / 反推、音色弹窗、参考图
 js/assets-composer.js  提示词输入、AI 改写、模型 / 比例 / 画质、生成形象
 js/image-editor.js     图片编辑（裁剪、旋转、缩放）
