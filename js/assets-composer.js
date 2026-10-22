@@ -370,6 +370,7 @@ function paintGenControls() {
   var type = currentGenType();
   genChoice.type = type.id;
   document.getElementById("type-label").textContent = type.name;
+  document.querySelector(".composer-reference-row").classList.toggle("is-free", type.id === "free");
   document.getElementById("gen-look").setAttribute("aria-label", "生成" + (type.state || (editorKind === "char" ? "形象" : assetWord())));
   document.getElementById("type-menu").innerHTML = currentGenTypes().map(function (block, index) {
     var head = block.group ? '<div class="gen-type-group">' + block.group + "</div>" : (index ? '<div class="gen-type-sep" role="separator"></div>' : "");

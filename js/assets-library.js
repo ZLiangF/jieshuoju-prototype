@@ -196,7 +196,7 @@ function cardHtml(row) {
   var voiceBtn = kind === "char" && charVoiceReady(a) ? cardVoiceHtml(a) : "";
   return '<article class="char-card asset-card asset-' + kind + " is-" + state + (picked ? " is-picked" : "") + '" data-kind="' + kind + '" data-i="' + row.i + '" data-key="' + key + '">' +
     '<div class="' + mediaClass + '">' + visual + check + voiceBtn + delBtn + flag + "</div>" +
-    '<div class="asset-card-info"><div class="asset-card-title"><h3><span class="asset-name">' + a.name + "</span>" +
+    '<div class="asset-card-info"><div class="asset-card-title"><h3><span class="asset-name" title="' + a.name + '">' + a.name + "</span>" +
     roleTagsHtml(a, kind) + "</h3>" + (kind === "char" || looks > 1 ? lookMeta : "") + "</div>" +
     (a.desc ? "<p>" + a.desc + "</p>" : '<p class="asset-empty-desc">点击卡片直接编辑资产</p>') +
     "</div></article>";
@@ -204,10 +204,11 @@ function cardHtml(row) {
 
 function cardVoiceHtml(char) {
   var bind = char.voiceBind;
-  return '<button type="button" class="card-voice' + (bind ? " is-on" : "") + '" data-bind-voice="1" title="' +
-    (bind ? "音色：" + bind.name : "绑定音色") + '" aria-label="' +
-    (bind ? "已绑定音色「" + bind.name + "」，点击更换" : "绑定音色") + '">' +
-    (bind ? VOICE_ON_ICON : VOICE_OFF_ICON) + "</button>";
+  var on = charVoiceOn(char);
+  var text = on ? "音色：" + bind.name : bind ? "音色已关闭：" + bind.name : "绑定音色";
+  return '<button type="button" class="card-voice' + (on ? " is-on" : "") + '" data-bind-voice="1" title="' + text + '" aria-label="' +
+    (on ? "已开启音色「" + bind.name + "」，点击管理" : bind ? "音色「" + bind.name + "」已关闭，点击开启" : "绑定音色") + '">' +
+    (on ? VOICE_ON_ICON : VOICE_OFF_ICON) + "</button>";
 }
 
 function render() {

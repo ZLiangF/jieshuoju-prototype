@@ -46,7 +46,7 @@ function renderCurrentLookHead(look) {
   var isPrimary = look === primary;
   var parent = isPrimary ? null : lookParent(looks, look) || primary;
   var ready = lookVisualState(look, looks.indexOf(look)) === "ready";
-  name.innerHTML = (ready ? READY_MARK : "") + "<span>" + escapeHtml(lookShortName(look)) + "</span>";
+  name.innerHTML = (ready ? READY_MARK : "") + '<span title="' + escapeHtml(lookShortName(look)) + '">' + escapeHtml(lookShortName(look)) + "</span>";
   meta.innerHTML = '<span class="' + (isPrimary ? "is-primary" : "") + '">' + (isPrimary ? "主" : "子") + assetWord() + "</span>" +
     (parent ? "<span>上级：" + escapeHtml(lookShortName(parent)) + "</span>" : "") +
     "<span>" + episodeChip(look.eps).html + "</span>";
@@ -262,6 +262,18 @@ function paintVoiceFilters() {
   });
 }
 
+function paintVoiceSwitch() {
+  var char = voiceBindChar;
+  var button = document.getElementById("voice-switch");
+  var bound = !!(char && char.voiceBind);
+  var on = charVoiceOn(char);
+  button.disabled = !bound;
+  button.classList.toggle("is-on", on);
+  button.setAttribute("aria-checked", on ? "true" : "false");
+  button.title = bound ? (on ? "点击停用，已选音色会保留" : "点击开启，旁白和对白使用这个音色") : "先选一条音色并使用，才能开启";
+  document.getElementById("voice-switch-label").textContent = on ? "已开启" : bound ? "已关闭" : "未开启";
+}
+
 function paintVoiceConfirm() {
   var button = document.getElementById("voice-save");
   var ready = !!(voiceBindPick && voiceHeard[voiceBindPick.id]);
@@ -338,6 +350,7 @@ function openVoiceDialog(item, auto) {
   document.getElementById("voice-dialog-title").textContent = (bound ? "更换音色 · " : "绑定音色 · ") + char.name;
   document.getElementById("voice-current-look").innerHTML = '<img src="' + (char.image || "") + '" alt="' + char.name + '">';
   document.getElementById("voice-current-title").textContent = bound ? "当前音色：" + bound.name : "尚未绑定音色";
+  paintVoiceSwitch();
   document.getElementById("voice-current-desc").textContent = bound
     ? bound.summary + " · 来源 " + voiceSourceLabel(bound.source) + "。确认新音色后会覆盖这一条。"
     : "按性别和年龄先给出库内推荐。不满意可以上传人声，或按描述生成候选。";
@@ -372,11 +385,44 @@ function refreshVoiceSurfaces() {
   if (document.getElementById("look-dialog").classList.contains("open") && voiceBindChar === currentChar) renderLookLibrary();
 }
 
-function updateReferenceComposer(src) {
-  referenceImageValue = src || "";
-  var preview = document.getElementById("f-ref");
-  preview.innerHTML = src ? '<img src="' + src + '" alt="参考图">' : "＋";
-  document.getElementById("pick-asset").classList.toggle("has-image", !!src);
+function paintReferenceSources() {
+  document.getElementById("reference-current-label").textContent = "参考当前" + assetWord();
+  document.getElementById("reference-main-label").textContent = "主" + assetWord();
+}
+
+function lookReferenceImages(look) {
+  if (!look) return [];
+  if (Array.isArray(look.referenceImages)) return look.referenceImages;
+  if (look.referenceImage) return [{ src: look.referenceImage, name: "参考图" }];
+  return [];
+}
+
+function updateReferenceComposer(look) {
+  var list = lookReferenceImages(look);
+  referenceImageValue = list.length ? list[0].src : "";
+  document.getElementById("reference-picks").innerHTML = list.map(function (item, index) {
+    return '<span class="reference-pick"><img src="' + item.src + '" alt="' + escapeHtml(item.name || "参考图") + '">' +
+      '<button type="button" data-reference-remove="' + index + '" aria-label="移除「' + escapeHtml(item.name || "参考图") + '」">×</button></span>';
+  }).join("");
+  var button = document.getElementById("pick-asset");
+  var full = list.length >= REFERENCE_LIMIT;
+  button.innerHTML = PLUS_ICON;
+  button.disabled = full;
+  button.title = full ? "最多 " + REFERENCE_LIMIT + " 张参考图" : "添加参考图，可从本地或其他资产选择";
+  button.setAttribute("aria-label", button.title);
+}
+
+function paintPendingReferences() {
+  var count = pendingReferenceList.length;
+  var room = REFERENCE_LIMIT - lookReferenceImages(editingLook).length;
+  document.getElementById("reference-confirm").disabled = !count;
+  document.getElementById("reference-confirm").textContent = count > 1 ? "添加 " + count + " 张" : "使用参考图";
+  var panel = document.getElementById("reference-library-panel");
+  if (!panel.hidden) {
+    panel.querySelector(".reference-library-head span").textContent = count
+      ? "已选择 " + count + " 张，还可以再加 " + Math.max(0, room - count) + " 张"
+      : "可多选，最多 " + room + " 张";
+  }
 }
 
 function renderReferenceLibrary() {
@@ -389,16 +435,26 @@ function renderReferenceLibrary() {
       });
     });
   });
+  var saved = {};
+  lookReferenceImages(editingLook).forEach(function (item) { saved[item.src] = true; });
+  var pending = {};
+  pendingReferenceList.forEach(function (item) { pending[item.src] = true; });
   document.getElementById("reference-asset-grid").innerHTML = referenceAssetChoices.map(function (asset, index) {
-    return '<button type="button" class="reference-asset-card" data-reference-index="' + index + '">' +
+    var cls = saved[asset.src] ? " is-added" : pending[asset.src] ? " on" : "";
+    return '<button type="button" class="reference-asset-card' + cls + '" data-reference-index="' + index + '">' +
       '<img src="' + asset.src + '" alt=""><span>' + asset.name + "</span></button>";
   }).join("");
 }
 
 function openReferenceDialog() {
-  pendingReferenceSrc = "";
+  if (lookReferenceImages(editingLook).length >= REFERENCE_LIMIT) {
+    ReplicaUI.toast("最多 " + REFERENCE_LIMIT + " 张参考图");
+    return;
+  }
+  pendingReferenceList = [];
   document.getElementById("reference-library-panel").hidden = true;
   document.getElementById("reference-confirm").disabled = true;
+  document.getElementById("reference-confirm").textContent = "使用参考图";
   document.querySelectorAll(".reference-source-actions > button").forEach(function (button) {
     button.classList.remove("on");
   });
@@ -409,14 +465,15 @@ function closeReferenceDialog() {
   document.getElementById("reference-dialog").classList.remove("open");
 }
 
-function showLocalReference(src, name) {
+function showPendingReferences(title) {
   var panel = document.getElementById("reference-library-panel");
   panel.hidden = false;
-  panel.querySelector(".reference-library-head strong").textContent = "本地图片";
-  panel.querySelector(".reference-library-head span").textContent = "已选择 1 张图片";
-  document.getElementById("reference-asset-grid").innerHTML =
-    '<button type="button" class="reference-asset-card on"><img src="' + src + '" alt=""><span>' + escapeHtml(name) + "</span></button>";
-  document.getElementById("reference-confirm").disabled = false;
+  panel.querySelector(".reference-library-head strong").textContent = title;
+  document.getElementById("reference-asset-grid").innerHTML = pendingReferenceList.map(function (item, index) {
+    return '<button type="button" class="reference-asset-card on" data-pending-index="' + index + '">' +
+      '<img src="' + item.src + '" alt=""><span>' + escapeHtml(item.name || "参考图") + "</span></button>";
+  }).join("");
+  paintPendingReferences();
 }
 
 function openLookImagePicker(mode) {
@@ -583,54 +640,105 @@ document.getElementById("reference-local-source").onclick = function () {
   input.click();
 };
 document.getElementById("reference-file-input").onchange = function () {
-  var file = this.files && this.files[0];
+  var files = Array.prototype.slice.call(this.files || []);
   this.value = "";
-  if (!file) return;
-  if (!/^image\//.test(file.type)) {
-    ReplicaUI.toast("请选择图片文件");
+  var room = REFERENCE_LIMIT - lookReferenceImages(editingLook).length;
+  var accepted = [];
+  files.forEach(function (file) {
+    if (!/^image\//.test(file.type)) return;
+    if (file.size > 10 * 1024 * 1024) {
+      ReplicaUI.toast("「" + file.name + "」超过 10MB");
+      return;
+    }
+    accepted.push(file);
+  });
+  if (accepted.length > room) {
+    ReplicaUI.toast("最多 " + REFERENCE_LIMIT + " 张参考图");
+    accepted = accepted.slice(0, room);
+  }
+  if (!accepted.length) {
+    if (files.length) ReplicaUI.toast("请选择图片文件");
     return;
   }
-  if (file.size > 10 * 1024 * 1024) {
-    ReplicaUI.toast("图片不能超过 10MB");
-    return;
-  }
-  var reader = new FileReader();
-  reader.onerror = function () { ReplicaUI.toast("图片读取失败，请换一张再试"); };
-  reader.onload = function () {
-    pendingReferenceSrc = String(reader.result || "");
-    showLocalReference(pendingReferenceSrc, file.name);
-  };
-  reader.readAsDataURL(file);
+  pendingReferenceList = [];
+  var left = accepted.length;
+  accepted.forEach(function (file) {
+    var reader = new FileReader();
+    reader.onerror = function () { ReplicaUI.toast("图片读取失败，请换一张再试"); };
+    reader.onload = function () {
+      pendingReferenceList.push({ src: String(reader.result || ""), name: file.name });
+      left -= 1;
+      if (!left) showPendingReferences("本地图片");
+    };
+    reader.readAsDataURL(file);
+  });
 };
 document.getElementById("reference-library-source").onclick = function () {
   document.querySelectorAll(".reference-source-actions > button").forEach(function (button) {
     button.classList.toggle("on", button.id === "reference-library-source");
   });
+  pendingReferenceList = [];
   var panel = document.getElementById("reference-library-panel");
   panel.hidden = false;
   panel.querySelector(".reference-library-head strong").textContent = "资产库";
-  panel.querySelector(".reference-library-head span").textContent = "选择一张图片作为参考";
   renderReferenceLibrary();
-  pendingReferenceSrc = "";
-  document.getElementById("reference-confirm").disabled = true;
+  paintPendingReferences();
 };
 document.getElementById("reference-asset-grid").onclick = function (e) {
+  var pendingCard = e.target.closest("[data-pending-index]");
+  if (pendingCard && !e.target.closest("[data-reference-index]")) {
+    pendingReferenceList.splice(Number(pendingCard.dataset.pendingIndex), 1);
+    showPendingReferences("本地图片");
+    return;
+  }
   var card = e.target.closest("[data-reference-index]");
   if (!card) return;
   var asset = referenceAssetChoices[Number(card.dataset.referenceIndex)];
   if (!asset) return;
-  pendingReferenceSrc = asset.src;
-  this.querySelectorAll(".reference-asset-card").forEach(function (item) {
-    item.classList.toggle("on", item === card);
-  });
-  document.getElementById("reference-confirm").disabled = false;
+  if (lookReferenceImages(editingLook).some(function (item) { return item.src === asset.src; })) {
+    ReplicaUI.toast("这张图已经添加过");
+    return;
+  }
+  var index = -1;
+  pendingReferenceList.forEach(function (item, i) { if (item.src === asset.src) index = i; });
+  if (index >= 0) pendingReferenceList.splice(index, 1);
+  else if (lookReferenceImages(editingLook).length + pendingReferenceList.length >= REFERENCE_LIMIT) {
+    ReplicaUI.toast("最多 " + REFERENCE_LIMIT + " 张参考图");
+    return;
+  } else pendingReferenceList.push({ src: asset.src, name: asset.name });
+  renderReferenceLibrary();
+  paintPendingReferences();
 };
 document.getElementById("reference-confirm").onclick = function () {
-  if (!pendingReferenceSrc) return;
-  updateReferenceComposer(pendingReferenceSrc);
+  if (!pendingReferenceList.length || !editingLook) return;
+  var list = lookReferenceImages(editingLook).slice();
+  var seen = {};
+  var added = 0;
+  list.forEach(function (item) { seen[item.src] = true; });
+  pendingReferenceList.forEach(function (item) {
+    if (seen[item.src] || list.length >= REFERENCE_LIMIT) return;
+    seen[item.src] = true;
+    list.push(item);
+    added += 1;
+  });
+  editingLook.referenceImages = list;
+  editingLook.referenceImage = list.length ? list[0].src : "";
+  updateReferenceComposer(editingLook);
   lookDirty = true;
+  document.querySelector(".draft-hint").textContent = "存在未保存的草稿修改";
   closeReferenceDialog();
-  ReplicaUI.toast("已添加参考图");
+  ReplicaUI.toast(added > 1 ? "已添加 " + added + " 张参考图" : "已添加参考图");
+};
+document.getElementById("reference-picks").onclick = function (e) {
+  var remove = e.target.closest("[data-reference-remove]");
+  if (!remove || !editingLook) return;
+  var list = lookReferenceImages(editingLook).slice();
+  list.splice(Number(remove.dataset.referenceRemove), 1);
+  editingLook.referenceImages = list;
+  editingLook.referenceImage = list.length ? list[0].src : "";
+  updateReferenceComposer(editingLook);
+  lookDirty = true;
+  document.querySelector(".draft-hint").textContent = "存在未保存的草稿修改";
 };
 function syncReferenceMode() {
   var current = document.getElementById("use-reference-image").checked;
@@ -661,11 +769,21 @@ document.getElementById("voice-save").onclick = function () {
     pitch: voiceBindPick.pitch,
     rate: voiceBindPick.rate
   };
+  voiceBindChar.voiceOn = true;
   var name = voiceBindChar.name;
   var voiceName = voiceBindPick.name;
   closeVoiceDialog();
   refreshVoiceSurfaces();
   ReplicaUI.toast("已为「" + name + "」绑定「" + voiceName + "」");
+};
+document.getElementById("voice-switch").onclick = function () {
+  var char = voiceBindChar;
+  if (this.disabled || !char || !char.voiceBind) return;
+  char.voiceOn = !charVoiceOn(char);
+  if (!char.voiceOn) stopVoicePreview();
+  paintVoiceSwitch();
+  refreshVoiceSurfaces();
+  ReplicaUI.toast(char.voiceOn ? "已开启「" + char.name + "」的音色" : "已关闭「" + char.name + "」的音色，已选音色会保留");
 };
 document.querySelector(".voice-tabs").onclick = function (e) {
   var button = e.target.closest("[data-voice-tab]");

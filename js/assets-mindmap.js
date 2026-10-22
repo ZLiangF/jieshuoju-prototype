@@ -1,6 +1,6 @@
-var MIND_ROOT_GAP = 140;
-var MIND_COL = 140;
-var MIND_ROW = 34;
+var MIND_GAP_X = 64;
+var MIND_GAP_Y = 12;
+var mindSizes = {};
 var mindStates = {};
 var mindDrag = null;
 var mindSuppressClick = false;
@@ -34,64 +34,73 @@ function mindLabel(look, parent, primary) {
   return name;
 }
 
+function mindSize(id) {
+  return mindSizes[id] || { w: 112, h: 40 };
+}
+
 function mindLayout(looks, primary) {
   var st = mindState();
   var nodes = [];
+  var colWidth = [];
   if (!primary) return nodes;
-  function leaves(look) {
+  function span(look) {
     var kids = st.collapsed[look.id] ? [] : mindChildren(looks, look, primary);
-    if (!kids.length) return 1;
-    return kids.reduce(function (sum, kid) { return sum + leaves(kid); }, 0);
+    if (!kids.length) return mindSize(look.id).h + MIND_GAP_Y;
+    return kids.reduce(function (sum, kid) { return sum + span(kid); }, 0);
   }
-  function place(look, parent, depth, side, top, sx, sy) {
+  function place(look, parent, depth, top, sx, sy) {
     var own = st.shift[look.id] || { x: 0, y: 0 };
     sx += own.x;
     sy += own.y;
-    var node = {
-      look: look,
-      parent: parent,
-      side: side,
-      depth: depth,
-      x: side * (MIND_ROOT_GAP + (depth - 1) * MIND_COL) + sx,
-      y: top + leaves(look) * MIND_ROW / 2 + sy
-    };
+    var node = { look: look, parent: parent, depth: depth, sx: sx, x: 0, y: top + span(look) / 2 + sy };
+    colWidth[depth] = Math.max(colWidth[depth] || 0, mindSize(look.id).w);
     nodes.push(node);
     if (st.collapsed[look.id]) return;
     var cursor = top;
     mindChildren(looks, look, primary).forEach(function (kid) {
-      place(kid, node, depth + 1, side, cursor, sx, sy);
-      cursor += leaves(kid) * MIND_ROW;
+      place(kid, node, depth + 1, cursor, sx, sy);
+      cursor += span(kid);
     });
   }
   var rootShift = st.shift[primary.id] || { x: 0, y: 0 };
-  var root = { look: primary, parent: null, side: 0, depth: 0, x: rootShift.x, y: rootShift.y };
+  var root = { look: primary, parent: null, depth: 0, x: rootShift.x, y: rootShift.y };
   nodes.push(root);
   if (st.collapsed[primary.id]) return nodes;
   var first = mindChildren(looks, primary, primary);
-  var total = first.reduce(function (sum, kid) { return sum + leaves(kid); }, 0);
-  var right = [];
-  var left = [];
-  var rightLeaves = 0;
+  var height = first.reduce(function (sum, kid) { return sum + span(kid); }, 0);
+  var cursor = -height / 2;
   first.forEach(function (kid) {
-    if (rightLeaves < total / 2) {
-      right.push(kid);
-      rightLeaves += leaves(kid);
-    } else left.push(kid);
+    place(kid, root, 1, cursor, rootShift.x, rootShift.y);
+    cursor += span(kid);
   });
-  [[right, 1], [left, -1]].forEach(function (group) {
-    var height = group[0].reduce(function (sum, kid) { return sum + leaves(kid) * MIND_ROW; }, 0);
-    var cursor = -height / 2;
-    group[0].forEach(function (kid) {
-      place(kid, root, 1, group[1], cursor, rootShift.x, rootShift.y);
-      cursor += leaves(kid) * MIND_ROW;
-    });
+  var left = [0, mindSize(primary.id).w / 2 + MIND_GAP_X];
+  for (var d = 2; d < colWidth.length; d++) left[d] = left[d - 1] + colWidth[d - 1] + MIND_GAP_X;
+  nodes.forEach(function (node) {
+    if (node.parent) node.x = node.sx + left[node.depth] + mindSize(node.look.id).w / 2;
   });
   return nodes;
+}
+
+function measureMindNodes() {
+  var changed = false;
+  document.querySelectorAll("#mind-stage [data-mind-id]").forEach(function (el) {
+    var w = el.offsetWidth;
+    var h = el.offsetHeight;
+    if (!w) return;
+    var old = mindSizes[el.dataset.mindId];
+    if (old && old.w === w && old.h === h) return;
+    mindSizes[el.dataset.mindId] = { w: w, h: h };
+    changed = true;
+  });
+  return changed;
 }
 
 function mindVoiceHtml() {
   if (editorKind !== "char" || !charVoiceReady(currentChar)) return "";
   var bind = currentChar.voiceBind;
+  if (bind && !charVoiceOn(currentChar)) {
+    return '<span class="mind-voice is-empty"><button type="button" class="mind-voice-open" data-mind-voice-open title="点击开启">♪ 音色已关闭</button></span>';
+  }
   return bind
     ? '<span class="mind-voice"><button type="button" class="asset-voice-play" data-mind-voice-play aria-label="试听' + bind.name + '">▶</button>' +
       '<b>' + bind.name + '</b><button type="button" class="mind-voice-open" data-mind-voice-open title="更换音色">更换</button></span>'
@@ -109,15 +118,16 @@ function mindNodeHtml(node, looks, primary) {
   var multi = editorKind === "char" && lookMultiOn;
   var picked = multi && !!selectedLooks[look.id];
   var name = node.parent ? mindLabel(look, node.parent.look, primary) : lookShortName(look);
-  var cls = "mind-node is-" + state + (node.parent ? "" : " is-root") + (node.side < 0 ? " is-left" : "") +
+  var meta = episodeLineHtml(look, index, "mind-meta", state === "ready" ? "" : " · " + lookStateText(state));
+  var cls = "mind-node is-" + state + (node.parent ? "" : " is-root") +
     (kids ? " has-kids" : "") + (editingLook === look ? " on" : "") + (picked ? " is-look-picked" : "");
   var body = node.parent
-    ? '<span class="mind-name">' + name + "</span>"
+    ? '<span class="mind-name">' + name + "</span>" + meta
     : '<span class="mind-root-image">' + (state === "ready"
       ? '<img src="' + look.image + '" alt="' + name + '" draggable="false">'
       : (editorKind === "char" ? EMPTY_PERSON_ICON : EMPTY_IMAGE_ICON)) +
       '<small class="mind-root-tag">主' + assetWord() + "</small>" + mindVoiceHtml() + "</span>" +
-      '<span class="mind-name">' + name + "</span>";
+      '<span class="mind-name">' + name + "</span>" + meta;
   var add = multi ? "" : '<button type="button" class="mind-add" data-mind-add="' + look.id + '" title="新增子' + assetWord() + '（Tab）" aria-label="在「' + name + '」下新增子' + assetWord() + '">' + PLUS_ICON + "</button>";
   var del = multi || !node.parent ? "" : '<button type="button" class="mind-del" data-del-look="' + look.id + '" title="删除（Delete）" aria-label="删除' + name + '">×</button>';
   var fold = kids
@@ -150,8 +160,12 @@ function renderLookMindMap(library, looks, primary) {
       "</div>" +
       '<p class="mind-hint">拖动空白处移动画布，拖动节点调整整条分支 · 选中后 Tab 新增、Delete 删除</p>' +
     "</div>";
+  if (measureMindNodes()) {
+    nodes = mindLayout(all, primary);
+    positionMindNodes(nodes);
+  }
   drawMindLinks(nodes);
-  if (!st.view) fitMindView(nodes, 0.8);
+  if (!st.view) fitMindView(nodes, 0.3);
   else applyMindView();
   if (editingLook && editingLook.id !== mindRevealedId) {
     mindRevealedId = editingLook.id;
@@ -160,18 +174,13 @@ function renderLookMindMap(library, looks, primary) {
   if (hadFocus) document.getElementById("mind-map").focus({ preventScroll: true });
 }
 
-function mindNodeBox(id) {
-  var el = document.querySelector('#mind-stage [data-mind-id="' + id + '"]');
-  return el ? { w: el.offsetWidth, h: el.offsetHeight } : { w: 0, h: 0 };
-}
-
 function drawMindLinks(nodes) {
   var svg = document.getElementById("mind-links");
   if (!svg) return;
   svg.innerHTML = nodes.filter(function (node) { return node.parent; }).map(function (node) {
     var from = node.parent;
-    var fromBox = mindNodeBox(from.look.id);
-    var toBox = mindNodeBox(node.look.id);
+    var fromBox = mindSize(from.look.id);
+    var toBox = mindSize(node.look.id);
     var dir = node.x >= from.x ? 1 : -1;
     var x1 = from.x + dir * fromBox.w / 2;
     var y1 = from.y;
@@ -197,7 +206,7 @@ function fitMindView(nodes, minScale) {
   var st = mindState();
   var box = { l: Infinity, r: -Infinity, t: Infinity, b: -Infinity };
   nodes.forEach(function (node) {
-    var size = mindNodeBox(node.look.id);
+    var size = mindSize(node.look.id);
     box.l = Math.min(box.l, node.x - size.w / 2);
     box.r = Math.max(box.r, node.x + size.w / 2);
     box.t = Math.min(box.t, node.y - size.h / 2);
@@ -205,14 +214,15 @@ function fitMindView(nodes, minScale) {
   });
   var width = map.clientWidth || 400;
   var height = map.clientHeight || 400;
-  var pad = 36;
-  var k = Math.min(1, (width - pad * 2) / Math.max(1, box.r - box.l), (height - pad * 2 - 40) / Math.max(1, box.b - box.t));
-  var fits = k >= (minScale || 0.4);
-  k = Math.max(minScale || 0.4, Math.round(k * 100) / 100);
+  var pad = 28;
+  var topPad = 48;
+  var k = Math.min(1, (width - pad * 2) / Math.max(1, box.r - box.l), (height - topPad - pad) / Math.max(1, box.b - box.t));
+  var fits = k >= (minScale || 0.3);
+  k = Math.max(minScale || 0.3, Math.round(k * 100) / 100);
   var root = nodes[0];
   var cx = fits || !root ? (box.l + box.r) / 2 : root.x;
   var cy = fits || !root ? (box.t + box.b) / 2 : root.y;
-  st.view = { k: k, x: width / 2 - cx * k, y: height / 2 + 6 - cy * k };
+  st.view = { k: k, x: width / 2 - cx * k, y: topPad + (height - topPad - pad) / 2 - cy * k };
   applyMindView();
 }
 
@@ -236,7 +246,7 @@ function zoomMindView(factor, cx, cy) {
   var st = mindState();
   var map = document.getElementById("mind-map");
   if (!st.view || !map) return;
-  var k = Math.min(1.6, Math.max(0.4, st.view.k * factor));
+  var k = Math.min(1.6, Math.max(0.3, st.view.k * factor));
   if (cx == null) {
     cx = map.clientWidth / 2;
     cy = map.clientHeight / 2;
@@ -247,14 +257,18 @@ function zoomMindView(factor, cx, cy) {
   applyMindView();
 }
 
-function refreshMindPositions() {
-  var nodes = mindLayout(mindLooks(), mindPrimary());
+function positionMindNodes(nodes) {
   nodes.forEach(function (node) {
     var el = document.querySelector('#mind-stage [data-mind-id="' + node.look.id + '"]');
     if (!el) return;
     el.style.left = node.x + "px";
     el.style.top = node.y + "px";
   });
+}
+
+function refreshMindPositions() {
+  var nodes = mindLayout(mindLooks(), mindPrimary());
+  positionMindNodes(nodes);
   drawMindLinks(nodes);
 }
 

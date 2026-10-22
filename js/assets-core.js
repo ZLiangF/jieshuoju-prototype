@@ -37,7 +37,8 @@ var voicePromptSkipped = {};
 var voiceFilters = { gender: "", age: "", style: "" };
 var voiceLibraryReady = false;
 var voiceGenerating = false;
-var pendingReferenceSrc = "";
+var pendingReferenceList = [];
+var REFERENCE_LIMIT = 6;
 var referenceImageValue = "";
 var referenceAssetChoices = [];
 
@@ -50,6 +51,7 @@ var ROLE_TONES = { "主角": "lead", "配角": "support", "群演": "extra" };
 var SUB_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4.6" y="2.2" width="9.2" height="7.6" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2.2 6.2v6c0 .9.7 1.6 1.6 1.6h6.4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
 var VOICE_OFF_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.2 11.6V4.1l6.4-1.3v7.3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="4.6" cy="11.6" r="1.55" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="11" cy="10.1" r="1.55" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>';
 var VOICE_ON_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.2 11.5V3.9l6.4-1.3v7.4" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/><circle cx="4.6" cy="11.5" r="1.7" fill="currentColor"/><circle cx="11" cy="10" r="1.7" fill="currentColor"/></svg>';
+var EDIT_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.4 3.1 12.9 5.6 6 12.5 3 13l.5-3z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M9.2 4.3 11.7 6.8" stroke="currentColor" stroke-width="1.3"/></svg>';
 var PLUS_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
 var READY_MARK = '<span class="asset-done" role="img" aria-label="已完成" title="已完成"><svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="7" fill="currentColor"/><path d="M4.2 7.2 6.1 9 9.8 5.2" fill="none" stroke="#0f1f17" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
 function cleanText(value, limit) {
@@ -179,6 +181,10 @@ function assetLookStats(a) {
 
 function charVoiceReady(char) {
   return assetLookStats(char).done > 0;
+}
+
+function charVoiceOn(char) {
+  return !!(char && char.voiceBind && char.voiceOn !== false);
 }
 
 function assetState(a) {

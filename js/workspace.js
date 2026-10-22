@@ -614,14 +614,17 @@
       box.innerHTML = "";
       return;
     }
-    var missing = chars.filter(function (c) { return !c.voiceBind; });
+    var missing = chars.filter(function (c) { return !c.voiceBind || c.voiceOn === false; });
     box.innerHTML = '<span class="shot-voices-label">对白</span>' + chars.map(function (c) {
       if (!c.voiceBind) {
         return '<span class="shot-voice is-empty"><b>' + c.name + '</b><small>尚未绑定音色</small><a href="assets.html">去绑定</a></span>';
       }
+      if (c.voiceOn === false) {
+        return '<span class="shot-voice is-empty"><b>' + c.name + '</b><small>音色已关闭</small><a href="assets.html">去开启</a></span>';
+      }
       var src = c.voiceBind.source === "upload" ? "上传" : c.voiceBind.source === "generated" ? "生成" : "音色库";
       return '<span class="shot-voice"><button type="button" data-preview-voice="' + c.id + '" aria-label="试听' + c.voiceBind.name + '">▶</button><b>' + c.name + "</b><strong>" + c.voiceBind.name + "</strong><i>" + src + "</i></span>";
-    }).join("") + (missing.length ? '<em>配音前需要先绑定，这里不能临时另选</em>' : '<em>旁白和对白默认用角色已绑定的音色</em>');
+    }).join("") + '<em>' + (missing.some(function (c) { return !c.voiceBind; }) ? "配音前需要先绑定，这里不能临时另选" : missing.length ? "音色已关闭，配音前先到资产库开启" : "旁白和对白默认用角色已绑定的音色") + "</em>";
   }
 
   function renderEditor() {
@@ -868,8 +871,8 @@
     if (act === "generate") {
       var generatingShot = state.shotId;
       var generatingModel = model();
-      var unboundVoices = (shot().refs || []).map(charById).filter(function (c) { return c && !c.voiceBind; });
-      if (unboundVoices.length) ReplicaUI.toast(unboundVoices.map(function (c) { return c.name; }).join("、") + "尚未绑定音色。旁白和对白需要先绑定，本次只生成画面");
+      var unboundVoices = (shot().refs || []).map(charById).filter(function (c) { return c && (!c.voiceBind || c.voiceOn === false); });
+      if (unboundVoices.length) ReplicaUI.toast(unboundVoices.map(function (c) { return c.name; }).join("、") + "没有可用的音色。旁白和对白需要先绑定或开启，本次只生成画面");
       if (D.credits < generatingModel.cost) { ReplicaUI.toast("积分不足，本次生成需要 " + generatingModel.cost + " 积分"); return; }
       var generatingResolution = state.resolution;
       var st2 = stageOf(shot());

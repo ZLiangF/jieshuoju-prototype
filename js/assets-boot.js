@@ -5,8 +5,7 @@ document.addEventListener("keydown", function (e) {
   if (document.getElementById("asset-delete-dialog").classList.contains("open")) { closeDeleteConfirm(); return; }
   if (!document.getElementById("episode-filter-menu").hidden) { closeEpisodeFilter(); return; }
   if (!document.getElementById("model-menu").hidden || !document.getElementById("ratio-popover").hidden || !document.getElementById("type-menu").hidden) { closeGenPanels(); return; }
-  if (!document.getElementById("episode-editor").hidden) cancelEpisodeEditor();
-  else if (!document.getElementById("episode-detail").hidden) closeEpisodeDetail();
+  if (!document.getElementById("episode-editor").hidden) closeEpisodeEditor();
   else if (document.getElementById("reference-dialog").classList.contains("open")) closeReferenceDialog();
   else if (document.getElementById("rewrite-dialog").classList.contains("open")) {
     if (!document.getElementById("rewrite-model-menu").hidden) closeRewriteModelMenu();

@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>资产库 · 离婚后（15集）</title>
-  <link rel="stylesheet" href="css/common.css?v=202610220212" />
-  <link rel="stylesheet" href="css/asset-library.css?v=202610220212" />
-  <link rel="stylesheet" href="css/asset-detail.css?v=202610220212" />
+  <link rel="stylesheet" href="css/common.css?v=202610221252" />
+  <link rel="stylesheet" href="css/asset-library.css?v=202610221252" />
+  <link rel="stylesheet" href="css/asset-detail.css?v=202610221252" />
 </head>
 <body class="asset-page">
 <div class="app">
@@ -111,6 +111,7 @@
       <div class="editor-role-preview" id="editor-role-preview"></div>
     </div>
     <div class="asset-workspace">
+      <button type="button" class="workspace-split" id="workspace-split" aria-label="拖动调整左右宽度" title="拖动调整左右宽度，双击恢复默认"></button>
       <section class="look-library-panel">
         <div class="look-library-head">
           <div class="asset-editor-character">
@@ -156,7 +157,7 @@
 
         <div class="look-current-output">
           <div class="stage" id="f-preview"><span style="color:#6c6876">暂无预览</span></div>
-          <div class="preview-voice" id="preview-voice" hidden></div>
+          <button type="button" class="preview-voice" id="preview-voice" hidden></button>
           <aside class="preview-side is-collapsed" id="preview-side">
             <div class="preview-side-head">
               <div class="preview-side-tabs" role="tablist" aria-label="图片来源">
@@ -186,18 +187,19 @@
         <div class="prompt-composer" id="prompt-composer">
           <div class="composer-main">
             <div class="composer-reference-row">
-              <button class="reference-add-button" id="pick-asset" type="button" aria-label="添加参考图">
-                <span class="composer-ref-image" id="f-ref">＋</span>
-              </button>
-              <div class="reference-checks" role="radiogroup" aria-label="一致性参考">
-                <label class="reference-check" id="reference-check-wrap">
+              <div class="reference-sources" role="radiogroup" aria-label="一致性参考">
+                <label class="reference-source" id="reference-check-wrap">
                   <input id="use-reference-image" name="look-reference-mode" type="radio" value="current" />
-                  <span>参考当前形象</span>
+                  <span id="reference-current-label">参考当前形象</span>
                 </label>
-                <label class="reference-check">
+                <label class="reference-source">
                   <input id="use-main-image" name="look-reference-mode" type="radio" value="main" checked />
-                  <span>主形象</span>
+                  <span id="reference-main-label">主形象</span>
                 </label>
+              </div>
+              <div class="reference-extra">
+                <div class="reference-picks" id="reference-picks"></div>
+                <button class="reference-add" id="pick-asset" type="button" aria-label="添加参考图"></button>
               </div>
             </div>
             <div class="composer-prompt-row">
@@ -333,10 +335,11 @@
     </div>
     <div class="voice-current">
       <div class="voice-current-look" id="voice-current-look"></div>
-      <div>
+      <div class="voice-current-copy">
         <strong id="voice-current-title">为一个角色绑定默认音色</strong>
         <p id="voice-current-desc">先试听再确认。跳过不会写成已绑定，之后旁白和对白也不会临时选一个音色。</p>
       </div>
+      <button type="button" class="voice-switch" id="voice-switch" role="switch" aria-checked="false" aria-label="启用角色音色"><i></i><span id="voice-switch-label">未开启</span></button>
     </div>
     <div class="voice-tabs" role="tablist" aria-label="绑定方式">
       <button type="button" class="on" data-voice-tab="library" role="tab" aria-selected="true">音色库</button>
@@ -410,15 +413,15 @@
       <button type="button" id="reference-local-source">
         <span class="reference-source-icon">↑</span>
         <strong>本地上传</strong>
-        <small>JPG、PNG，单张不超过 10MB</small>
+        <small>JPG、PNG，可多选，单张不超过 10MB</small>
       </button>
       <button type="button" id="reference-library-source">
         <span class="reference-source-icon">▦</span>
         <strong>资产库选择</strong>
-        <small>使用已有角色或形象资产</small>
+        <small>可多选已有角色或形象</small>
       </button>
     </div>
-    <input id="reference-file-input" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+    <input id="reference-file-input" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden />
     <div class="reference-library-panel" id="reference-library-panel" hidden>
       <div class="reference-library-head">
         <strong>资产库</strong>
@@ -535,16 +538,6 @@
   </div>
 </div>
 
-<div class="episode-detail" id="episode-detail" hidden>
-  <div class="episode-detail-head">
-    <strong id="episode-detail-title">出现集数</strong>
-    <button type="button" id="episode-detail-close" aria-label="关闭集数">×</button>
-  </div>
-  <p class="episode-detail-count" id="episode-detail-count"></p>
-  <p class="episode-detail-list" id="episode-detail-list"></p>
-  <button type="button" class="episode-detail-edit" id="episode-detail-edit">编辑集数</button>
-</div>
-
 <div class="episode-editor" id="episode-editor" hidden>
   <div class="episode-editor-sheet" role="dialog" aria-modal="true" aria-labelledby="episode-editor-title">
     <div class="episode-editor-head">
@@ -605,15 +598,15 @@
   </div>
 </div>
 
-<script src="js/data.js?v=202610220212"></script>
-<script src="js/assets-core.js?v=202610220212"></script>
-<script src="js/assets-library.js?v=202610220212"></script>
-<script src="js/assets-dialogs.js?v=202610220212"></script>
-<script src="js/assets-detail.js?v=202610220212"></script>
-<script src="js/assets-mindmap.js?v=202610220212"></script>
-<script src="js/assets-preview.js?v=202610220212"></script>
-<script src="js/assets-composer.js?v=202610220212"></script>
-<script src="js/image-editor.js?v=202610220212"></script>
-<script src="js/assets-boot.js?v=202610220212"></script>
+<script src="js/data.js?v=202610221252"></script>
+<script src="js/assets-core.js?v=202610221252"></script>
+<script src="js/assets-library.js?v=202610221252"></script>
+<script src="js/assets-dialogs.js?v=202610221252"></script>
+<script src="js/assets-detail.js?v=202610221252"></script>
+<script src="js/assets-mindmap.js?v=202610221252"></script>
+<script src="js/assets-preview.js?v=202610221252"></script>
+<script src="js/assets-composer.js?v=202610221252"></script>
+<script src="js/image-editor.js?v=202610221252"></script>
+<script src="js/assets-boot.js?v=202610221252"></script>
 </body>
 </html>

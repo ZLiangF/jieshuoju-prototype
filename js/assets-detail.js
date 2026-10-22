@@ -100,8 +100,15 @@ function episodeChip(value) {
   var numbers = parseEpisodeNumbers(value);
   if (!numbers.length) return { title: "待分配", compact: false, html: "待分配" };
   var full = "第" + formatEpisodeGroups(episodeGroups(numbers)) + "集";
-  if (full.length <= 16) return { title: "查看出现集数", compact: false, html: full };
-  return { title: "查看出现集数", compact: true, html: "共 " + numbers.length + " 集" };
+  if (full.length <= 16) return { title: full, compact: false, html: full };
+  return { title: full, compact: true, html: "共 " + numbers.length + " 集" };
+}
+
+function episodeLineHtml(look, index, cls, suffix) {
+  var chip = episodeChip(look.eps);
+  var edit = editorKind === "char" && lookMultiOn ? ""
+    : '<button type="button" class="eps-edit" data-eps-edit="' + index + '" title="编辑集数" aria-label="编辑「' + lookShortName(look) + '」的集数">' + EDIT_ICON + "</button>";
+  return '<span class="' + cls + '" title="' + chip.title + '"><span class="eps-text">' + chip.html + (suffix || "") + "</span>" + edit + "</span>";
 }
 
 function paintPreviewVoice() {
@@ -112,18 +119,15 @@ function paintPreviewVoice() {
     return;
   }
   var bind = currentChar.voiceBind;
-  box.classList.toggle("is-empty", !bind);
-  box.innerHTML = bind
-    ? '<button type="button" class="asset-voice-play" data-preview-voice-play aria-label="试听' + bind.name + '">▶</button>' +
-      "<strong>" + bind.name + "</strong><i>" + voiceSourceLabel(bind.source) + "</i>" +
-      '<button type="button" class="preview-voice-open" data-preview-voice-open>更换</button>'
-    : '<span>♪ 尚未绑定音色</span><button type="button" class="preview-voice-open" data-preview-voice-open>去绑定</button>';
+  var on = charVoiceOn(currentChar);
+  box.classList.toggle("is-on", on);
+  box.title = on ? "音色：" + bind.name : bind ? "音色已关闭：" + bind.name : "绑定音色";
+  box.setAttribute("aria-label", on ? "已开启音色「" + bind.name + "」，点击管理" : bind ? "音色「" + bind.name + "」已关闭，点击开启" : "绑定音色");
+  box.innerHTML = on ? VOICE_ON_ICON : VOICE_OFF_ICON;
 }
 
-document.getElementById("preview-voice").onclick = function (e) {
-  var play = e.target.closest("[data-preview-voice-play]");
-  if (play) playVoiceSample(currentChar.voiceBind, play);
-  else if (e.target.closest("[data-preview-voice-open]")) openVoiceDialog(currentChar);
+document.getElementById("preview-voice").onclick = function () {
+  if (!this.hidden) openVoiceDialog(currentChar);
 };
 
 function lookShortName(look) {
@@ -145,7 +149,6 @@ function isChildOf(look, parent, primary) {
 function lookCardHtml(look, index, flat) {
   var state = lookVisualState(look, index);
   var shortName = lookShortName(look);
-  var chip = episodeChip(look.eps);
   var looks = currentChar.looksList || [];
   var parent = lookParent(looks, look);
   var primary = looks[primaryLookIndex(looks)];
@@ -165,8 +168,8 @@ function lookCardHtml(look, index, flat) {
     (state === "ready" ? "" : '<span class="look-state-tag ' + state + '">' + lookStateIcon(state) + lookStateText(state) + "</span>") +
     (editorKind === "char" && lookMultiOn ? "" : '<button type="button" class="look-card-del" data-del-look="' + look.id + '" title="删除' + assetWord() + '" aria-label="删除' + shortName + '">' + TRASH_ICON + "</button>") +
     "</div>" +
-    '<div class="look-card-info"><div class="look-card-copy"><strong>' + (state === "ready" ? READY_MARK : "") + '<span class="look-card-name">' + shortName + "</span></strong>" +
-    '<button type="button" class="look-card-eps' + (chip.compact ? " is-compact" : "") + '" data-look-eps="' + index + '" title="' + chip.title + '">' + chip.html + "</button>" +
+    '<div class="look-card-info"><div class="look-card-copy"><strong>' + (state === "ready" ? READY_MARK : "") + '<span class="look-card-name" title="' + shortName + '">' + shortName + "</span></strong>" +
+    episodeLineHtml(look, index, "look-card-eps") +
     '<div class="look-card-meta"><span class="look-kind-tag ' + (isPrimary ? "is-primary" : "is-child") + '">' + kindText + "</span>" +
     (parentName ? '<span class="look-parent-name">' + parentName + "</span>" : "") +
     "</div></div>" +
@@ -201,7 +204,7 @@ function primaryLookIndex(looks) {
 }
 
 function renderLookLibrary() {
-  closeEpisodeUi();
+  closeEpisodeEditor();
   var looks = currentChar.looksList || [];
   document.getElementById("editor-char-name").textContent = currentChar.name;
   document.getElementById("editor-char-desc").textContent = currentChar.desc || "";
@@ -242,7 +245,65 @@ function renderLookLibrary() {
   library.dataset.char = currentChar.id;
   library.scrollTop = libraryScroll;
   syncLookMulti();
+  requestAnimationFrame(placeWorkspaceSplit);
 }
+
+var workspaceLeft = 0;
+
+function placeWorkspaceSplit() {
+  var panel = document.querySelector(".look-library-panel");
+  var handle = document.getElementById("workspace-split");
+  if (!panel || !handle || !panel.offsetWidth) return;
+  handle.style.left = (panel.offsetLeft + panel.offsetWidth) + "px";
+}
+
+function setWorkspaceLeft(px) {
+  var ws = document.querySelector(".asset-workspace");
+  var minLeft = 300;
+  var minRight = 420;
+  px = Math.max(minLeft, Math.min(ws.clientWidth - 14 - minRight, Math.round(px)));
+  workspaceLeft = px;
+  ws.style.gridTemplateColumns = px + "px minmax(0, 1fr)";
+  placeWorkspaceSplit();
+}
+
+var workspaceSplitDrag = null;
+var workspaceSplitHandle = document.getElementById("workspace-split");
+workspaceSplitHandle.addEventListener("pointerdown", function (e) {
+  if (e.button !== 0) return;
+  workspaceSplitDrag = { x: e.clientX, width: document.querySelector(".look-library-panel").offsetWidth };
+  document.querySelector(".asset-workspace").classList.add("is-splitting");
+  if (this.setPointerCapture) {
+    try { this.setPointerCapture(e.pointerId); } catch (err) { /* 没有真实指针时忽略 */ }
+  }
+  e.preventDefault();
+});
+workspaceSplitHandle.addEventListener("pointermove", function (e) {
+  if (!workspaceSplitDrag) return;
+  setWorkspaceLeft(workspaceSplitDrag.width + e.clientX - workspaceSplitDrag.x);
+});
+workspaceSplitHandle.addEventListener("pointerup", function () {
+  workspaceSplitDrag = null;
+  document.querySelector(".asset-workspace").classList.remove("is-splitting");
+});
+workspaceSplitHandle.addEventListener("pointercancel", function () {
+  workspaceSplitDrag = null;
+  document.querySelector(".asset-workspace").classList.remove("is-splitting");
+});
+workspaceSplitHandle.addEventListener("dblclick", function () {
+  workspaceLeft = 0;
+  document.querySelector(".asset-workspace").style.gridTemplateColumns = "";
+  requestAnimationFrame(placeWorkspaceSplit);
+});
+workspaceSplitHandle.addEventListener("keydown", function (e) {
+  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+  e.preventDefault();
+  setWorkspaceLeft(document.querySelector(".look-library-panel").offsetWidth + (e.key === "ArrowRight" ? 32 : -32));
+});
+window.addEventListener("resize", function () {
+  if (workspaceLeft) setWorkspaceLeft(workspaceLeft);
+  else placeWorkspaceSplit();
+});
 
 function pendingLooksOf(item) {
   return (item.looksList || []).filter(function (look, index) {
@@ -304,15 +365,13 @@ function fillLookForm(look) {
     : editorKind === "prop"
     ? "描述道具的材质、尺寸和使用状态"
     : "描述服装、发型、体态和情绪，保持五视图一致";
-  document.getElementById("use-reference-image").parentElement.querySelector("span").textContent = "参考当前" + assetWord();
-  document.getElementById("use-main-image").parentElement.querySelector("span").textContent = "主" + assetWord();
+  paintReferenceSources(look);
   document.getElementById("look-dialog").classList.toggle("is-asset-other", editorKind !== "char");
   updatePromptCount();
   renderLookLibrary();
 
   renderCurrentLookOutput(look);
-  var referenceSrc = look && look.referenceImage ? look.referenceImage : "";
-  updateReferenceComposer(referenceSrc);
+  updateReferenceComposer(look);
   var referenceMode = look && (look.referenceMode === "current" || (look.useMainImage === false && look.useReferenceImage)) ? "current" : "main";
   document.getElementById("use-reference-image").checked = referenceMode === "current";
   document.getElementById("use-main-image").checked = referenceMode === "main";
@@ -328,54 +387,10 @@ function stashLookDraft() {
   lookDirty = false;
 }
 
-function closeEpisodeDetail() {
-  episodePanelIndex = -1;
-  var detail = document.getElementById("episode-detail");
-  if (detail) detail.hidden = true;
-}
-
 function closeEpisodeEditor() {
+  episodePanelIndex = -1;
   var editor = document.getElementById("episode-editor");
   if (editor) editor.hidden = true;
-}
-
-function closeEpisodeUi() {
-  closeEpisodeEditor();
-  closeEpisodeDetail();
-}
-
-function positionEpisodeDetail() {
-  var button = document.querySelector('#look-library [data-look-eps="' + episodePanelIndex + '"]');
-  var detail = document.getElementById("episode-detail");
-  if (!button || detail.hidden) return;
-  var rect = button.getBoundingClientRect();
-  var width = detail.offsetWidth;
-  var height = detail.offsetHeight;
-  var left = Math.min(Math.max(12, rect.left), window.innerWidth - width - 12);
-  var top = rect.bottom + 8;
-  if (top + height > window.innerHeight - 12) top = Math.max(12, rect.top - height - 8);
-  detail.style.left = left + "px";
-  detail.style.top = top + "px";
-}
-
-function openEpisodeDetail(index) {
-  var look = (currentChar.looksList || [])[index];
-  if (!look) return;
-  closeEpisodeEditor();
-  episodePanelIndex = index;
-  var numbers = parseEpisodeNumbers(look.eps);
-  var total = seriesEpisodeTotal(numbers);
-  var detail = document.getElementById("episode-detail");
-  detail.dataset.total = String(total);
-  detail.hidden = false;
-  document.getElementById("episode-detail-title").textContent = look.name.replace(currentChar.name + "-", "");
-  document.getElementById("episode-detail-count").textContent = numbers.length
-    ? "共 " + numbers.length + " / " + total + " 集"
-    : "尚未分配集数";
-  document.getElementById("episode-detail-list").textContent = numbers.length
-    ? "第" + formatEpisodeGroups(episodeGroups(numbers)) + "集"
-    : "还没有分配集数。";
-  positionEpisodeDetail();
 }
 
 function readEpisodeDraft(text, total) {
@@ -434,9 +449,10 @@ function syncEpisodeDraftFromInput() {
   paintEpisodeEditor();
 }
 
-function openEpisodeEditor() {
-  var look = (currentChar.looksList || [])[episodePanelIndex];
+function openEpisodeEditor(index) {
+  var look = (currentChar.looksList || [])[index];
   if (!look) return;
+  episodePanelIndex = index;
   var numbers = parseEpisodeNumbers(look.eps);
   var editor = document.getElementById("episode-editor");
   editor.dataset.total = String(seriesEpisodeTotal(numbers));
@@ -444,28 +460,9 @@ function openEpisodeEditor() {
   document.getElementById("episode-editor-input").value = numbers.length ? serializeEpisodes(numbers) : "";
   episodeDraftNumbers = numbers.slice();
   episodeDraftValid = true;
-  document.getElementById("episode-detail").hidden = true;
   editor.hidden = false;
   paintEpisodeEditor();
   document.getElementById("episode-editor-input").focus();
-}
-
-function cancelEpisodeEditor() {
-  closeEpisodeEditor();
-  if (episodePanelIndex >= 0) {
-    document.getElementById("episode-detail").hidden = false;
-    positionEpisodeDetail();
-  }
-}
-
-function refreshEpisodeChip(index) {
-  var look = (currentChar.looksList || [])[index];
-  var button = document.querySelector('#look-library [data-look-eps="' + index + '"]');
-  if (!look || !button) return;
-  var chip = episodeChip(look.eps);
-  button.className = "look-card-eps" + (chip.compact ? " is-compact" : "");
-  button.title = chip.title;
-  button.innerHTML = chip.html;
 }
 
 function saveEpisodeEditor() {
@@ -477,13 +474,14 @@ function saveEpisodeEditor() {
     document.getElementById("f-look-eps").value = look.eps === "待分配" ? "" : look.eps;
     lookDirty = true;
   }
-  refreshEpisodeChip(episodePanelIndex);
-  closeEpisodeUi();
+  closeEpisodeEditor();
+  renderLookLibrary();
+  if (editingLook === look) renderCurrentLookHead(look);
   ReplicaUI.toast("已保存集数");
 }
 
 function closeLookDialog() {
-  closeEpisodeUi();
+  closeEpisodeEditor();
   closeReferenceDialog();
   closeVoiceDialog(false);
   closeRewriteDialog(true);
@@ -522,7 +520,7 @@ function deleteLooks(removing) {
   var looks = currentChar.looksList || [];
   if (!removing.length || removing.length >= looks.length) return;
   var refund = cancelLookGeneration(removing);
-  closeEpisodeUi();
+  closeEpisodeEditor();
   var removedIds = {};
   removing.forEach(function (look) { removedIds[look.id] = look.parentId || ""; });
   var primaryGone = removing.some(function (look) {
@@ -549,20 +547,16 @@ document.getElementById("look-library").onclick = function (e) {
     if (target) confirmDeleteLooks([target]);
     return;
   }
-  var episodeButton = e.target.closest("[data-look-eps]");
-  if (episodeButton) {
+  var episodeEdit = e.target.closest("[data-eps-edit]");
+  if (episodeEdit) {
     e.stopPropagation();
-    var episodeIndex = Number(episodeButton.dataset.lookEps);
+    var episodeIndex = Number(episodeEdit.dataset.epsEdit);
     var episodeLook = (currentChar.looksList || [])[episodeIndex];
-    if (episodePanelIndex === episodeIndex && !document.getElementById("episode-detail").hidden) {
-      closeEpisodeDetail();
-      return;
-    }
-    if (editingLook !== episodeLook) {
+    if (episodeLook && editingLook !== episodeLook && !lookMultiOn) {
       stashLookDraft();
       fillLookForm(episodeLook);
     }
-    openEpisodeDetail(episodeIndex);
+    openEpisodeEditor(episodeIndex);
     return;
   }
   var toggle = e.target.closest("[data-toggle-look]");
@@ -714,16 +708,12 @@ document.getElementById("look-gen-selected").onclick = function () {
   selectedLooks = {};
   renderLookLibrary();
 };
-document.getElementById("look-library").addEventListener("scroll", positionEpisodeDetail);
-document.getElementById("episode-detail-close").onclick = closeEpisodeDetail;
-document.getElementById("episode-detail-edit").onclick = openEpisodeEditor;
-document.getElementById("episode-detail").onclick = function (e) { e.stopPropagation(); };
-document.getElementById("episode-editor-x").onclick = cancelEpisodeEditor;
-document.getElementById("episode-editor-cancel").onclick = cancelEpisodeEditor;
+document.getElementById("episode-editor-x").onclick = closeEpisodeEditor;
+document.getElementById("episode-editor-cancel").onclick = closeEpisodeEditor;
 document.getElementById("episode-editor-save").onclick = saveEpisodeEditor;
 document.getElementById("episode-editor-input").oninput = syncEpisodeDraftFromInput;
 document.getElementById("episode-editor").onclick = function (e) {
-  if (e.target === this) cancelEpisodeEditor();
+  if (e.target === this) closeEpisodeEditor();
 };
 document.getElementById("episode-editor-grid").onclick = function (e) {
   var cell = e.target.closest("[data-episode]");
@@ -738,9 +728,3 @@ document.getElementById("episode-editor-grid").onclick = function (e) {
   document.getElementById("episode-editor-input").value = episodeDraftNumbers.length ? serializeEpisodes(episodeDraftNumbers) : "";
   paintEpisodeEditor();
 };
-document.addEventListener("click", function (e) {
-  var detail = document.getElementById("episode-detail");
-  if (detail.hidden) return;
-  if (e.target.closest("#episode-detail") || e.target.closest("[data-look-eps]") || e.target.closest("#episode-editor")) return;
-  closeEpisodeDetail();
-});
