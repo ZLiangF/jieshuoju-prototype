@@ -1153,6 +1153,22 @@
   border-style: dashed;
   border-color: rgba(255,255,255,.14);
 }
+.asset-page .char-card.asset-card.asset-sub h3 {
+  align-items: flex-start;
+  white-space: normal;
+  overflow: visible;
+}
+.asset-page .char-card.asset-card.asset-sub h3 .asset-name {
+  flex: 1;
+  width: 0;
+  display: -webkit-box;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  text-overflow: unset;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
 .asset-page .char-card.asset-card.asset-sub.is-ready {
   border-style: solid;
   border-color: rgba(125,222,168,.2);

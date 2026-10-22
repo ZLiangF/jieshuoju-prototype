@@ -42,14 +42,9 @@ function renderCurrentLookHead(look) {
     return;
   }
   var looks = currentChar.looksList || [];
-  var primary = looks[primaryLookIndex(looks)];
-  var isPrimary = look === primary;
-  var parent = isPrimary ? null : lookParent(looks, look) || primary;
   var ready = lookVisualState(look, looks.indexOf(look)) === "ready";
-  name.innerHTML = (ready ? READY_MARK : "") + '<span title="' + escapeHtml(lookShortName(look)) + '">' + escapeHtml(lookShortName(look)) + "</span>";
-  meta.innerHTML = '<span class="' + (isPrimary ? "is-primary" : "") + '">' + (isPrimary ? "主" : "子") + assetWord() + "</span>" +
-    (parent ? "<span>上级：" + escapeHtml(lookShortName(parent)) + "</span>" : "") +
-    "<span>" + episodeChip(look.eps).html + "</span>";
+  name.innerHTML = (ready ? READY_MARK : "") + '<span title="' + escapeHtml(look.name) + '">' + escapeHtml(look.name) + "</span>";
+  meta.innerHTML = "<span>" + episodeChip(look.eps).html + "</span>";
 }
 
 function renderCurrentLookOutput(look) {
@@ -215,7 +210,7 @@ function downloadHistory(id) {
   var item = historyById(id);
   if (!item) return;
   var link = document.createElement("a");
-  var name = (editingLook ? lookShortName(editingLook) : "历史图片") + "-V" + item.version;
+  var name = (editingLook ? editingLook.name : "历史图片") + "-V" + item.version;
   link.href = item.src;
   link.download = name.replace(/[\\/:*?"<>|]/g, "-") + ".jpg";
   document.body.appendChild(link);

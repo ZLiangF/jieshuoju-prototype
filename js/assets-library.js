@@ -113,10 +113,7 @@ function subCardHtml(row, entry) {
   var item = row.item;
   var look = entry.look;
   var state = subLookState(item, look);
-  var parent = lookParent(item.looksList || [], look);
-  var primary = primaryLookOf(item);
-  var shortName = look.name.replace(item.name + "-", "");
-  var parentName = parent && parent !== primary ? parent.name.replace(item.name + "-", "") : "";
+  var shortName = look.name;
   var key = row.kind + ":" + row.i;
   var visual = state === "ready"
     ? '<img src="' + (look.sheet || look.image) + '" alt="' + look.name + '" loading="lazy" decoding="async">'
@@ -133,7 +130,7 @@ function subCardHtml(row, entry) {
     '<div class="asset-card-media is-' + state + (state === "ready" ? " is-sheet" : state === "pending" ? " is-empty" : "") + '">' + visual + flag + "</div>" +
     '<div class="asset-card-info"><div class="asset-card-title"><h3 title="' + look.name + '"><span class="asset-name">' + shortName + '</span><span class="tag asset-sub-tag">子角色</span></h3>' +
     '<span class="looks" title="' + chip.title + '">' + chip.html.replace(/<[^>]+>/g, "") + "</span></div>" +
-    '<p class="asset-sub-owner">' + SUB_ICON + "隶属 " + item.name + (parentName ? " · 上级：" + parentName : "") + "</p>" +
+    '<p class="asset-sub-owner">' + SUB_ICON + "隶属 " + item.name + "</p>" +
     "</div></article>";
 }
 

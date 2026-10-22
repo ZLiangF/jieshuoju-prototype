@@ -148,13 +148,7 @@ function isChildOf(look, parent, primary) {
 
 function lookCardHtml(look, index, flat) {
   var state = lookVisualState(look, index);
-  var shortName = lookShortName(look);
-  var looks = currentChar.looksList || [];
-  var parent = lookParent(looks, look);
-  var primary = looks[primaryLookIndex(looks)];
-  var isPrimary = primary === look;
-  var kindText = isPrimary ? "主" + assetWord() : "子" + assetWord();
-  var parentName = !flat || isPrimary ? "" : lookShortName(parent || primary);
+  var shortName = look.name;
   var checked = editorKind === "char" && lookMultiOn && !!selectedLooks[look.id];
   var check = editorKind === "char" && lookMultiOn ? '<span class="asset-check look-pick' + (checked ? " is-on" : "") + '" role="checkbox" aria-checked="' + (checked ? "true" : "false") + '" aria-label="选择形象"></span>' : "";
   return '<article class="look-library-card ' + (editingLook === look ? "on " : "") + state + (checked ? " is-look-picked" : "") +
@@ -170,9 +164,7 @@ function lookCardHtml(look, index, flat) {
     "</div>" +
     '<div class="look-card-info"><div class="look-card-copy"><strong>' + (state === "ready" ? READY_MARK : "") + '<span class="look-card-name" title="' + shortName + '">' + shortName + "</span></strong>" +
     episodeLineHtml(look, index, "look-card-eps") +
-    '<div class="look-card-meta"><span class="look-kind-tag ' + (isPrimary ? "is-primary" : "is-child") + '">' + kindText + "</span>" +
-    (parentName ? '<span class="look-parent-name">' + parentName + "</span>" : "") +
-    "</div></div>" +
+    "</div>" +
     (flat && !(editorKind === "char" && lookMultiOn) ? '<button type="button" class="look-add-child" data-add-child="' + look.id + '" title="新增子' + assetWord() + '" aria-label="新增子' + assetWord() + '">' + PLUS_ICON + "</button>" : "") +
     "</div></article>";
 }

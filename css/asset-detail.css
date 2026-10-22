@@ -452,33 +452,12 @@
 .look-card-info .look-card-eps {
   grid-area: 2 / 1;
 }
-.look-card-info .look-card-meta {
-  grid-area: 3 / 1 / auto / -1;
-}
 .look-card-info .look-add-child {
   grid-area: 1 / 2;
 }
-.look-card-meta {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  color: #8f8798;
-  font-size: 12px;
-  line-height: 18px;
-}
-.look-card-info .look-card-meta > * + *::before {
-  content: "·";
-  width: auto;
-  height: auto;
-  margin: 0 5px;
-  border-radius: 0;
-  background: none;
-  color: #635d6c;
-  font-weight: 400;
-}
 .look-card-info strong {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 4px;
   min-width: 0;
   overflow: hidden;
@@ -488,13 +467,16 @@
   line-height: 1.35;
 }
 .look-card-name {
+  flex: 1;
+  width: 0;
   min-width: 0;
   display: -webkit-box;
   overflow: hidden;
   white-space: normal;
-  word-break: break-all;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
 }
 .look-card-info .asset-done,
 .look-card-info .look-card-name {
@@ -584,24 +566,29 @@
   gap: 12px;
 }
 .look-gen-title {
+  flex: 1;
   min-width: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
 }
 .look-gen-title strong {
   min-width: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   color: #f4f1f8;
   font-size: 15px;
   font-weight: 650;
 }
 .look-gen-title strong > span:last-child {
+  display: -webkit-box;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 .look-gen-meta {
   min-width: 0;
@@ -611,15 +598,6 @@
   color: #8f8798;
   font-size: 12px;
   white-space: nowrap;
-}
-.look-gen-meta > * + *::before {
-  content: "·";
-  margin: 0 6px;
-  color: #5d5766;
-}
-.look-gen-meta .is-primary {
-  color: #d7c4ff;
-  font-weight: 620;
 }
 .current-look-state {
   height: 24px;
@@ -1388,22 +1366,6 @@ body.asset-editor-page-open {
   width: min(1480px, 100%);
   margin: 14px auto 0;
   grid-template-columns: minmax(360px, .7fr) minmax(0, 1.3fr);
-}
-.look-kind-tag {
-  display: inline;
-  flex: none;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: #9d95a8;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 18px;
-  white-space: nowrap;
-}
-.look-kind-tag.is-primary {
-  color: #d7c4ff;
-  font-weight: 620;
 }
 .look-state-tag {
   position: absolute;
@@ -3154,20 +3116,6 @@ body.asset-editor-page-open {
 #rewrite-confirm:disabled {
   opacity: .55;
 }
-.look-card-info .look-kind-tag,
-.look-card-info .look-parent-name {
-  margin: 0;
-  display: inline;
-  gap: 0;
-  font-size: 12px;
-}
-.look-parent-name {
-  min-width: 0;
-  overflow: hidden;
-  color: #a39aaf;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .episode-editor {
   position: fixed;
   inset: 0;
@@ -3337,7 +3285,7 @@ body.asset-editor-page-open {
 .mind-node {
   position: absolute;
   z-index: 1;
-  max-width: 160px;
+  max-width: 172px;
   height: auto;
   min-height: 26px;
   padding: 4px 11px 5px;
@@ -3388,15 +3336,16 @@ body.asset-editor-page-open {
   box-shadow: 0 10px 24px rgba(0,0,0,.4);
 }
 .mind-name {
-  max-width: 136px;
+  max-width: 148px;
   min-width: 0;
   display: -webkit-box;
   overflow: hidden;
   line-height: 16px;
   white-space: normal;
-  word-break: break-all;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
 }
 .mind-meta {
   max-width: 136px;

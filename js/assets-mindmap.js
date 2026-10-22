@@ -25,15 +25,6 @@ function mindChildren(looks, parent, primary) {
   return looks.filter(function (look) { return isChildOf(look, parent, primary); });
 }
 
-function mindLabel(look, parent, primary) {
-  var name = lookShortName(look);
-  if (parent && parent !== primary) {
-    var prefix = lookShortName(parent);
-    if (name.indexOf(prefix) === 0 && name.length > prefix.length) return name.slice(prefix.length).replace(/^-/, "");
-  }
-  return name;
-}
-
 function mindSize(id) {
   return mindSizes[id] || { w: 112, h: 40 };
 }
@@ -117,7 +108,7 @@ function mindNodeHtml(node, looks, primary) {
   var folded = !!st.collapsed[look.id];
   var multi = editorKind === "char" && lookMultiOn;
   var picked = multi && !!selectedLooks[look.id];
-  var name = node.parent ? mindLabel(look, node.parent.look, primary) : lookShortName(look);
+  var name = look.name;
   var meta = episodeLineHtml(look, index, "mind-meta", state === "ready" ? "" : " · " + lookStateText(state));
   var cls = "mind-node is-" + state + (node.parent ? "" : " is-root") +
     (kids ? " has-kids" : "") + (editingLook === look ? " on" : "") + (picked ? " is-look-picked" : "");
@@ -133,7 +124,7 @@ function mindNodeHtml(node, looks, primary) {
   var fold = kids
     ? '<button type="button" class="mind-fold" data-mind-fold="' + look.id + '" title="' + (folded ? "展开" : "收起") + '" aria-label="' + (folded ? "展开" : "收起") + "「" + name + "」的子" + assetWord() + '">' + (folded ? kids : "−") + "</button>"
     : "";
-  return '<div class="' + cls + '" data-look-index="' + index + '" data-mind-id="' + look.id + '" title="' + lookShortName(look) + '" style="left:' + node.x + "px;top:" + node.y + 'px">' +
+  return '<div class="' + cls + '" data-look-index="' + index + '" data-mind-id="' + look.id + '" title="' + look.name + '" style="left:' + node.x + "px;top:" + node.y + 'px">' +
     (picked ? '<span class="mind-check" aria-hidden="true"></span>' : "") +
     body + fold + add + del + "</div>";
 }
