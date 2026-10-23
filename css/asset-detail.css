@@ -3596,10 +3596,10 @@ body.asset-editor-page-open {
   .mind-node.is-generating { animation: none; }
 }
 
-/* 平铺和关系图共用左右比例：默认左边 3、右边 2，仍可拖动 */
+/* 平铺和关系图共用左右比例：默认左边 4、右边 2，仍可拖动 */
 .asset-page #look-dialog.is-flat-view .asset-workspace,
 .asset-page #look-dialog.is-mind-view .asset-workspace {
-  grid-template-columns: minmax(320px, 3fr) minmax(220px, 2fr);
+  grid-template-columns: minmax(320px, 4fr) minmax(220px, 2fr);
 }
 .is-flat-view .look-library-panel {
   background:
