@@ -42,9 +42,15 @@ function renderCurrentLookHead(look) {
     return;
   }
   var looks = currentChar.looksList || [];
-  var ready = lookVisualState(look, looks.indexOf(look)) === "ready";
-  name.innerHTML = (ready ? READY_MARK : "") + '<span title="' + escapeHtml(look.name) + '">' + escapeHtml(look.name) + "</span>";
-  meta.innerHTML = "<span>" + episodeChip(look.eps).html + "</span>";
+  var index = looks.indexOf(look);
+  var ready = lookVisualState(look, index) === "ready";
+  var chip = episodeChip(look.eps);
+  var primaryLabel = editorKind === "char" ? "主形象" : "主" + assetWord();
+  name.innerHTML = (ready ? READY_MARK : "") + '<span class="look-name" title="' + escapeHtml(look.name) + '">' + escapeHtml(look.name) + "</span>" +
+    (index === primaryLookIndex(looks) ? '<em class="look-primary-tag">' + primaryLabel + "</em>" : "");
+  meta.innerHTML = editorKind === "char" && lookMultiOn
+    ? '<span class="look-gen-eps is-static" title="' + chip.title + '">' + chip.html + "</span>"
+    : '<button type="button" class="look-gen-eps" data-eps-edit="' + index + '" title="编辑集数：' + chip.title + '"><span>' + chip.html + "</span>" + EDIT_ICON + "</button>";
 }
 
 function renderCurrentLookOutput(look) {

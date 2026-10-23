@@ -151,8 +151,12 @@ function lookCardHtml(look, index, flat) {
   var shortName = look.name;
   var checked = editorKind === "char" && lookMultiOn && !!selectedLooks[look.id];
   var check = editorKind === "char" && lookMultiOn ? '<span class="asset-check look-pick' + (checked ? " is-on" : "") + '" role="checkbox" aria-checked="' + (checked ? "true" : "false") + '" aria-label="选择形象"></span>' : "";
+  var childName = lookShortName(look);
+  var addChild = flat && !(editorKind === "char" && lookMultiOn)
+    ? '<button type="button" class="look-add-child" data-add-child="' + look.id + '" title="在「' + childName + '」下新增子' + assetWord() + '" aria-label="在「' + childName + '」下新增子' + assetWord() + '">' + PLUS_ICON + "<span>新增子" + assetWord() + "</span></button>"
+    : "";
   return '<article class="look-library-card ' + (editingLook === look ? "on " : "") + state + (checked ? " is-look-picked" : "") +
-    '" data-look-index="' + index + '" tabindex="0">' +
+    '" data-look-index="' + index + '" tabindex="0" title="' + shortName + '">' +
     '<div class="look-card-image' + (state !== "ready" ? " is-empty" : "") + '">' +
     (state === "ready"
       ? '<img src="' + look.image + '" alt="' + shortName + '">'
@@ -161,11 +165,7 @@ function lookCardHtml(look, index, flat) {
       : '<span class="look-card-empty" aria-hidden="true">' + (editorKind === "char" ? EMPTY_PERSON_ICON : EMPTY_IMAGE_ICON) + "</span>") + check +
     (state === "ready" ? "" : '<span class="look-state-tag ' + state + '">' + lookStateIcon(state) + lookStateText(state) + "</span>") +
     (editorKind === "char" && lookMultiOn ? "" : '<button type="button" class="look-card-del" data-del-look="' + look.id + '" title="删除' + assetWord() + '" aria-label="删除' + shortName + '">' + TRASH_ICON + "</button>") +
-    "</div>" +
-    '<div class="look-card-info"><div class="look-card-copy"><strong>' + (state === "ready" ? READY_MARK : "") + '<span class="look-card-name" title="' + shortName + '">' + shortName + "</span></strong>" +
-    episodeLineHtml(look, index, "look-card-eps") +
-    "</div>" +
-    (flat && !(editorKind === "char" && lookMultiOn) ? '<button type="button" class="look-add-child" data-add-child="' + look.id + '" title="新增子' + assetWord() + '" aria-label="新增子' + assetWord() + '">' + PLUS_ICON + "</button>" : "") +
+    addChild +
     "</div></article>";
 }
 
@@ -208,7 +208,7 @@ function renderLookLibrary() {
     var count = (char.looksList || []).length;
     var countText = editorKind === "char" ? count + "套" : (count > 1 ? count + "个" : "");
     return '<button type="button" data-editor-char="' + char.id + '" class="' + (char.id === currentChar.id ? "on" : "") + '">' +
-      '<img src="' + char.image + '" alt=""><span>' + char.name + '</span>' + (countText ? "<small>" + countText + "</small>" : "") + "</button>";
+      "<span>" + char.name + "</span>" + (countText ? "<small>" + countText + "</small>" : "") + "</button>";
   }).join("");
   requestAnimationFrame(updateRoleSwitchMask);
   document.querySelectorAll("#look-view-switch [data-look-view]").forEach(function (button) {
@@ -224,15 +224,36 @@ function renderLookLibrary() {
     expandedLooks = { _ready: currentChar.id };
     expandedLooks[currentChar.id + ":home"] = true;
   }
-  document.getElementById("look-dialog").classList.toggle("is-mind-view", lookViewMode === "structure");
+  var dialog = document.getElementById("look-dialog");
+  var output = document.querySelector(".look-current-output");
+  var generation = document.querySelector(".look-generation-panel");
+  var imageInput = document.getElementById("look-image-input");
+  dialog.classList.toggle("is-mind-view", lookViewMode === "structure");
+  dialog.classList.toggle("is-flat-view", lookViewMode !== "structure");
   if (lookViewMode === "structure") {
+    if (output && output.parentNode !== generation) generation.insertBefore(output, imageInput);
     renderLookMindMap(library, looks, primary);
   } else {
     library.classList.remove("is-mind");
-    library.innerHTML = '<div class="look-flat-grid">' + orderedLooks(looks).map(function (item) {
+    var previousFlat = document.getElementById("look-flat-grid");
+    var flatScrollLeft = previousFlat ? previousFlat.scrollLeft : 0;
+    library.innerHTML =
+      '<div class="flat-preview-mount" id="flat-preview-mount"></div>' +
+      '<div class="flat-look-section"><div class="flat-look-head"><div><strong>' + (editorKind === "char" ? "角色形象" : assetWord()) + '</strong><span>' + looks.length + ' 个</span></div>' +
+      '<button type="button" class="flat-add-look" data-new-look="1">' + PLUS_ICON + '新增</button></div>' +
+      '<div class="flat-look-rail">' +
+      '<button type="button" class="flat-look-arrow is-prev" data-flat-scroll="-1" aria-label="向左滑动" title="向左滑动"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5 5.5 8 10 12.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' +
+      '<div class="look-flat-grid" id="look-flat-grid">' + orderedLooks(looks).map(function (item) {
       return lookCardHtml(item.look, item.index, true);
     }).join("") +
-      '<button type="button" class="look-library-card look-add-card" data-new-look="1"><b>＋</b><span>新增' + (editorKind === "char" ? "角色形象" : assetWord()) + '</span></button></div>';
+      '</div>' +
+      '<button type="button" class="flat-look-arrow is-next" data-flat-scroll="1" aria-label="向右滑动" title="向右滑动"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' +
+      '</div></div>';
+    var mount = document.getElementById("flat-preview-mount");
+    if (output && mount) mount.appendChild(output);
+    var flatGrid = document.getElementById("look-flat-grid");
+    if (flatGrid) flatGrid.scrollLeft = flatScrollLeft;
+    requestAnimationFrame(function () { revealFlatLook(flatScrollLeft); });
   }
   library.dataset.char = currentChar.id;
   library.scrollTop = libraryScroll;
@@ -241,6 +262,31 @@ function renderLookLibrary() {
 }
 
 var workspaceLeft = 0;
+
+function syncFlatLookArrows() {
+  var grid = document.getElementById("look-flat-grid");
+  if (!grid) return;
+  var max = Math.max(0, grid.scrollWidth - grid.clientWidth);
+  var prev = grid.parentElement.querySelector(".is-prev");
+  var next = grid.parentElement.querySelector(".is-next");
+  if (prev) prev.disabled = grid.scrollLeft <= 2;
+  if (next) next.disabled = grid.scrollLeft >= max - 2;
+}
+
+function revealFlatLook(savedLeft) {
+  var grid = document.getElementById("look-flat-grid");
+  if (!grid) return;
+  grid.scrollLeft = savedLeft || 0;
+  var current = grid.querySelector(".look-library-card.on");
+  if (current) {
+    var left = current.offsetLeft;
+    var right = left + current.offsetWidth;
+    if (left < grid.scrollLeft || right > grid.scrollLeft + grid.clientWidth) {
+      grid.scrollLeft = Math.max(0, left - 8);
+    }
+  }
+  syncFlatLookArrows();
+}
 
 function placeWorkspaceSplit() {
   var panel = document.querySelector(".look-library-panel");
@@ -579,7 +625,40 @@ function deleteLooks(removing) {
   deletedToast(removing.length === 1 ? "已删除「" + lookShortName(removing[0]) + "」" : "已删除 " + removing.length + " 个" + (editorKind === "char" ? "形象" : assetWord()), { refund: refund });
 }
 
+document.getElementById("current-look-meta").onclick = function (e) {
+  var episodeEdit = e.target.closest("[data-eps-edit]");
+  if (!episodeEdit) return;
+  var episodeIndex = Number(episodeEdit.dataset.epsEdit);
+  var episodeLook = (currentChar.looksList || [])[episodeIndex];
+  if (!episodeLook) return;
+  if (editingLook !== episodeLook && !lookMultiOn) {
+    stashLookDraft();
+    fillLookForm(episodeLook);
+  }
+  openEpisodeEditor(episodeIndex);
+};
+
+document.getElementById("look-library").addEventListener("scroll", function (e) {
+  if (e.target.id === "look-flat-grid") syncFlatLookArrows();
+}, true);
+document.getElementById("look-library").addEventListener("wheel", function (e) {
+  var grid = e.target.closest(".look-flat-grid");
+  if (!grid || grid.scrollWidth <= grid.clientWidth + 1) return;
+  var delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+  if (!delta) return;
+  grid.scrollLeft += delta;
+  syncFlatLookArrows();
+  e.preventDefault();
+}, { passive: false });
+
 document.getElementById("look-library").onclick = function (e) {
+  var scrollButton = e.target.closest("[data-flat-scroll]");
+  if (scrollButton && !scrollButton.disabled) {
+    e.stopPropagation();
+    var grid = document.getElementById("look-flat-grid");
+    if (grid) grid.scrollBy({ left: Number(scrollButton.dataset.flatScroll) * Math.max(180, Math.round(grid.clientWidth * 0.82)), behavior: "smooth" });
+    return;
+  }
   var delLook = e.target.closest("[data-del-look]");
   if (delLook) {
     e.stopPropagation();
@@ -661,38 +740,6 @@ document.getElementById("editor-role-switch").onclick = function (e) {
     return currentChar.look && look.name.indexOf(currentChar.look) !== -1;
   }) || looks[0] || null;
   fillLookForm(primaryLook);
-};
-
-function placeRolePreview(button) {
-  var preview = document.getElementById("editor-role-preview");
-  var rect = button.getBoundingClientRect();
-  var width = preview.offsetWidth || 200;
-  preview.style.left = Math.max(12, Math.min(window.innerWidth - width - 12, rect.left + rect.width / 2 - width / 2)) + "px";
-  preview.style.top = (rect.bottom + 8) + "px";
-}
-document.getElementById("editor-role-switch").onmouseover = function (e) {
-  var button = e.target.closest("[data-editor-char]");
-  if (!button) return;
-  var char = editorItems().find(function (item) { return item.id === button.dataset.editorChar; });
-  if (!char) return;
-  var preview = document.getElementById("editor-role-preview");
-  var src = char.sheet || char.image;
-  preview.innerHTML = '<img src="' + src + '" alt=""><div><strong>' + char.name + '</strong><span>' + (char.desc || "") + "</span></div>";
-  preview.classList.add("show");
-  var img = preview.querySelector("img");
-  var fit = function () {
-    if (!img.naturalWidth) return;
-    preview.style.setProperty("--preview-ratio", img.naturalWidth + " / " + img.naturalHeight);
-    var copy = preview.querySelector("div");
-    if (copy) copy.style.width = img.offsetWidth + "px";
-    placeRolePreview(button);
-  };
-  if (img.complete) fit();
-  else img.onload = fit;
-  placeRolePreview(button);
-};
-document.getElementById("editor-role-switch").onmouseleave = function () {
-  document.getElementById("editor-role-preview").classList.remove("show");
 };
 
 function updateRoleSwitchMask() {
