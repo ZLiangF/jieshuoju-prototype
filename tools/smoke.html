@@ -7,8 +7,12 @@
   body { margin: 0; padding: 24px; font: 13px/1.6 -apple-system, "PingFang SC", sans-serif; color: #e8e6ee; background: #121217; }
   h1 { margin: 0 0 6px; font-size: 18px; }
   p { margin: 0 0 16px; color: #9a96a6; }
-  button { height: 32px; padding: 0 14px; border: 0; border-radius: 8px; color: #fff; background: #6b46e5; cursor: pointer; }
+  .actions { display: flex; align-items: center; gap: 12px; }
+  button, a.back { display: inline-flex; align-items: center; height: 32px; padding: 0 14px; border: 0; border-radius: 8px; color: #fff; text-decoration: none; }
+  button { background: #6b46e5; cursor: pointer; }
   button:disabled { opacity: .5; cursor: default; }
+  a.back { background: rgba(255,255,255,.1); }
+  a.back[hidden] { display: none; }
   table { width: 100%; margin-top: 18px; border-collapse: collapse; }
   td, th { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,.08); text-align: left; vertical-align: top; }
   .ok { color: #69d5aa; }
@@ -20,8 +24,11 @@
 <body>
 <h1>交互冒烟检查</h1>
 <p>依次打开每个场景，把页面上能看到的按钮、开关、标签逐个点一遍（离开页面的链接会被拦下），记录点哪一下之后出现了脚本报错。改完交互后跑一遍，全部「通过」才算没有引入新的报错。</p>
-<button id="run">开始检查</button>
-<span id="status"></span>
+<div class="actions">
+  <button id="run">开始检查</button>
+  <a id="back" class="back" href="../index.html" hidden>回到原型</a>
+  <span id="status"></span>
+</div>
 <table><thead><tr><th>场景</th><th>点击次数</th><th>结果</th></tr></thead><tbody id="rows"></tbody></table>
 <iframe id="frame"></iframe>
 <script>
@@ -161,6 +168,7 @@
   document.getElementById("run").onclick = async function () {
     var button = this;
     button.disabled = true;
+    document.getElementById("back").hidden = true;
     document.getElementById("rows").innerHTML = "";
     var summary = { ok: 0, bad: 0, details: {} };
     for (var i = 0; i < SCENARIOS.length; i++) {
@@ -172,6 +180,7 @@
       if (result.log.length) summary.details[s.name] = result.log;
     }
     document.getElementById("status").textContent = summary.bad ? summary.bad + " 个场景有报错" : "全部通过";
+    document.getElementById("back").hidden = false;
     window.__smokeDone = summary;
     button.disabled = false;
   };

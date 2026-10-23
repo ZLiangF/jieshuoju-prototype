@@ -134,6 +134,20 @@ function lookShortName(look) {
   return look.name.replace(currentChar.name + "-", "");
 }
 
+function lookStatusParts(look) {
+  var parts = lookShortName(look).split("-");
+  return { costume: parts[0] || "", state: parts.slice(1).join("-") };
+}
+
+function lookStatusHtml(look) {
+  if (editorKind !== "char") return "";
+  var parts = lookStatusParts(look);
+  if (!parts.costume && !parts.state) return "";
+  var costume = parts.costume ? '<b title="' + escapeHtml(parts.costume) + '">' + escapeHtml(parts.costume) + "</b>" : "";
+  var state = parts.state ? '<span title="' + escapeHtml(parts.state) + '">' + escapeHtml(parts.state) + "</span>" : "";
+  return '<p class="look-card-status">' + costume + state + "</p>";
+}
+
 function lookParent(looks, look) {
   if (!look || !look.parentId) return null;
   for (var i = 0; i < looks.length; i++) if (looks[i].id === look.parentId) return looks[i];
@@ -166,6 +180,7 @@ function lookCardHtml(look, index, flat) {
     (state === "ready" ? "" : '<span class="look-state-tag ' + state + '">' + lookStateIcon(state) + lookStateText(state) + "</span>") +
     (editorKind === "char" && lookMultiOn ? "" : '<button type="button" class="look-card-del" data-del-look="' + look.id + '" title="删除' + assetWord() + '" aria-label="删除' + shortName + '">' + TRASH_ICON + "</button>") +
     addChild +
+    (flat ? lookStatusHtml(look) : "") +
     "</div></article>";
 }
 
@@ -297,8 +312,8 @@ function placeWorkspaceSplit() {
 
 function setWorkspaceLeft(px) {
   var ws = document.querySelector(".asset-workspace");
-  var minLeft = 300;
-  var minRight = 420;
+  var minLeft = 320;
+  var minRight = 220;
   px = Math.max(minLeft, Math.min(ws.clientWidth - 14 - minRight, Math.round(px)));
   workspaceLeft = px;
   ws.style.gridTemplateColumns = px + "px minmax(0, 1fr)";
