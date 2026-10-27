@@ -588,6 +588,28 @@ body.ws-page .tl-head {
   padding: 0 16px;
   border-bottom: 0;
 }
+.ws-tl-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.ws-tl-edit {
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #f4f4f5;
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.12);
+  font-size: 12px;
+  font-weight: 560;
+}
+.ws-tl-edit:hover {
+  background: rgba(255,255,255,.16);
+  color: #fff;
+}
 .ws-tl-time {
   display: inline-flex;
   align-items: center;

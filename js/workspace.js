@@ -686,7 +686,12 @@
     }).join("");
   }
 
-  function renderAll() { renderAssets(); renderEditor(); renderTimeline(); }
+  function syncEditLink() {
+    var link = $("#edit-link");
+    if (link) link.href = "multitrack-editor.html?shot=" + encodeURIComponent(state.shotId);
+  }
+
+  function renderAll() { renderAssets(); renderEditor(); renderTimeline(); syncEditLink(); }
 
   function openStage(key, turnOn) {
     var s = shot();
