@@ -66,7 +66,7 @@
     { name: "资产详情 · 平铺", page: "assets.html", run: function (w) { click(w, "#gen-all"); openCharacter(w, "萧铭"); } },
     { name: "资产详情 · 结构", page: "assets.html", run: function (w) { openCharacter(w, "萧铭"); click(w, '[data-look-view="structure"]'); } },
     { name: "资产详情 · 多选", page: "assets.html", run: function (w) { openCharacter(w, "贺芷"); click(w, "#look-multi"); click(w, "#look-select-all"); } },
-    { name: "资产详情 · 音色", page: "assets.html", run: function (w) { openCharacter(w, "萧铭"); click(w, "[data-look-voice]"); } },
+    { name: "资产详情 · 音色", page: "assets.html", run: function (w) { openGenerated(w); click(w, "#preview-voice"); } },
     { name: "资产详情 · 场景", page: "assets.html", run: function (w) { click(w, "#gen-all"); clickText(w, "button", "场景"); click(w, "#grid .char-card"); } },
     { name: "资产详情 · 已生成", page: "assets.html", run: function (w) { openGenerated(w); } },
     { name: "资产详情 · 已生成结构", page: "assets.html", run: function (w) { openGenerated(w); click(w, '[data-look-view="structure"]'); } },

@@ -23,7 +23,7 @@
     $("#asset-list").innerHTML = groups.map(function (group) {
       var cards = list.filter(function (asset) { return asset.group === group; }).map(function (asset) {
         var count = MT.doc.clips.filter(function (clip) { return clip.assetId === asset.id; }).length;
-        return '<button type="button" class="mt-asset' + (state.selected === asset.id ? " on" : "") + '" data-asset="' + asset.id + '">' +
+        return '<button type="button" class="mt-asset' + (state.selected === asset.id ? " on" : "") + '" data-asset="' + asset.id + '" draggable="true" title="点击查看，拖到时间线添加">' +
           '<span class="mt-asset-thumb"><img src="' + asset.image + '" alt=""><small class="mt-asset-badge">' + asset.duration + "</small></span>" +
           "<span><b>" + esc(asset.title) + '</b><small class="mt-asset-meta">' + asset.duration + "</small></span>" +
           '<em class="' + (count ? "added" : "") + '" data-add-asset="' + asset.id + '" title="添加到播放位置">' + (count ? "已添加" : "＋") + "</em>" +
@@ -59,7 +59,8 @@
       : '<img src="' + clip.image + '" alt="" style="opacity:' + fade + '">';
     var tags = [];
     if (clip.opacity < 100) tags.push("不透明 " + clip.opacity + "%");
-    if (clip.volume === 0) tags.push("原声已分离");
+    if (clip.muted) tags.push("已静音");
+    else if (MT.audioOfClip(clip.id, "detached").length) tags.push("原声已分离");
     else if (clip.volume !== 100) tags.push("音量 " + clip.volume + "%");
     return '<button type="button" class="mt-clip mt-video-clip' + (state.selected === clip.id ? " on" : "") + (clip.generating ? " is-generating" : "") + '" data-select-shot="' + clip.id + '" style="left:' + (entry.start * px) + "px;width:" + Math.max(14, clip.duration * px - 2) + 'px">' +
       picture + "<span>" + esc(clip.label) + " · " + MT.secText(clip.duration) + "</span>" +
@@ -84,12 +85,14 @@
         (type ? MT.TRANSITIONS[type].name.slice(0, 1) : "＋") + "</button>";
     }).join("");
     $("#video-track").innerHTML = entries.map(videoClipHtml).join("") + marks;
-    $("#audio-track").innerHTML = '<button type="button" class="mt-clip mt-audio-clip' + (state.selected === "audio1" ? " on" : "") + '" data-select-audio="audio1" style="left:0;width:' + (MT.totalDuration() * px) + 'px"><span>第1集旁白音频 · ' + MT.mmss(MT.totalDuration()) + " · " + (state.muted ? "已静音" : "音量 " + doc.audio.volume + "%") + "</span></button>";
+    $("#audio-track").innerHTML = '<button type="button" class="mt-clip mt-audio-clip' + (state.selected === "audio1" ? " on" : "") + (doc.audio.muted ? " is-muted" : "") + '" data-select-audio="audio1" style="left:0;width:' + (MT.totalDuration() * px) + 'px"><span>第1集旁白音频 · ' + MT.mmss(MT.totalDuration()) + " · " + (state.muted || doc.audio.muted ? "已静音" : "音量 " + doc.audio.volume + "%") + "</span></button>";
 
-    var hasExtra = doc.extraAudio.length > 0;
-    $(".mt-main").classList.toggle("has-audio2", hasExtra);
-    $("#audio2-track").innerHTML = doc.extraAudio.map(function (item) {
-      return '<button type="button" class="mt-clip mt-audio-clip is-detached' + (state.selected === item.id ? " on" : "") + '" data-select-extra="' + item.id + '" style="left:' + (item.start * px) + "px;width:" + Math.max(24, item.duration * px - 2) + 'px"><span>' + esc(item.label) + "</span></button>";
+    var audios = MT.audioEntries();
+    $(".mt-main").classList.toggle("has-audio2", audios.length > 0);
+    $("#audio2-track").innerHTML = audios.map(function (entry) {
+      var item = entry.item;
+      var text = item.generating ? item.label + " · 生成中…" : item.label + (item.muted ? " · 已静音" : item.volume !== 100 ? " · " + item.volume + "%" : "");
+      return '<button type="button" class="mt-clip mt-audio-clip is-detached' + (item.kind === "dub" ? " is-dub" : "") + (item.generating ? " is-generating" : "") + (item.muted ? " is-muted" : "") + (state.selected === item.id ? " on" : "") + '" data-select-extra="' + item.id + '" style="left:' + (entry.start * px) + "px;width:" + Math.max(24, entry.duration * px - 2) + 'px"><span>' + esc(text) + "</span></button>";
     }).join("");
   };
 
@@ -163,14 +166,17 @@
     var t = state.currentTime;
     var audio = MT.doc.audio;
     var gain = 0;
-    if (!state.disabledTracks.audio) {
+    if (!state.disabledTracks.audio && !audio.muted) {
       var fadeGain = 1;
       if (audio.fade > 0) fadeGain = Math.min(1, t / audio.fade, (MT.totalDuration() - t) / audio.fade);
       gain += (MT.activeSubtitleAt(t) ? 0.82 : 0.42) * (audio.volume / 100) * Math.max(0, fadeGain);
     }
-    gain += 0.22 * (MT.entryAt(t).clip.volume / 100);
-    MT.doc.extraAudio.forEach(function (item) {
-      if (t >= item.start && t < item.start + item.duration) gain += 0.18;
+    var clip = MT.entryAt(t).clip;
+    if (!clip.muted) gain += 0.22 * (clip.volume / 100);
+    MT.audioEntries().forEach(function (entry) {
+      var item = entry.item;
+      if (item.muted || item.generating) return;
+      if (t >= entry.start && t < entry.start + entry.duration) gain += (item.kind === "dub" ? 0.3 : 0.22) * (item.volume / 100);
     });
     var wobble = 0.78 + 0.22 * Math.abs(Math.sin(t * 7.3) * Math.cos(t * 2.1));
     var level = MT.clamp(gain * wobble, 0, 1.08);
@@ -204,6 +210,8 @@
       merge: !!hasNext,
       "add-transition": !!hasNext,
       "delete-selection": !!state.selected && state.selectedKind !== "asset" && state.selectedKind !== "audio",
+      "generate-audio": !!shot && !MT.busyReason(shot),
+      "remove-subtitles": MT.doc.subtitles.length > 0,
       undo: state.history.length > 0,
       redo: state.future.length > 0
     };
@@ -217,6 +225,10 @@
       '<input type="range" min="' + min + '" max="' + max + '" step="' + step + '" value="' + value + '" data-setting="' + setting + '">' +
       '<input type="number" min="' + min + '" max="' + max + '" step="' + step + '" value="' + value + '" data-setting="' + setting + '">' +
       "<em>" + unit + "</em></label>";
+  }
+
+  function muteRow(muted, act) {
+    return '<div class="mt-mute-row"><span>静音</span><button type="button" class="mt-switch' + (muted ? " on" : "") + '" data-act="' + act + '" role="switch" aria-checked="' + muted + '" aria-label="静音"><i></i></button></div>';
   }
 
   var EMPTY_TIPS = [
@@ -246,13 +258,15 @@
           axisRow("缩放 Y", "scale-y", clip.scaleY.toFixed(2), "0.5", "2", "0.01", "×") +
           axisRow("旋转", "rotate", String(Math.round(clip.rotate)), "-180", "180", "1", "°") +
           axisRow("不透明", "opacity", String(clip.opacity), "0", "100", "1", "%") + "</div>" +
-          '<div class="mt-axis-group"><b>声音</b>' + axisRow("音量", "clip-volume", String(clip.volume), "0", "200", "1", "%") + "</div>" +
+          '<div class="mt-axis-group"><b>声音</b>' + axisRow("音量", "clip-volume", String(clip.volume), "0", "200", "1", "%") +
+          muteRow(clip.muted, "toggle-clip-mute") + "</div>" +
           '<div class="mt-clip-facts"><span>时长 <b>' + MT.secText(clip.duration) + "</b></span><span>素材入点 <b>" + MT.secText(clip.srcIn) + "</b></span></div>" +
           '<div class="mt-setting-actions mt-clip-actions"><button type="button" data-act="reset-visual">恢复默认画面</button></div>'
         : '<textarea class="mt-prompt" data-setting="prompt" placeholder="描述你想要生成的画面内容，@引用素材">' + esc(clip.prompt) + "</textarea>" +
-          '<p class="mt-cost">重新生成会替换当前片段画面，消耗 <b>' + MT.REGENERATE_COST + "</b> 积分</p>" +
+          '<p class="mt-cost">重新生成会替换当前片段画面，消耗 <b>' + MT.REGENERATE_COST + "</b> 积分；失败不扣费</p>" +
+          (clip.genError ? '<p class="mt-hint">重新生成失败：' + esc(clip.genError) + "</p>" : "") +
           '<div class="mt-edit-foot"><button type="button" data-act="edit-prompt">编辑</button>' +
-          '<button type="button" class="is-primary" data-act="regenerate"' + (clip.generating ? " disabled" : "") + ">" + (clip.generating ? "生成中…" : "重新生成") + "</button></div>";
+          '<button type="button" class="is-primary" data-act="regenerate"' + (clip.generating ? " disabled" : "") + ">" + (clip.generating ? "生成中…" : clip.genError ? "重试" : "重新生成") + "</button></div>";
       body.innerHTML = head + tabs + content;
     },
     transition: function (body) {
@@ -281,15 +295,22 @@
       body.innerHTML = '<div class="mt-setting"><label>当前选择</label><div class="mt-setting-title">第1集旁白音频</div></div>' +
         '<div class="mt-axis-group"><b>声音</b>' +
         axisRow("音量", "audio-volume", String(MT.doc.audio.volume), "0", "200", "1", "%") +
-        axisRow("淡入出", "audio-fade", String(MT.doc.audio.fade), "0", "5", "0.5", "s") + "</div>" +
+        axisRow("淡入出", "audio-fade", String(MT.doc.audio.fade), "0", "5", "0.5", "s") +
+        muteRow(MT.doc.audio.muted, "toggle-narration-mute") + "</div>" +
         (state.muted ? '<p class="mt-hint">当前已全局静音，点时间线右上角的 ♬ 恢复。</p>' : "");
     },
     extra: function (body) {
       var item = MT.doc.extraAudio.find(function (audio) { return audio.id === state.selected; });
-      $("#inspector-title").textContent = "分离音频";
-      body.innerHTML = '<div class="mt-setting"><label>当前选择</label><div class="mt-setting-title">' + esc(item.label) + "</div></div>" +
-        '<div class="mt-setting"><div class="mt-setting-row"><span>开始</span><span class="mt-fixed">' + MT.secText(item.start) + '</span></div><div class="mt-setting-row"><span>时长</span><span class="mt-fixed">' + MT.secText(item.duration) + "</span></div></div>" +
-        '<div class="mt-setting-actions"><button type="button" class="danger" data-act="delete-selection">删除这段音频</button></div>';
+      var entry = MT.audioEntries().find(function (row) { return row.item === item; });
+      var owner = MT.clipById(item.clipId);
+      $("#inspector-title").textContent = item.kind === "dub" ? "配音" : "分离音频";
+      body.innerHTML = '<div class="mt-setting"><label>当前选择</label><div class="mt-setting-title">' + esc(item.label) + "</div>" +
+        (item.text ? '<p class="mt-dub-text">' + esc(item.text) + "</p>" : "") + "</div>" +
+        '<div class="mt-setting"><div class="mt-setting-row"><span>跟随片段</span><span class="mt-fixed">' + esc(owner ? owner.label : "—") + '</span></div>' +
+        '<div class="mt-setting-row"><span>开始</span><span class="mt-fixed">' + MT.secText(entry ? entry.start : 0) + '</span></div><div class="mt-setting-row"><span>时长</span><span class="mt-fixed">' + MT.secText(entry ? entry.duration : item.duration) + "</span></div></div>" +
+        (item.generating ? '<p class="mt-cost">配音生成中，完成后可调整音量</p>' :
+          '<div class="mt-axis-group"><b>声音</b>' + axisRow("音量", "extra-volume", String(item.volume), "0", "200", "1", "%") + muteRow(item.muted, "toggle-extra-mute") + "</div>") +
+        '<div class="mt-setting-actions"><button type="button" class="danger" data-act="delete-selection"' + (item.generating ? " disabled" : "") + ">删除这段音频</button></div>";
     },
     asset: function (body) {
       var asset = MT.library.find(function (item) { return item.id === state.selected; }) || {};
@@ -331,6 +352,9 @@
   };
 
   MT.refreshTimeline = function () {
+    MT.normalizeDoc();
+    if (state.selectedKind === "subtitle" && !MT.selectedSubtitle()) MT.clearSelection();
+    if (state.selectedKind === "extra" && !MT.doc.extraAudio.some(function (item) { return item.id === state.selected; })) MT.clearSelection();
     state.currentTime = MT.clamp(state.currentTime, 0, MT.totalDuration());
     MT.renderAll();
   };

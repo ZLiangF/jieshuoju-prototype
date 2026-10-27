@@ -696,6 +696,39 @@
   min-height: 54px;
 }
 
+/* 配音 / 静音 / 生成中 / 素材拖入 */
+
+.mt-audio-clip.is-dub {
+  color: #fde68a;
+  border-color: rgba(250,204,21,.32);
+  background: rgba(133,77,14,.45);
+}
+
+.mt-audio-clip.is-dub::before {
+  background: repeating-linear-gradient(90deg, #fcd34d 0 2px, transparent 2px 5px);
+}
+
+.mt-audio-clip.is-generating::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(110deg, rgba(250,204,21,.06) 0 10px, rgba(250,204,21,.22) 10px 20px);
+  animation: mt-generating 1s linear infinite;
+}
+
+.mt-audio-clip.is-muted {
+  opacity: .45;
+}
+
+.mt-audio-clip.is-muted::before {
+  opacity: .2;
+}
+
+.mt-scroll.is-asset-over {
+  outline: 1px dashed rgba(167,139,250,.6);
+  outline-offset: -2px;
+}
+
 @media (max-width: 1180px) {
   .mt-tool-group button {
     padding: 0 6px;

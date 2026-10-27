@@ -8,18 +8,14 @@
   var state = MT.state;
 
   var TOAST_ONLY = {
-    save: "已保存",
-    export: "演示：打开导出设置",
     ratio: "当前画幅：9:16",
     "new-asset": "演示：上传素材或创建文件夹",
     "episode-filter": "演示：筛选素材",
     "type-filter": "演示：筛选素材",
     settings: "演示：时间轴设置",
     fullscreen: "演示：全屏预览",
-    "generate-audio": "演示：根据字幕生成音频",
     "recognize-subtitles": "演示：智能识别整集字幕",
     "translate-subtitles": "演示：字幕翻译",
-    "remove-subtitles": "演示：去除视频原字幕",
     "track-menu": "右键轨道上的片段可以打开编辑菜单"
   };
 
@@ -34,6 +30,13 @@
     var picked = MT.selectedShot();
     if (TOAST_ONLY[action]) return MT.toast(TOAST_ONLY[action]);
     if (action === "play") return MT.togglePlayback();
+    if (action === "save" || action === "retry-save") return MT.saveNow(true);
+    if (action === "export") return MT.openExport();
+    if (action === "generate-audio") return MT.generateDub(picked);
+    if (action === "remove-subtitles") return MT.clearSubtitles();
+    if (action === "toggle-clip-mute" && picked) return MT.toggleClipMute(picked);
+    if (action === "toggle-narration-mute") return MT.toggleNarrationMute();
+    if (action === "toggle-extra-mute") return MT.toggleSelectedExtraMute();
     if (action === "mute-all") return MT.toggleMute();
     if (action === "undo") return MT.undo();
     if (action === "redo") return MT.redo();
@@ -191,6 +194,7 @@
       MT.saveHistory("调整参数");
       historyArmed = false;
     }
+    MT.markDirty();
     var value = event.target.value;
     $$('[data-setting="' + setting + '"]').forEach(function (input) {
       if (input !== event.target) input.value = value;
@@ -206,6 +210,12 @@
       if (setting === "clip-volume") clip.volume = clamp(Math.round(Number(value)) || 0, 0, 200);
       if (setting === "opacity" || setting === "clip-volume") MT.renderTracks();
       MT.renderPlayhead();
+    }
+    if (state.selectedKind === "extra" && setting === "extra-volume") {
+      var audio = MT.doc.extraAudio.find(function (item) { return item.id === state.selected; });
+      if (audio) audio.volume = clamp(Math.round(Number(value)) || 0, 0, 200);
+      MT.renderTracks();
+      MT.renderMeter();
     }
     if (state.selectedKind === "audio") {
       if (setting === "audio-volume") MT.doc.audio.volume = clamp(Math.round(Number(value)) || 0, 0, 200);
@@ -253,7 +263,7 @@
     var subtitle = button.dataset.selectSubtitle ? MT.subtitleById(button.dataset.selectSubtitle) : null;
     if (!clip && !subtitle) return;
     var before = MT.snapshot();
-    var origin = clip ? { srcIn: clip.srcIn, duration: clip.duration } : { start: subtitle.start };
+    var origin = clip ? { srcIn: clip.srcIn, duration: clip.duration, start: MT.entryOf(clip).start } : { start: subtitle.start };
     var originLeft = parseFloat(button.style.left) || 0;
     var moved = false;
     MT.stopPlayback();
@@ -308,10 +318,30 @@
         var others = MT.clipEntries().filter(function (entry) { return entry.clip !== clip; });
         var index = others.filter(function (entry) { return (entry.start + entry.end) / 2 * px < center; }).length;
         var from = MT.doc.clips.indexOf(clip);
+        if (from === index) {
+          button.style.transform = "";
+          button.classList.remove("is-dragging");
+          return MT.renderTracks();
+        }
+        var carried = MT.subtitlesIn(origin.start, origin.start + clip.duration);
+        MT.doc.subtitles = MT.doc.subtitles.filter(function (item) { return carried.indexOf(item) < 0; });
+        MT.retimeSubtitles(origin.start, -clip.duration);
         MT.doc.clips.splice(from, 1);
         MT.doc.clips.splice(index, 0, clip);
+        var newStart = MT.entryOf(clip).start;
+        MT.retimeSubtitles(newStart, clip.duration);
+        carried.forEach(function (item) {
+          item.start = MT.round1(newStart + (item.start - origin.start));
+          MT.doc.subtitles.push(item);
+        });
         MT.dropDanglingTransition();
-        if (from === index) return MT.renderTracks();
+      }
+      if (clip && trim) {
+        if (trim.dataset.trim === "right") {
+          MT.retimeSubtitles(origin.start + Math.min(origin.duration, clip.duration), clip.duration - origin.duration);
+        } else {
+          MT.retimeSubtitles(origin.start, -(clip.srcIn - origin.srcIn));
+        }
       }
       if (before !== MT.snapshot()) MT.saveHistory(subtitle ? "移动字幕" : trim ? "裁剪片段" : "移动片段", before);
       state.selectedKind = subtitle ? "subtitle" : "shot";
@@ -372,7 +402,61 @@
     });
   });
 
+  /* 素材拖入时间线：按落点插到最近片段的前或后。 */
+  var draggingAsset = null;
+  document.addEventListener("dragstart", function (event) {
+    var card = event.target.closest && event.target.closest("[data-asset]");
+    if (!card) return;
+    draggingAsset = card.dataset.asset;
+    event.dataTransfer.effectAllowed = "copy";
+    event.dataTransfer.setData("text/plain", draggingAsset);
+  });
+  document.addEventListener("dragend", function () {
+    draggingAsset = null;
+    clearDropMarks();
+  });
+
+  function clearDropMarks() {
+    $$(".mt-video-clip").forEach(function (clip) { clip.classList.remove("is-drop-before", "is-drop-after"); });
+    $("#timeline-scroll").classList.remove("is-asset-over");
+  }
+
+  function dropIndexAt(clientX) {
+    var time = (clientX - $("#timeline-canvas").getBoundingClientRect().left) / state.pixelsPerSecond;
+    var entries = MT.clipEntries();
+    for (var i = 0; i < entries.length; i += 1) {
+      if (time < entries[i].end) return time < (entries[i].start + entries[i].end) / 2 ? i : i + 1;
+    }
+    return entries.length;
+  }
+
+  $("#timeline-scroll").addEventListener("dragover", function (event) {
+    if (!draggingAsset) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    var index = dropIndexAt(event.clientX);
+    var clips = $$(".mt-video-clip");
+    clips.forEach(function (clip, i) {
+      clip.classList.toggle("is-drop-before", i === index);
+      clip.classList.toggle("is-drop-after", index === clips.length && i === clips.length - 1);
+    });
+    $("#timeline-scroll").classList.add("is-asset-over");
+  });
+  $("#timeline-scroll").addEventListener("dragleave", function (event) {
+    if (!event.currentTarget.contains(event.relatedTarget)) clearDropMarks();
+  });
+  $("#timeline-scroll").addEventListener("drop", function (event) {
+    if (!draggingAsset) return;
+    event.preventDefault();
+    var asset = MT.library.find(function (item) { return item.id === draggingAsset; });
+    var index = dropIndexAt(event.clientX);
+    clearDropMarks();
+    draggingAsset = null;
+    if (asset) MT.addAsset(asset, index);
+  });
+
   window.addEventListener("resize", MT.renderRuler);
 
   MT.renderAll();
+  MT.renderSaveStatus();
 })();

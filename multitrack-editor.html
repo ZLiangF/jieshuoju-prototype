@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>多轨编辑器 · 第1集：墓地贺芷提离婚协议</title>
-  <link rel="stylesheet" href="css/common.css?v=202610271533" />
-  <link rel="stylesheet" href="css/multitrack-editor.css?v=202610271533" />
-  <link rel="stylesheet" href="css/multitrack-timeline.css?v=202610271533" />
+  <link rel="stylesheet" href="css/common.css?v=202610271915" />
+  <link rel="stylesheet" href="css/multitrack-editor.css?v=202610271915" />
+  <link rel="stylesheet" href="css/multitrack-timeline.css?v=202610271915" />
 </head>
 <body class="mt-page">
 <div class="mt-app">
@@ -17,7 +17,7 @@
       <strong>多轨编辑器</strong>
       <span class="mt-sep">·</span>
       <span class="mt-subtitle">第1集</span>
-      <span class="mt-saved"><i></i>已保存</span>
+      <span class="mt-saved" id="save-status" role="status" aria-live="polite"><i></i><span>已保存</span></span>
     </div>
     <div class="mt-top-right">
       <span class="mt-credits" title="积分余额"><i>✦</i><b id="credits">0</b></span>
@@ -27,7 +27,7 @@
       </button>
       <button type="button" class="mt-collapse" data-act="collapse-preview">收起预览</button>
       <button type="button" class="mt-collapse" data-act="collapse-inspector">收起设置</button>
-      <button type="button" class="mt-export" data-act="export">导出 <span>⌄</span></button>
+      <button type="button" class="mt-export" data-act="export">导出</button>
     </div>
   </header>
 
@@ -120,8 +120,8 @@
           <button type="button" data-act="add-transition" title="在选中片段后添加转场">◇ 转场</button>
           <button type="button" data-act="delete-selection" title="删除选中项（⌫）">删除</button>
           <i></i>
-          <button type="button" data-act="remove-subtitles">去字幕</button>
-          <button type="button" class="is-purple" data-act="generate-audio">✦ 生成音频</button>
+          <button type="button" data-act="remove-subtitles" title="清空字幕轨上的全部字幕（不擦除画面文字）">去字幕</button>
+          <button type="button" class="is-purple" data-act="generate-audio" title="根据选中片段的台词字幕生成配音">✦ 生成音频</button>
           <button type="button" data-act="recognize-subtitles" title="智能识别字幕">识别字幕</button>
           <button type="button" data-act="translate-subtitles">字幕翻译</button>
           <button type="button" class="is-purple" data-act="add-subtitle">▣ 添加字幕</button>
@@ -191,11 +191,13 @@
 
 <div class="mt-menu" id="context-menu" role="menu" aria-label="片段编辑菜单" hidden></div>
 <div class="toast-wrap"></div>
-<script src="js/data.js?v=202610271533"></script>
-<script src="js/multitrack-state.js?v=202610271533"></script>
-<script src="js/multitrack-render.js?v=202610271533"></script>
-<script src="js/multitrack-actions.js?v=202610271533"></script>
-<script src="js/multitrack-menu.js?v=202610271533"></script>
-<script src="js/multitrack-editor.js?v=202610271533"></script>
+<script src="js/data.js?v=202610271915"></script>
+<script src="js/multitrack-state.js?v=202610271915"></script>
+<script src="js/multitrack-render.js?v=202610271915"></script>
+<script src="js/multitrack-actions.js?v=202610271915"></script>
+<script src="js/multitrack-menu.js?v=202610271915"></script>
+<script src="js/multitrack-save.js?v=202610271915"></script>
+<script src="js/multitrack-export.js?v=202610271915"></script>
+<script src="js/multitrack-editor.js?v=202610271915"></script>
 </body>
 </html>

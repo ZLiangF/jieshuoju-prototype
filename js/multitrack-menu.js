@@ -27,15 +27,17 @@
       ],
       [
         item("recognize-clip", "字幕识别", "T", { ai: true }),
-        item("dub-clip", "生成配音", "♪"),
-        item("detach-audio", "音频分离", "⇣", { disabled: clip.volume === 0 }),
+        item("dub-clip", "生成配音", "♪", { ai: true, disabled: !!MT.busyReason(clip) }),
+        item("toggle-clip-mute", clip.muted ? "取消静音" : "静音片段", "♬", { checked: clip.muted }),
+        item("detach-audio", "音频分离", "⇣", { disabled: MT.audioOfClip(clip.id, "detached").length > 0 }),
         item("separate-voice", "分离人声与背景声", "≋", { ai: true })
       ],
       [
         item("merge", "与后一段合并", "⇥", { disabled: last }),
         item("add-transition", "添加转场", "◇", { disabled: last }),
         item("smart-split", "智能切割分镜", "⫼"),
-        item("reshoot", "片段重拍", "↻")
+        item("reshoot", "片段重拍", "↻"),
+        item("regenerate", clip.generating ? "生成中…" : "重新生成 · " + MT.REGENERATE_COST + " 积分", "✦", { ai: true, disabled: clip.generating })
       ]
     ];
   }
@@ -66,12 +68,16 @@
   function audioMenu() {
     return [[
       item("audio-settings", "音量与淡入淡出", "♪"),
+      item("toggle-narration-mute", MT.doc.audio.muted ? "取消静音" : "静音旁白", "♬", { checked: MT.doc.audio.muted }),
       item("mute-all", state.muted ? "取消全局静音" : "全局静音", "♬")
     ]];
   }
 
-  function extraMenu() {
-    return [[item("delete-selection", "删除这段音频", "⌫", { key: "⌫", danger: true })]];
+  function extraMenu(audio) {
+    return [[
+      item("toggle-extra-mute", audio.muted ? "取消静音" : "静音这段音频", "♬", { checked: audio.muted, disabled: audio.generating }),
+      item("delete-selection", "删除这段音频", "⌫", { key: "⌫", danger: true, disabled: audio.generating })
+    ]];
   }
 
   function blankMenu() {
@@ -139,7 +145,8 @@
       openMenu(event.clientX, event.clientY, "第1集旁白音频", audioMenu());
     } else if (extra) {
       MT.select("extra", extra.dataset.selectExtra);
-      openMenu(event.clientX, event.clientY, "分离音频", extraMenu());
+      var audioItem = MT.doc.extraAudio.find(function (row) { return row.id === extra.dataset.selectExtra; });
+      openMenu(event.clientX, event.clientY, audioItem.label, extraMenu(audioItem));
     } else {
       var rect = $("#timeline-canvas").getBoundingClientRect();
       state.currentTime = MT.clamp((event.clientX - rect.left) / state.pixelsPerSecond, 0, MT.totalDuration());
@@ -162,7 +169,11 @@
       duplicate: MT.duplicate,
       "delete-selection": MT.deleteSelection,
       "recognize-clip": function () { if (clip) MT.recognizeSubtitle(clip); },
-      "dub-clip": function () { if (clip) MT.toast("演示：根据 " + clip.label + " 的字幕生成配音"); },
+      "dub-clip": function () { if (clip) MT.generateDub(clip); },
+      "toggle-clip-mute": function () { if (clip) MT.toggleClipMute(clip); },
+      "toggle-narration-mute": function () { MT.toggleNarrationMute(); },
+      "toggle-extra-mute": function () { MT.toggleSelectedExtraMute(); },
+      regenerate: function () { if (clip) MT.regenerate(clip); },
       "detach-audio": function () { if (clip) MT.detachAudio(clip); },
       "separate-voice": function () { if (clip) MT.toast("演示：正在把 " + clip.label + " 的人声与背景声拆成两条音轨"); },
       merge: function () { if (clip) MT.mergeWithNext(clip); },
@@ -199,6 +210,13 @@
   document.addEventListener("scroll", MT.closeMenu, true);
 
   document.addEventListener("keydown", function (event) {
+    if (MT.dialogOpen && MT.dialogOpen()) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        MT.closeDialog();
+      }
+      return;
+    }
     var menu = $("#context-menu");
     if (!menu.hidden) {
       if (event.key === "Escape") {

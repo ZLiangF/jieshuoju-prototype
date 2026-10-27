@@ -6,6 +6,11 @@
   MT.TRANSITION_SECONDS = 0.6;
   MT.MIN_CLIP = 0.5;
   MT.REGENERATE_COST = 150;
+  /* 演示异常分支：地址栏加 ?mock=save-fail,regen-fail,export-fail,dub-fail */
+  MT.mock = {};
+  (new URLSearchParams(location.search).get("mock") || "").split(",").forEach(function (key) {
+    if (key) MT.mock[key.trim()] = true;
+  });
   MT.TRANSITIONS = {
     flash: { name: "闪白", desc: "白光一闪切到下一段" },
     black: { name: "黑场", desc: "先压暗再亮起" },
@@ -59,6 +64,7 @@
       rotate: 0,
       opacity: 100,
       volume: 100,
+      muted: false,
       version: 1,
       generating: false
     };
@@ -83,7 +89,8 @@
       { id: "sub6", start: 51.5, duration: 5.3, text: "从今天起，我们两不相欠。" }
     ],
     transitions: {},
-    audio: { volume: 80, fade: 0 },
+    audio: { volume: 80, fade: 0, muted: false },
+    /* 音频 2 上的片段都挂在某个视频片段上（clipId + offset），视频移动、分割、合并、删除时跟着走。 */
     extraAudio: []
   };
 
@@ -98,7 +105,9 @@
     { id: "c1", group: "角色与场景", title: "萧铭 · 外卖服基础形象", duration: "角色", image: D.characters[0].image },
     { id: "c2", group: "角色与场景", title: "贺芷 · 职业装基础形象", duration: "角色", image: D.characters[1].image },
     { id: "s1", group: "角色与场景", title: "墓地 · 阴天全景", duration: "场景", image: D.scenes[0].image }
-  ].map(function (asset) {
+  ].concat(D.props.filter(function (prop) { return prop.eps.indexOf(1) > -1 && prop.status === "ready"; }).map(function (prop) {
+    return { id: "p-" + prop.id, group: "道具", title: prop.name, duration: "道具", image: prop.image };
+  })).map(function (asset) {
     if (typeof asset.shot === "number") {
       asset.image = coverOf(D.shots[asset.shot]);
       asset.prompt = D.shots[asset.shot].prompt;
@@ -218,6 +227,7 @@
   MT.restore = function (text) {
     MT.doc = JSON.parse(text);
     MT.doc.clips.forEach(function (clip) { clip.generating = false; });
+    MT.doc.extraAudio = MT.doc.extraAudio.filter(function (item) { return !item.generating; });
     var state = MT.state;
     if (state.selectedKind === "shot" && !MT.clipById(state.selected)) MT.clearSelection();
     if (state.selectedKind === "subtitle" && !MT.subtitleById(state.selected)) MT.clearSelection();
@@ -229,10 +239,59 @@
     MT.state.history.push({ label: label, data: before || MT.snapshot() });
     if (MT.state.history.length > 30) MT.state.history.shift();
     MT.state.future = [];
+    if (MT.markDirty) MT.markDirty();
   };
 
   MT.dropDanglingTransition = function () {
     var clips = MT.doc.clips;
     if (clips.length) delete MT.doc.transitions[clips[clips.length - 1].id];
+  };
+
+  MT.audioEntries = function () {
+    return MT.doc.extraAudio.map(function (item) {
+      var entry = MT.entryOf(MT.clipById(item.clipId));
+      if (!entry) return null;
+      var duration = Math.min(item.duration, entry.clip.duration - item.offset);
+      return { item: item, start: entry.start + item.offset, duration: Math.max(0, duration) };
+    }).filter(function (entry) { return entry && entry.duration > 0.05; });
+  };
+
+  MT.audioOfClip = function (clipId, kind) {
+    return MT.doc.extraAudio.filter(function (item) { return item.clipId === clipId && (!kind || item.kind === kind); });
+  };
+
+  MT.subtitlesIn = function (start, end) {
+    return MT.doc.subtitles.filter(function (item) { return item.start >= start - 0.01 && item.start < end - 0.01; });
+  };
+
+  /* 视频轨在 at 处插入(delta>0)或删掉(delta<0)一段时间：删掉范围内开始的字幕一起删，后面的字幕整体平移。 */
+  MT.retimeSubtitles = function (at, delta) {
+    if (Math.abs(delta) < 0.01) return 0;
+    var removed = 0;
+    if (delta < 0) {
+      var end = at - delta;
+      var before = MT.doc.subtitles.length;
+      MT.doc.subtitles = MT.doc.subtitles.filter(function (item) { return !(item.start >= at - 0.01 && item.start < end - 0.01); });
+      removed = before - MT.doc.subtitles.length;
+      MT.doc.subtitles.forEach(function (item) { if (item.start >= end - 0.01) item.start = MT.round1(item.start + delta); });
+    } else {
+      MT.doc.subtitles.forEach(function (item) { if (item.start >= at - 0.01) item.start = MT.round1(item.start + delta); });
+    }
+    return removed;
+  };
+
+  /* 保证不出现悬空引用、负时长、超出总时长的数据。 */
+  MT.normalizeDoc = function () {
+    var doc = MT.doc;
+    var total = MT.totalDuration();
+    doc.subtitles = doc.subtitles.filter(function (item) {
+      if (item.start < 0) item.start = 0;
+      if (item.start > total - MT.MIN_CLIP) return false;
+      item.duration = MT.round1(Math.min(item.duration, total - item.start));
+      return item.duration >= MT.MIN_CLIP - 0.01;
+    });
+    doc.extraAudio = doc.extraAudio.filter(function (item) { return !!MT.clipById(item.clipId); });
+    Object.keys(doc.transitions).forEach(function (id) { if (!MT.clipById(id)) delete doc.transitions[id]; });
+    MT.dropDanglingTransition();
   };
 })();
