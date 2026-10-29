@@ -366,7 +366,8 @@
 .mt-trim.right { right: 0; }
 
 .mt-clip.on .mt-trim,
-.mt-video-clip:hover .mt-trim {
+.mt-video-clip:hover .mt-trim,
+.mt-subtitle-clip:hover .mt-trim {
   background: rgba(196,181,253,.85);
 }
 

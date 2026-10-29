@@ -31,7 +31,9 @@
     if (TOAST_ONLY[action]) return MT.toast(TOAST_ONLY[action]);
     if (action === "play") return MT.togglePlayback();
     if (action === "save" || action === "retry-save") return MT.saveNow(true);
-    if (action === "export") return MT.openExport();
+    if (action === "export") return MT.openExport(button);
+    if (action === "export-video") return MT.exportVideo();
+    if (action === "export-xml") return MT.exportXml();
     if (action === "generate-audio") return MT.generateDub(picked);
     if (action === "remove-subtitles") return MT.clearSubtitles();
     if (action === "toggle-clip-mute" && picked) return MT.toggleClipMute(picked);
@@ -254,7 +256,7 @@
     document.addEventListener("pointerup", up);
   }
 
-  /* 拖动片段：中间拖 = 调换顺序；两端拖 = 裁剪；字幕拖 = 改开始时间。移动不足 4px 当作点击。 */
+  /* 拖动片段：中间拖 = 调换顺序；两端拖 = 裁剪。字幕中间拖 = 改开始时间，两端拖 = 改时长。移动不足 4px 当作点击。 */
   function beginClipDrag(event, button) {
     var px = state.pixelsPerSecond;
     var startX = event.clientX;
@@ -263,7 +265,7 @@
     var subtitle = button.dataset.selectSubtitle ? MT.subtitleById(button.dataset.selectSubtitle) : null;
     if (!clip && !subtitle) return;
     var before = MT.snapshot();
-    var origin = clip ? { srcIn: clip.srcIn, duration: clip.duration, start: MT.entryOf(clip).start } : { start: subtitle.start };
+    var origin = clip ? { srcIn: clip.srcIn, duration: clip.duration, start: MT.entryOf(clip).start } : { start: subtitle.start, duration: subtitle.duration };
     var originLeft = parseFloat(button.style.left) || 0;
     var moved = false;
     MT.stopPlayback();
@@ -282,7 +284,18 @@
         document.body.style.userSelect = "none";
       }
       var ds = dx / px;
-      if (subtitle) {
+      if (subtitle && trim && trim.dataset.trim === "right") {
+        subtitle.duration = MT.round1(clamp(origin.duration + ds, MT.MIN_CLIP, Math.min(20, MT.totalDuration() - origin.start)));
+        button.style.width = Math.max(24, subtitle.duration * px) + "px";
+        MT.renderPlayhead();
+      } else if (subtitle && trim) {
+        var start = clamp(origin.start + ds, Math.max(0, origin.start + origin.duration - 20), origin.start + origin.duration - MT.MIN_CLIP);
+        subtitle.start = MT.round1(start);
+        subtitle.duration = MT.round1(origin.duration - (start - origin.start));
+        button.style.left = subtitle.start * px + "px";
+        button.style.width = Math.max(24, subtitle.duration * px) + "px";
+        MT.renderPlayhead();
+      } else if (subtitle) {
         subtitle.start = MT.round1(clamp(origin.start + ds, 0, Math.max(0, MT.totalDuration() - subtitle.duration)));
         button.style.left = subtitle.start * px + "px";
         MT.renderPlayhead();
@@ -343,13 +356,14 @@
           MT.retimeSubtitles(origin.start, -(clip.srcIn - origin.srcIn));
         }
       }
-      if (before !== MT.snapshot()) MT.saveHistory(subtitle ? "移动字幕" : trim ? "裁剪片段" : "移动片段", before);
+      if (before !== MT.snapshot()) MT.saveHistory(subtitle ? (trim ? "调整字幕时长" : "移动字幕") : trim ? "裁剪片段" : "移动片段", before);
       state.selectedKind = subtitle ? "subtitle" : "shot";
       state.selected = subtitle ? subtitle.id : clip.id;
       if (clip) state.currentTime = MT.entryOf(clip).start;
       MT.refreshTimeline();
       if (clip && !trim) MT.toast("已移到第 " + (MT.doc.clips.indexOf(clip) + 1) + " 段");
-      if (trim) MT.toast(clip.label + " 时长 " + MT.secText(clip.duration));
+      if (clip && trim) MT.toast(clip.label + " 时长 " + MT.secText(clip.duration));
+      if (subtitle && trim) MT.toast("字幕时长 " + MT.secText(subtitle.duration));
     });
   }
 

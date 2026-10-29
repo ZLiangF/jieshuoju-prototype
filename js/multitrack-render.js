@@ -76,7 +76,7 @@
     $("#audio-track").classList.toggle("is-disabled", !!state.disabledTracks.audio || state.muted);
     $("#subtitle-track").innerHTML = doc.subtitles.map(function (subtitle) {
       return '<button type="button" class="mt-clip mt-subtitle-clip' + (state.selected === subtitle.id ? " on" : "") + '" data-select-subtitle="' + subtitle.id + '" style="left:' + (subtitle.start * px) + "px;width:" + Math.max(24, subtitle.duration * px) + 'px">' +
-        "<span>" + esc(subtitle.text) + "</span></button>";
+        "<span>" + esc(subtitle.text) + '</span><i class="mt-trim left" data-trim="left" title="拖动调整开始时间"></i><i class="mt-trim right" data-trim="right" title="拖动调整时长"></i></button>';
     }).join("");
     var marks = entries.slice(0, -1).map(function (entry) {
       var type = doc.transitions[entry.clip.id];

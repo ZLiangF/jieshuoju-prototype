@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>多轨编辑器 · 第1集：墓地贺芷提离婚协议</title>
-  <link rel="stylesheet" href="css/common.css?v=202610271915" />
-  <link rel="stylesheet" href="css/multitrack-editor.css?v=202610271915" />
-  <link rel="stylesheet" href="css/multitrack-timeline.css?v=202610271915" />
+  <link rel="stylesheet" href="css/common.css?v=202610291531" />
+  <link rel="stylesheet" href="css/multitrack-editor.css?v=202610291531" />
+  <link rel="stylesheet" href="css/multitrack-timeline.css?v=202610291531" />
 </head>
 <body class="mt-page">
 <div class="mt-app">
@@ -27,7 +27,13 @@
       </button>
       <button type="button" class="mt-collapse" data-act="collapse-preview">收起预览</button>
       <button type="button" class="mt-collapse" data-act="collapse-inspector">收起设置</button>
-      <button type="button" class="mt-export" data-act="export">导出</button>
+      <div class="mt-export-wrap">
+        <button type="button" class="mt-export" data-act="export" aria-haspopup="menu" aria-expanded="false">导出 <span>⌄</span></button>
+        <div class="mt-export-menu" id="export-menu" role="menu" hidden>
+          <button type="button" role="menuitem" data-act="export-video">导出成片</button>
+          <button type="button" role="menuitem" data-act="export-xml">导出 XML</button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -191,13 +197,13 @@
 
 <div class="mt-menu" id="context-menu" role="menu" aria-label="片段编辑菜单" hidden></div>
 <div class="toast-wrap"></div>
-<script src="js/data.js?v=202610271915"></script>
-<script src="js/multitrack-state.js?v=202610271915"></script>
-<script src="js/multitrack-render.js?v=202610271915"></script>
-<script src="js/multitrack-actions.js?v=202610271915"></script>
-<script src="js/multitrack-menu.js?v=202610271915"></script>
-<script src="js/multitrack-save.js?v=202610271915"></script>
-<script src="js/multitrack-export.js?v=202610271915"></script>
-<script src="js/multitrack-editor.js?v=202610271915"></script>
+<script src="js/data.js?v=202610291531"></script>
+<script src="js/multitrack-state.js?v=202610291531"></script>
+<script src="js/multitrack-render.js?v=202610291531"></script>
+<script src="js/multitrack-actions.js?v=202610291531"></script>
+<script src="js/multitrack-menu.js?v=202610291531"></script>
+<script src="js/multitrack-save.js?v=202610291531"></script>
+<script src="js/multitrack-export.js?v=202610291531"></script>
+<script src="js/multitrack-editor.js?v=202610291531"></script>
 </body>
 </html>

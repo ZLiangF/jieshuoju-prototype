@@ -6,7 +6,7 @@
   MT.TRANSITION_SECONDS = 0.6;
   MT.MIN_CLIP = 0.5;
   MT.REGENERATE_COST = 150;
-  /* 演示异常分支：地址栏加 ?mock=save-fail,regen-fail,export-fail,dub-fail */
+  /* 演示异常分支：地址栏加 ?mock=save-fail,regen-fail,dub-fail */
   MT.mock = {};
   (new URLSearchParams(location.search).get("mock") || "").split(",").forEach(function (key) {
     if (key) MT.mock[key.trim()] = true;
