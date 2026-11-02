@@ -173,7 +173,7 @@ function lookCardHtml(look, index, flat) {
     '" data-look-index="' + index + '" tabindex="0" title="' + shortName + '">' +
     '<div class="look-card-image' + (state !== "ready" ? " is-empty" : "") + '">' +
     (state === "ready"
-      ? '<img src="' + look.image + '" alt="' + shortName + '">'
+      ? '<img loading="lazy" decoding="async" src="' + look.image + '" alt="' + shortName + '">'
       : state === "generating"
       ? '<span class="look-card-empty is-generating" aria-hidden="true"><i></i><small>' + (look.generationProgress || 8) + "%</small></span>"
       : '<span class="look-card-empty" aria-hidden="true">' + (editorKind === "char" ? EMPTY_PERSON_ICON : EMPTY_IMAGE_ICON) + "</span>") +
@@ -218,7 +218,7 @@ function renderLookLibrary() {
   document.getElementById("editor-char-desc").textContent = currentChar.desc || "";
   document.getElementById("editor-char-desc").title = currentChar.desc || "";
   paintPreviewVoice();
-  document.getElementById("editor-char-avatar").innerHTML = '<img src="' + currentChar.image + '" alt="">';
+  document.getElementById("editor-char-avatar").innerHTML = '<img decoding="async" src="' + currentChar.image + '" alt="">';
   document.getElementById("editor-role-switch").setAttribute("aria-label", editorKind === "char" ? "切换当前角色" : "切换当前" + assetWord());
   document.getElementById("editor-role-switch").innerHTML = editorItems().map(function (char) {
     var count = (char.looksList || []).length;
@@ -332,9 +332,10 @@ workspaceSplitHandle.addEventListener("pointerdown", function (e) {
   }
   e.preventDefault();
 });
+var setWorkspaceLeftPerFrame = ReplicaUI.perFrame(setWorkspaceLeft);
 workspaceSplitHandle.addEventListener("pointermove", function (e) {
   if (!workspaceSplitDrag) return;
-  setWorkspaceLeft(workspaceSplitDrag.width + e.clientX - workspaceSplitDrag.x);
+  setWorkspaceLeftPerFrame(workspaceSplitDrag.width + e.clientX - workspaceSplitDrag.x);
 });
 workspaceSplitHandle.addEventListener("pointerup", function () {
   workspaceSplitDrag = null;
@@ -354,11 +355,11 @@ workspaceSplitHandle.addEventListener("keydown", function (e) {
   e.preventDefault();
   setWorkspaceLeft(document.querySelector(".look-library-panel").offsetWidth + (e.key === "ArrowRight" ? 32 : -32));
 });
-window.addEventListener("resize", function () {
+window.addEventListener("resize", ReplicaUI.perFrame(function () {
   if (workspaceLeft) setWorkspaceLeft(workspaceLeft);
   else placeWorkspaceSplit();
   if (promptHeight) setPromptHeight(promptHeight);
-});
+}));
 
 var promptHeight = 0;
 
@@ -385,9 +386,10 @@ genSplitHandle.addEventListener("pointerdown", function (e) {
   }
   e.preventDefault();
 });
+var setPromptHeightPerFrame = ReplicaUI.perFrame(setPromptHeight);
 genSplitHandle.addEventListener("pointermove", function (e) {
   if (!genSplitDrag) return;
-  setPromptHeight(genSplitDrag.height - (e.clientY - genSplitDrag.y));
+  setPromptHeightPerFrame(genSplitDrag.height - (e.clientY - genSplitDrag.y));
 });
 ["pointerup", "pointercancel"].forEach(function (type) {
   genSplitHandle.addEventListener(type, function () {
@@ -628,6 +630,17 @@ function deleteLooks(removing) {
   var primaryGone = removing.some(function (look) {
     return currentChar.look && look.name.indexOf(currentChar.look) !== -1;
   });
+  if (editorKind === "char" && primaryGone) {
+    var removedPrimary = removing.filter(function (look) { return currentChar.look && look.name.indexOf(currentChar.look) !== -1; })[0];
+    ReplicaUI.rememberDeletedAsset("c", currentChar.id, removedPrimary ? removedPrimary.name : currentChar.name);
+  } else if (editorKind === "scene") {
+    removing.forEach(function (look) {
+      var originalIndex = looks.indexOf(look);
+      ReplicaUI.rememberDeletedAsset("s", originalIndex === 0 ? currentChar.id : currentChar.id + "/" + look.id, look.name);
+    });
+  } else if (editorKind === "prop" && primaryGone) {
+    ReplicaUI.rememberDeletedAsset("p", currentChar.id, removing[0].name);
+  }
   currentChar.looksList = looks.filter(function (look) { return !Object.prototype.hasOwnProperty.call(removedIds, look.id); });
   currentChar.looksList.forEach(function (look) {
     if (look.parentId && Object.prototype.hasOwnProperty.call(removedIds, look.parentId)) look.parentId = removedIds[look.parentId] || "";
@@ -765,13 +778,13 @@ function updateRoleSwitchMask() {
   strip.classList.toggle("is-overflowing", overflowing);
   strip.classList.toggle("at-end", !overflowing || atEnd);
 }
-document.getElementById("editor-role-switch").onscroll = updateRoleSwitchMask;
+document.getElementById("editor-role-switch").onscroll = ReplicaUI.perFrame(updateRoleSwitchMask);
 document.getElementById("editor-role-switch").onwheel = function (e) {
   if (this.scrollWidth <= this.clientWidth || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
   e.preventDefault();
   this.scrollLeft += e.deltaY;
 };
-window.addEventListener("resize", updateRoleSwitchMask);
+window.addEventListener("resize", ReplicaUI.perFrame(updateRoleSwitchMask));
 
 document.getElementById("look-view-switch").onclick = function (e) {
   var button = e.target.closest("[data-look-view]");

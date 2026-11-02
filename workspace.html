@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>创作 · 第1集：墓地贺芷提离婚协议</title>
-  <link rel="stylesheet" href="css/common.css?v=202611021407" />
-  <link rel="stylesheet" href="css/workspace.css?v=202611021407" />
+  <link rel="stylesheet" href="css/common.css?v=202611021805" />
+  <link rel="stylesheet" href="css/workspace.css?v=202611021805" />
 </head>
 <body class="ws-page">
 <div class="app">
@@ -136,6 +136,16 @@
     </div>
   </div>
 </div>
+<div class="modal-mask" id="asset-delete-modal">
+  <div class="modal ws-delete-modal" role="alertdialog" aria-modal="true" aria-labelledby="asset-delete-title" aria-describedby="asset-delete-desc">
+    <h3 id="asset-delete-title">删除资产？</h3>
+    <p id="asset-delete-desc"></p>
+    <div class="ws-delete-actions">
+      <button class="btn" type="button" data-act="cancel-asset-delete">取消</button>
+      <button class="btn danger" type="button" data-act="confirm-asset-delete">删除</button>
+    </div>
+  </div>
+</div>
 <div class="modal-mask" id="stage-modal">
   <div class="modal stage-modal" role="dialog" aria-modal="true" aria-labelledby="stage-modal-title">
     <div class="stage-modal-head">
@@ -206,7 +216,7 @@
   </div>
 </div>
 <div class="toast-wrap"></div>
-<script src="js/data.js?v=202611021407"></script>
-<script src="js/workspace.js?v=202611021407"></script>
+<script src="js/data.js?v=202611021805"></script>
+<script src="js/workspace.js?v=202611021805"></script>
 </body>
 </html>

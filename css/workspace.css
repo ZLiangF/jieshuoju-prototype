@@ -154,6 +154,39 @@ body.ws-page .grid-2 {
 .ws-acard:hover .thumb {
   border-color: rgba(167,139,250,.55);
 }
+.ws-asset-delete {
+  position: absolute;
+  z-index: 3;
+  top: 7px;
+  right: 7px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,.35);
+  border-radius: 8px;
+  color: #fff;
+  background: rgba(15,23,42,.68);
+  box-shadow: 0 2px 8px rgba(15,23,42,.2);
+  opacity: 0;
+  pointer-events: none;
+  transition: .16s ease;
+}
+.ws-acard:hover .ws-asset-delete,
+.ws-acard:focus-within .ws-asset-delete,
+.ws-asset-delete:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.ws-asset-delete:hover {
+  border-color: #fca5a5;
+  background: #dc2626;
+}
+.ws-asset-delete svg {
+  width: 15px;
+  height: 15px;
+}
 #asset-scroll[data-tab="clip"] .ws-acard .thumb {
   border-color: #8b5cf6;
 }
@@ -194,6 +227,33 @@ body.ws-page .grid-2 {
   color: #ddd6fe;
   background: rgba(139,92,246,.14);
   border: 1px solid rgba(139,92,246,.28);
+}
+.ws-delete-modal {
+  width: min(420px, calc(100vw - 32px));
+}
+.ws-delete-modal h3 {
+  margin: 0 0 10px;
+  font-size: 18px;
+}
+.ws-delete-modal p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.ws-delete-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 22px;
+}
+.ws-delete-actions .danger {
+  color: #fff;
+  border-color: #dc2626;
+  background: #dc2626;
+}
+.ws-delete-actions .danger:hover {
+  border-color: #b91c1c;
+  background: #b91c1c;
 }
 body.ws-page .shot-head {
   height: 40px;
@@ -402,6 +462,14 @@ body.ws-page .prompt-box,
 .pc-prop {
   background: rgba(45,212,191,.13);
   border-color: rgba(45,212,191,.65);
+}
+.pchip.is-deleted {
+  color: #ff9aa7;
+  background: rgba(244,63,94,.13);
+  border-color: rgba(251,113,133,.62);
+}
+.pchip.is-deleted svg {
+  opacity: .75;
 }
 .pc-time {
   padding: 0 6px;

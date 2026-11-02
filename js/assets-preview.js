@@ -36,7 +36,7 @@ function hdButtonHtml(look) {
 }
 
 function previewImageHtml(src, alt, badge) {
-  return '<img class="five-view-sheet" src="' + src + '" alt="' + alt + '">' +
+  return '<img decoding="async" class="five-view-sheet" src="' + src + '" alt="' + alt + '">' +
     (badge ? '<span class="upscale-badge">' + badge + "</span>" : "") +
     hdButtonHtml(editingLook) +
     '<button type="button" class="img-edit-hover" data-edit-image="1">编辑</button>';
@@ -186,7 +186,7 @@ function renderPreviewRail(look, hasSheet) {
       var promptText = (item.prompt || "").replace(/\s+/g, " ").trim();
       return '<article class="preview-side-card' + (item.id === historySelectedId ? " on" : "") + '">' +
         '<button type="button" class="preview-side-open" data-preview-src="' + item.src + '" data-history-id="' + item.id + '">' +
-        '<img src="' + item.src + '" alt="' + item.label + '">' +
+        '<img loading="lazy" decoding="async" src="' + item.src + '" alt="' + item.label + '">' +
         '<span class="preview-history-caption"><b>' + item.label + "</b><small>" + escapeHtml(item.time || "") + "</small>" + escapeHtml(promptText || "暂无提示词") + "</span></button>" +
         '<div class="preview-history-acts">' +
         '<button type="button" data-history-restore="' + item.id + '" aria-label="恢复提示词"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 7.2h6.1a3.1 3.1 0 1 1 0 6.2H7.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M5.6 4.8 3.2 7.2l2.4 2.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' +
@@ -194,7 +194,7 @@ function renderPreviewRail(look, hasSheet) {
         '<button type="button" data-history-delete="' + item.id + '" aria-label="删除记录"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4.6h9.6M6.2 4.6V3.4h3.6v1.2M4.6 4.6l.5 7.4h5.8l.5-7.4M6.8 7v3.2M9.2 7v3.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div></article>';
     }
     return '<button type="button" class="preview-side-card' + (item.src === previewRailSrc ? " on" : "") + '" data-preview-src="' + item.src + '">' +
-      '<img src="' + item.src + '" alt="' + item.label + '"><span>' + item.label + "</span></button>";
+      '<img loading="lazy" decoding="async" src="' + item.src + '" alt="' + item.label + '"><span>' + item.label + "</span></button>";
   }).join("") || '<p class="preview-side-empty">' + (previewRailTab === "history" ? "还没有生成历史" : "暂无内容") + "</p>";
 }
 
@@ -245,32 +245,82 @@ function deleteHistory(id) {
   ReplicaUI.toast("已删除 V" + item.version);
 }
 
-function voiceCardHtml(voice, source, recommended) {
+var VOICE_TRASH_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4.6h9.6M6.2 4.6V3.4h3.6v1.2M4.6 4.6l.5 7.4h5.8l.5-7.4M6.8 7v3.2M9.2 7v3.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var VOICE_REUSE_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 7.2h6.1a3.1 3.1 0 1 1 0 6.2H7.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M5.6 4.8 3.2 7.2l2.4 2.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var voiceNewId = "";
+var voiceUploadSeq = 0;
+
+function voiceAssetsOf(char) {
+  if (!char) return [];
+  if (!char.voiceAssets) char.voiceAssets = [];
+  var bound = char.voiceBind;
+  if (bound && !char.voiceAssets.some(function (voice) { return voice.id === bound.id; })) {
+    char.voiceAssets.unshift({
+      id: bound.id, name: bound.name, summary: bound.summary, source: bound.source || "generated",
+      status: "ready", time: bound.time || "已绑定", duration: bound.duration || 0,
+      pitch: bound.pitch, rate: bound.rate, sample: bound.sample
+    });
+  }
+  return char.voiceAssets;
+}
+
+function voiceAssetById(id) {
+  return voiceAssetsOf(voiceBindChar).filter(function (voice) { return voice.id === id; })[0] || null;
+}
+
+function voiceDurationText(sec) {
+  return sec ? "0:" + String(Math.round(sec)).padStart(2, "0") : "";
+}
+
+function voiceItemHtml(voice) {
+  var bound = voiceBindChar && voiceBindChar.voiceBind && voiceBindChar.voiceBind.id === voice.id;
   var picked = voiceBindPick && voiceBindPick.id === voice.id;
-  return '<div class="voice-card' + (picked ? " on" : "") + '" data-voice-id="' + voice.id + '" data-voice-source="' + source + '">' +
-    '<button type="button" class="voice-play' + (voicePlayingId === voice.id ? " is-playing" : "") + '" data-voice-play="' + voice.id + '" aria-label="试听' + voice.name + '">' + (voicePlayingId === voice.id ? "■" : "▶") + "</button>" +
-    '<span class="voice-card-copy"><strong>' + voice.name + "</strong><small>" + voice.summary + "</small></span>" +
-    (recommended ? '<em class="voice-rec">推荐</em>' : "") +
+  var playing = voicePlayingId === voice.id;
+  var source = voice.source === "upload" ? "上传" : "AI 生成";
+  var cls = "voice-item" + (picked ? " on" : "") + (bound ? " is-bound" : "") + (playing ? " is-playing" : "") +
+    (voice.id === voiceNewId ? " is-new" : "") + (voice.status !== "ready" ? " is-" + voice.status : "");
+  var lead;
+  var meta;
+  if (voice.status === "generating") {
+    lead = '<span class="voice-item-lead"><i class="voice-spin" aria-hidden="true"></i></span>';
+    meta = "生成中，约 10 秒，可先关闭弹窗";
+  } else if (voice.status === "failed") {
+    lead = '<span class="voice-item-lead is-error" aria-hidden="true">!</span>';
+    meta = escapeHtml(voice.error || "生成失败，参数已保留");
+  } else {
+    lead = '<button type="button" class="voice-play' + (playing ? " is-playing" : "") + '" data-voice-play="' + voice.id + '" aria-label="' + (playing ? "停止" : "试听") + escapeHtml(voice.name) + '">' +
+      (playing ? '<span class="voice-bars" aria-hidden="true"><i></i><i></i><i></i></span>' : "▶") + "</button>";
+    meta = [escapeHtml(voice.summary || ""), voiceDurationText(voice.duration), escapeHtml(voice.time || "")].filter(Boolean).join(" · ");
+  }
+  var acts = "";
+  if (voice.status === "failed") {
+    acts += '<button type="button" class="voice-item-retry" data-voice-retry="' + voice.id + '">重试</button>';
+  }
+  if (voice.status !== "generating" && voice.source !== "upload" && voice.prompt) {
+    acts += '<button type="button" class="voice-item-act" data-voice-reuse="' + voice.id + '" aria-label="复用参数" data-tip="复用参数">' + VOICE_REUSE_ICON + "</button>";
+  }
+  if (voice.status !== "generating") {
+    acts += '<button type="button" class="voice-item-act is-danger" data-voice-del="' + voice.id + '"' +
+      (bound ? ' disabled aria-label="使用中的音色不能删除" data-tip="使用中，不能删除"' : ' aria-label="删除" data-tip="删除"') + ">" + VOICE_TRASH_ICON + "</button>";
+  }
+  return '<div class="' + cls + '" data-voice-id="' + voice.id + '"' +
+    (voice.status === "ready" ? ' role="radio" tabindex="0" aria-checked="' + (picked ? "true" : "false") + '"' : "") + ">" +
+    lead +
+    '<span class="voice-item-main"><span class="voice-item-title"><strong>' + escapeHtml(voice.name) + "</strong>" +
+    '<em class="voice-tag">' + source + "</em>" + (bound ? '<em class="voice-tag is-bound">使用中</em>' : "") + "</span>" +
+    "<small>" + meta + "</small></span>" +
+    '<span class="voice-item-acts">' + acts + "</span>" +
+    (voice.status === "ready" ? '<span class="voice-radio" aria-hidden="true"></span>' : "") +
     "</div>";
 }
 
-function filteredVoices(char) {
-  return (D.voices || []).filter(function (voice) {
-    if (voiceFilters.gender && voice.gender !== voiceFilters.gender) return false;
-    if (voiceFilters.age && voice.age !== voiceFilters.age) return false;
-    if (voiceFilters.style && voice.style !== voiceFilters.style) return false;
-    return true;
-  });
-}
-
-function paintVoiceFilters() {
-  document.querySelectorAll("#voice-filters [data-voice-filter]").forEach(function (group) {
-    var key = group.dataset.voiceFilter;
-    group.querySelectorAll("[data-voice-filter-value]").forEach(function (button) {
-      var on = button.dataset.voiceFilterValue === voiceFilters[key];
-      button.classList.toggle("on", on);
-    });
-  });
+function renderVoiceList() {
+  var list = voiceAssetsOf(voiceBindChar);
+  var ready = list.filter(function (voice) { return voice.status === "ready"; }).length;
+  document.getElementById("voice-list-count").textContent = list.length ? ready + " 条可用" : "";
+  document.getElementById("voice-list").innerHTML = list.length
+    ? list.map(voiceItemHtml).join("")
+    : '<div class="voice-list-empty"><strong>还没有音频</strong><span>在左侧 AI 生成或上传一段人声，结果会出现在这里</span></div>';
 }
 
 function paintVoiceSwitch() {
@@ -281,39 +331,27 @@ function paintVoiceSwitch() {
   button.disabled = !bound;
   button.classList.toggle("is-on", on);
   button.setAttribute("aria-checked", on ? "true" : "false");
-  button.title = bound ? (on ? "点击停用，已选音色会保留" : "点击开启，旁白和对白使用这个音色") : "先选一条音色并使用，才能开启";
+  button.title = bound ? (on ? "点击停用，已选音色会保留" : "点击开启，旁白和对白使用这个音色") : "先绑定一条音色，才能开启";
   document.getElementById("voice-switch-label").textContent = on ? "已开启" : bound ? "已关闭" : "未开启";
 }
 
 function paintVoiceConfirm() {
   var button = document.getElementById("voice-save");
-  var ready = !!(voiceBindPick && voiceHeard[voiceBindPick.id]);
-  button.disabled = !ready || voiceGenerating;
-  button.title = !voiceBindPick ? "请先选择一条音色" : (voiceHeard[voiceBindPick.id] ? "绑定到这个角色" : "请先试听这条音色");
-  document.getElementById("voice-foot-note").textContent = voiceBindChar && voiceBindChar.voiceBind
-    ? "更换后只更新这个角色，不会重出已经生成的配音"
-    : "先试听，再点「使用此音色」";
-}
-
-function renderVoiceLibrary() {
-  var grid = document.getElementById("voice-library-grid");
-  var empty = document.getElementById("voice-library-empty");
-  if (!voiceLibraryReady) {
-    grid.innerHTML = '<div class="voice-skeleton"></div><div class="voice-skeleton"></div><div class="voice-skeleton"></div>';
-    empty.hidden = true;
-    return;
-  }
-  var recommended = {};
-  recommendVoices(voiceBindChar).slice(0, 3).forEach(function (voice) { recommended[voice.id] = true; });
-  var list = filteredVoices(voiceBindChar);
-  grid.innerHTML = list.map(function (voice) {
-    return voiceCardHtml(voice, "library", !!recommended[voice.id]);
-  }).join("");
-  empty.hidden = !!list.length;
+  var note = document.getElementById("voice-foot-note");
+  var bound = voiceBindChar && voiceBindChar.voiceBind;
+  var pick = voiceBindPick;
+  var isBound = !!(pick && bound && bound.id === pick.id);
+  var heard = !!(pick && voiceHeard[pick.id]);
+  button.disabled = !pick || isBound || !heard;
+  button.textContent = isBound ? "使用中" : bound ? "替换为此音色" : "使用此音色";
+  if (!pick) note.textContent = bound ? "选择列表中的另一条音频可替换当前音色" : "从右侧列表选择一条音频";
+  else if (isBound) note.textContent = "这条音频正在使用";
+  else if (!heard) note.textContent = "试听后才能使用「" + pick.name + "」";
+  else note.textContent = bound ? "替换后只影响之后的配音，已生成的不变" : "将绑定到「" + voiceBindChar.name + "」";
 }
 
 function renderVoicePanes() {
-  document.querySelectorAll(".voice-tabs [data-voice-tab]").forEach(function (button) {
+  document.querySelectorAll(".voice-seg [data-voice-tab]").forEach(function (button) {
     var on = button.dataset.voiceTab === voiceBindTab;
     button.classList.toggle("on", on);
     button.setAttribute("aria-selected", on ? "true" : "false");
@@ -324,20 +362,37 @@ function renderVoicePanes() {
   paintVoiceConfirm();
 }
 
-function selectVoiceCandidate(voice, source) {
-  voiceBindPick = {
-    id: voice.id,
-    name: voice.name,
-    summary: voice.summary,
-    source: source,
-    pitch: voice.pitch,
-    rate: voice.rate
-  };
-  renderVoiceLibrary();
-  document.querySelectorAll("#voice-upload-result .voice-card, #voice-gen-list .voice-card").forEach(function (card) {
-    card.classList.toggle("on", card.dataset.voiceId === voice.id);
-  });
+function selectVoiceCandidate(voice) {
+  voiceBindPick = voice;
+  renderVoiceList();
   paintVoiceConfirm();
+}
+
+function paintVoiceGenerateButton() {
+  var button = document.getElementById("voice-gen");
+  button.disabled = voiceGenerating;
+  button.textContent = voiceGenerating ? "生成中…" : "生成音频";
+}
+
+function paintVoiceReferenceNames() {
+  document.getElementById("voice-ref-chips").innerHTML = voiceReferenceNames.map(function (name, index) {
+    return '<span>' + escapeHtml(name) + '<button type="button" data-voice-ref-remove="' + index + '" aria-label="移除参考音频">×</button></span>';
+  }).join("");
+  document.getElementById("voice-ref-btn").hidden = voiceReferenceNames.length >= 3;
+}
+
+function paintVoiceDescriptionCount() {
+  document.getElementById("voice-desc-count").textContent = document.getElementById("voice-desc").value.length + " / 400";
+}
+
+function paintVoiceUploadState(state, title, detail) {
+  var box = document.getElementById("voice-upload-state");
+  box.hidden = !state;
+  box.className = "voice-upload-state" + (state ? " is-" + state : "");
+  if (!state) { box.innerHTML = ""; return; }
+  var icon = state === "error" ? '<i class="voice-state-icon">!</i>' : state === "done" ? '<i class="voice-state-icon">✓</i>' : '<i class="voice-spin" aria-hidden="true"></i>';
+  box.innerHTML = icon + '<span><strong>' + escapeHtml(title) + "</strong><small>" + escapeHtml(detail || "") + "</small></span>" +
+    (state === "error" ? '<button type="button" class="voice-item-retry" data-voice-reupload="1">重新上传</button>' : "");
 }
 
 function openVoiceDialog(item, auto) {
@@ -351,43 +406,37 @@ function openVoiceDialog(item, auto) {
   voiceBindChar = char;
   voiceDialogAuto = !!auto;
   document.getElementById("voice-cancel").textContent = auto ? "跳过，稍后再说" : "取消";
-  voiceBindTab = "library";
+  voiceBindTab = "generate";
   voiceBindPick = null;
   voiceHeard = {};
-  voiceFilters = { gender: "", age: "", style: "" };
-  voiceLibraryReady = false;
-  voiceGenerating = false;
+  voiceNewId = "";
+  voiceReferenceNames = [];
   var bound = char.voiceBind;
   document.getElementById("voice-dialog-title").textContent = (bound ? "更换音色 · " : "绑定音色 · ") + char.name;
-  document.getElementById("voice-current-look").innerHTML = '<img src="' + (char.image || "") + '" alt="' + char.name + '">';
+  document.getElementById("voice-current-look").innerHTML = '<img decoding="async" src="' + (char.image || "") + '" alt="' + char.name + '">';
   document.getElementById("voice-current-title").textContent = bound ? "当前音色：" + bound.name : "尚未绑定音色";
-  paintVoiceSwitch();
+  var source = bound ? voiceSourceLabel(bound.source) : "";
   document.getElementById("voice-current-desc").textContent = bound
-    ? bound.summary + " · 来源 " + voiceSourceLabel(bound.source) + "。确认新音色后会覆盖这一条。"
-    : "按性别和年龄先给出库内推荐。不满意可以上传人声，或按描述生成候选。";
+    ? bound.summary + (source ? " · " + source : "")
+    : "生成或上传一段音频，试听满意后再绑定到角色。";
+  paintVoiceSwitch();
   document.getElementById("voice-desc").value = voiceDraftText(char);
-  document.getElementById("voice-upload-msg").textContent = "";
-  document.getElementById("voice-upload-msg").className = "voice-upload-msg";
-  document.getElementById("voice-upload-result").innerHTML = "";
-  document.getElementById("voice-gen-list").innerHTML = "";
+  document.getElementById("voice-sample-text").value = D.voiceSample || "这是一段统一试听，方便对比不同音色。";
   document.getElementById("voice-gen-error").hidden = true;
-  document.getElementById("voice-gen").disabled = false;
-  paintVoiceFilters();
-  renderVoiceLibrary();
+  paintVoiceUploadState("");
+  paintVoiceGenerateButton();
+  paintVoiceDescriptionCount();
+  paintVoiceReferenceNames();
+  if (bound) voiceBindPick = voiceAssetById(bound.id);
+  renderVoiceList();
   renderVoicePanes();
   document.getElementById("voice-dialog").classList.add("open");
-  setTimeout(function () {
-    if (!document.getElementById("voice-dialog").classList.contains("open")) return;
-    voiceLibraryReady = true;
-    renderVoiceLibrary();
-  }, 360);
 }
 
 function closeVoiceDialog() {
   var dialog = document.getElementById("voice-dialog");
   if (!dialog.classList.contains("open")) return;
   stopVoicePreview();
-  voiceGenerating = false;
   dialog.classList.remove("open");
 }
 
@@ -412,7 +461,7 @@ function updateReferenceComposer(look) {
   var list = lookReferenceImages(look);
   referenceImageValue = list.length ? list[0].src : "";
   document.getElementById("reference-picks").innerHTML = list.map(function (item, index) {
-    return '<span class="reference-pick"><img src="' + item.src + '" alt="' + escapeHtml(item.name || "参考图") + '">' +
+    return '<span class="reference-pick"><img loading="lazy" decoding="async" src="' + item.src + '" alt="' + escapeHtml(item.name || "参考图") + '">' +
       '<button type="button" data-reference-remove="' + index + '" aria-label="移除「' + escapeHtml(item.name || "参考图") + '」">×</button></span>';
   }).join("");
   var button = document.getElementById("pick-asset");
@@ -453,7 +502,7 @@ function renderReferenceLibrary() {
   document.getElementById("reference-asset-grid").innerHTML = referenceAssetChoices.map(function (asset, index) {
     var cls = saved[asset.src] ? " is-added" : pending[asset.src] ? " on" : "";
     return '<button type="button" class="reference-asset-card' + cls + '" data-reference-index="' + index + '">' +
-      '<img src="' + asset.src + '" alt=""><span>' + asset.name + "</span></button>";
+      '<img loading="lazy" decoding="async" src="' + asset.src + '" alt=""><span>' + asset.name + "</span></button>";
   }).join("");
 }
 
@@ -482,7 +531,7 @@ function showPendingReferences(title) {
   panel.querySelector(".reference-library-head strong").textContent = title;
   document.getElementById("reference-asset-grid").innerHTML = pendingReferenceList.map(function (item, index) {
     return '<button type="button" class="reference-asset-card on" data-pending-index="' + index + '">' +
-      '<img src="' + item.src + '" alt=""><span>' + escapeHtml(item.name || "参考图") + "</span></button>";
+      '<img loading="lazy" decoding="async" src="' + item.src + '" alt=""><span>' + escapeHtml(item.name || "参考图") + "</span></button>";
   }).join("");
   paintPendingReferences();
 }
@@ -875,21 +924,24 @@ document.getElementById("voice-cancel").onclick = function () {
   ReplicaUI.toast("已跳过，可随时在角色图片右下角绑定音色");
 };
 document.getElementById("voice-save").onclick = function () {
-  if (this.disabled || !voiceBindChar || !voiceBindPick || !voiceHeard[voiceBindPick.id]) return;
+  var pick = voiceBindPick;
+  if (this.disabled || !voiceBindChar || !pick || !voiceHeard[pick.id]) return;
   voiceBindChar.voiceBind = {
-    id: voiceBindPick.id,
-    name: voiceBindPick.name,
-    summary: voiceBindPick.summary,
-    source: voiceBindPick.source,
-    pitch: voiceBindPick.pitch,
-    rate: voiceBindPick.rate
+    id: pick.id,
+    name: pick.name,
+    summary: pick.summary,
+    source: pick.source,
+    pitch: pick.pitch,
+    rate: pick.rate,
+    sample: pick.sample,
+    duration: pick.duration,
+    time: pick.time
   };
   voiceBindChar.voiceOn = true;
   var name = voiceBindChar.name;
-  var voiceName = voiceBindPick.name;
   closeVoiceDialog();
   refreshVoiceSurfaces();
-  ReplicaUI.toast("已为「" + name + "」绑定「" + voiceName + "」");
+  ReplicaUI.toast("已为「" + name + "」绑定「" + pick.name + "」");
 };
 document.getElementById("voice-switch").onclick = function () {
   var char = voiceBindChar;
@@ -900,119 +952,239 @@ document.getElementById("voice-switch").onclick = function () {
   refreshVoiceSurfaces();
   ReplicaUI.toast(char.voiceOn ? "已开启「" + char.name + "」的音色" : "已关闭「" + char.name + "」的音色，已选音色会保留");
 };
-document.querySelector(".voice-tabs").onclick = function (e) {
+document.querySelector(".voice-seg").onclick = function (e) {
   var button = e.target.closest("[data-voice-tab]");
-  if (!button || voiceGenerating) return;
+  if (!button) return;
   voiceBindTab = button.dataset.voiceTab;
   renderVoicePanes();
 };
-document.getElementById("voice-filters").onclick = function (e) {
-  var button = e.target.closest("[data-voice-filter-value]");
-  if (!button) return;
-  var group = button.closest("[data-voice-filter]");
-  voiceFilters[group.dataset.voiceFilter] = button.dataset.voiceFilterValue;
-  paintVoiceFilters();
-  renderVoiceLibrary();
-};
-function onVoiceGridClick(e) {
-  var play = e.target.closest("[data-voice-play]");
-  var card = e.target.closest("[data-voice-id]");
-  if (!card) return;
-  var source = card.dataset.voiceSource;
-  var voice = voiceById(card.dataset.voiceId) || (voiceBindPick && voiceBindPick.id === card.dataset.voiceId ? voiceBindPick : null);
-  if (!voice) {
-    voice = {
-      id: card.dataset.voiceId,
-      name: card.querySelector("strong").textContent,
-      summary: card.querySelector("small").textContent,
-      source: source,
-      pitch: Number(card.dataset.pitch) || 1,
-      rate: Number(card.dataset.rate) || 1
-    };
+
+function toggleVoicePlay(voice) {
+  if (voicePlayingId === voice.id) {
+    stopVoicePreview();
+  } else {
+    playVoiceSample(voice, null);
   }
-  selectVoiceCandidate(voice, source);
-  if (play) playVoiceSample(voiceBindPick, document.querySelector('[data-voice-play="' + voice.id + '"]'));
+  renderVoiceList();
+  paintVoiceConfirm();
 }
-document.getElementById("voice-library-grid").onclick = onVoiceGridClick;
-document.getElementById("voice-upload-result").onclick = onVoiceGridClick;
-document.getElementById("voice-gen-list").onclick = onVoiceGridClick;
+
+function onVoiceListClick(e) {
+  var item = e.target.closest("[data-voice-id]");
+  if (!item) return;
+  var voice = voiceAssetById(item.dataset.voiceId);
+  if (!voice) return;
+  if (e.target.closest("[data-voice-del]")) {
+    if (e.target.closest("[data-voice-del]").disabled) return;
+    if (voicePlayingId === voice.id) stopVoicePreview();
+    voiceBindChar.voiceAssets = voiceAssetsOf(voiceBindChar).filter(function (entry) { return entry.id !== voice.id; });
+    if (voiceBindPick && voiceBindPick.id === voice.id) voiceBindPick = null;
+    renderVoiceList();
+    paintVoiceConfirm();
+    ReplicaUI.toast("已删除「" + voice.name + "」");
+    return;
+  }
+  if (e.target.closest("[data-voice-reuse]")) {
+    document.getElementById("voice-desc").value = voice.prompt || "";
+    document.getElementById("voice-sample-text").value = voice.sample || "";
+    voiceReferenceNames = (voice.references || []).slice();
+    paintVoiceDescriptionCount();
+    paintVoiceReferenceNames();
+    voiceBindTab = "generate";
+    renderVoicePanes();
+    ReplicaUI.toast("已填入这条音频的生成参数");
+    return;
+  }
+  if (e.target.closest("[data-voice-retry]")) {
+    startVoiceGeneration({ prompt: voice.prompt, sample: voice.sample, references: voice.references || [] }, voice);
+    return;
+  }
+  if (voice.status !== "ready") return;
+  var isPicked = voiceBindPick && voiceBindPick.id === voice.id;
+  if (e.target.closest("[data-voice-play]")) {
+    if (!isPicked) voiceBindPick = voice;
+    toggleVoicePlay(voice);
+    return;
+  }
+  if (isPicked) return;
+  voiceBindPick = voice;
+  voiceNewId = "";
+  playVoiceSample(voice, null);
+  renderVoiceList();
+  paintVoiceConfirm();
+}
+document.getElementById("voice-list").onclick = onVoiceListClick;
+document.getElementById("voice-list").onkeydown = function (e) {
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-voice-id][role=radio]")) {
+    e.preventDefault();
+    e.target.click();
+  }
+};
+document.getElementById("voice-desc").oninput = paintVoiceDescriptionCount;
+document.getElementById("voice-ref-btn").onclick = function () {
+  if (voiceReferenceNames.length < 3) document.getElementById("voice-ref-input").click();
+};
+document.getElementById("voice-ref-input").onchange = function () {
+  var files = Array.prototype.slice.call(this.files || []);
+  this.value = "";
+  var room = 3 - voiceReferenceNames.length;
+  files.slice(0, room).forEach(function (file) { voiceReferenceNames.push(file.name); });
+  if (files.length > room) ReplicaUI.toast("参考音频最多 3 条");
+  paintVoiceReferenceNames();
+};
+document.getElementById("voice-ref-chips").onclick = function (e) {
+  var remove = e.target.closest("[data-voice-ref-remove]");
+  if (!remove) return;
+  voiceReferenceNames.splice(Number(remove.dataset.voiceRefRemove), 1);
+  paintVoiceReferenceNames();
+};
+
+function voiceStamp() {
+  var d = new Date();
+  return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+}
+
+function handleVoiceUpload(file) {
+  if (!file || !voiceBindChar) return;
+  var jobChar = voiceBindChar;
+  if (!/^audio\//.test(file.type) && !/\.(mp3|wav|m4a)$/i.test(file.name)) {
+    paintVoiceUploadState("error", "格式不支持", "请上传 MP3、WAV 或 M4A 音频");
+    return;
+  }
+  if (file.size > 20 * 1024 * 1024) {
+    paintVoiceUploadState("error", "文件过大", "请上传 20MB 以内的音频");
+    return;
+  }
+  var token = ++voiceUploadSeq;
+  paintVoiceUploadState("loading", "正在上传 " + file.name, "上传中…");
+  setTimeout(function () {
+    if (token !== voiceUploadSeq) return;
+    paintVoiceUploadState("loading", "正在检测人声", "检查时长、噪声和说话人数");
+  }, 500);
+  setTimeout(function () {
+    if (token !== voiceUploadSeq) return;
+    if (file.size < 12 * 1024) {
+      paintVoiceUploadState("error", "音频太短", "请上传 10 秒以上的清晰人声");
+      return;
+    }
+    if (/噪|嘈杂|noise|吵|bgm|音乐/i.test(file.name)) {
+      paintVoiceUploadState("error", "检测不到清晰人声", "背景噪声或音乐过大，请换一段干净录音");
+      return;
+    }
+    if (/多人|对话/i.test(file.name)) {
+      paintVoiceUploadState("error", "检测到多人说话", "请只保留一个人的声音");
+      return;
+    }
+    var voice = {
+      id: "upload-" + Date.now(),
+      source: "upload",
+      status: "ready",
+      name: file.name.replace(/\.[^.]+$/, "").slice(0, 14) || "上传人声",
+      summary: "上传人声",
+      time: voiceStamp(),
+      duration: Math.max(10, Math.min(60, Math.round(file.size / 32000))),
+      pitch: 1,
+      rate: 1
+    };
+    voiceAssetsOf(jobChar).unshift(voice);
+    if (voiceBindChar === jobChar && document.getElementById("voice-dialog").classList.contains("open")) {
+      voiceBindPick = voice;
+      voiceNewId = voice.id;
+      paintVoiceUploadState("done", "已添加到音色列表", "试听后即可使用");
+      renderVoiceList();
+      paintVoiceConfirm();
+    }
+  }, 1300);
+}
+
 document.getElementById("voice-upload-btn").onclick = function () {
   document.getElementById("voice-upload-input").click();
+};
+document.getElementById("voice-upload-state").onclick = function (e) {
+  if (e.target.closest("[data-voice-reupload]")) document.getElementById("voice-upload-input").click();
 };
 document.getElementById("voice-upload-input").onchange = function () {
   var file = this.files && this.files[0];
   this.value = "";
-  var msg = document.getElementById("voice-upload-msg");
-  var box = document.getElementById("voice-upload-result");
-  if (!file) return;
-  if (!/^audio\//.test(file.type) && !/\.(mp3|wav|m4a|aac|ogg)$/i.test(file.name)) {
-    msg.className = "voice-upload-msg is-error";
-    msg.textContent = "请上传音频文件。";
-    box.innerHTML = "";
-    return;
-  }
-  if (file.size < 12 * 1024 || /噪|noise|吵/i.test(file.name)) {
-    msg.className = "voice-upload-msg is-error";
-    msg.textContent = file.size < 12 * 1024 ? "这段人声太短，换一段干净、稍长一些的录音。" : "这段太吵，检测不到清晰人声。";
-    box.innerHTML = "";
-    voiceBindPick = null;
-    paintVoiceConfirm();
-    return;
-  }
-  msg.className = "voice-upload-msg";
-  msg.textContent = "已识别人声，并写了一句声音描述。试听后再确认。";
-  var voice = {
-    id: "upload-" + Date.now(),
-    name: file.name.replace(/\.[^.]+$/, "").slice(0, 12) || "上传人声",
-    summary: voiceDraftText(voiceBindChar) || "按上传人声整理的声音描述",
-    pitch: 1,
-    rate: 1
-  };
-  if (voiceBindChar) voiceBindChar.voiceUploadNote = voice.summary;
-  document.getElementById("voice-desc").value = voice.summary;
-  box.innerHTML = voiceCardHtml(voice, "upload", false).replace('data-voice-id="' + voice.id + '"', 'data-voice-id="' + voice.id + '" data-pitch="1" data-rate="1"');
+  handleVoiceUpload(file);
 };
+(function () {
+  var drop = document.getElementById("voice-upload-btn");
+  drop.addEventListener("dragover", function (e) { e.preventDefault(); drop.classList.add("is-over"); });
+  drop.addEventListener("dragleave", function () { drop.classList.remove("is-over"); });
+  drop.addEventListener("drop", function (e) {
+    e.preventDefault();
+    drop.classList.remove("is-over");
+    handleVoiceUpload(e.dataTransfer.files && e.dataTransfer.files[0]);
+  });
+})();
+
+function startVoiceGeneration(params, retryOf) {
+  if (voiceGenerating || !voiceBindChar) return;
+  var jobChar = voiceBindChar;
+  var list = voiceAssetsOf(jobChar);
+  var voice = retryOf || {
+    id: "gen-" + Date.now(),
+    source: "generated",
+    name: "音色 " + (list.filter(function (entry) { return entry.source !== "upload"; }).length + 1)
+  };
+  voice.status = "generating";
+  voice.prompt = params.prompt;
+  voice.sample = params.sample;
+  voice.references = params.references;
+  voice.error = "";
+  if (!retryOf) list.unshift(voice);
+  voiceGenerating = true;
+  paintVoiceGenerateButton();
+  renderVoiceList();
+  var token = ++voiceGenerationSeq;
+  setTimeout(function () {
+    if (token !== voiceGenerationSeq) return;
+    voiceGenerating = false;
+    var open = document.getElementById("voice-dialog").classList.contains("open") && voiceBindChar === jobChar;
+    if (/失败|超时/.test(params.prompt)) {
+      voice.status = "failed";
+      voice.error = "生成失败，参数已保留，可直接重试";
+    } else {
+      var female = jobChar.voiceProfile && jobChar.voiceProfile.gender === "女";
+      voice.status = "ready";
+      voice.summary = params.prompt.split(/[，,。]/).filter(Boolean).slice(0, 2).join("，").slice(0, 20);
+      voice.time = voiceStamp();
+      voice.duration = Math.max(3, Math.round(params.sample.length / 4.5));
+      voice.pitch = female ? 1.12 : 0.9;
+      voice.rate = 1;
+    }
+    if (open) {
+      if (voice.status === "ready") {
+        voiceBindPick = voice;
+        voiceNewId = voice.id;
+      }
+      paintVoiceGenerateButton();
+      renderVoiceList();
+      paintVoiceConfirm();
+    } else {
+      ReplicaUI.toast(voice.status === "ready"
+        ? "「" + jobChar.name + "」的音频已生成，打开音色即可试听"
+        : "「" + jobChar.name + "」的音频生成失败，可在音色列表重试");
+    }
+  }, 1400);
+}
+
 document.getElementById("voice-gen").onclick = function () {
   if (this.disabled || voiceGenerating) return;
   var desc = document.getElementById("voice-desc").value.trim();
+  var sample = document.getElementById("voice-sample-text").value.trim();
   var error = document.getElementById("voice-gen-error");
-  var list = document.getElementById("voice-gen-list");
   if (desc.length < 4) {
     error.hidden = false;
-    error.textContent = "描述再具体一点，或改走音色库、上传。";
+    error.textContent = "请把声音描述写得再具体一点。";
     return;
   }
-  if (/失败|超时/.test(desc)) {
+  if (!sample) {
     error.hidden = false;
-    error.textContent = "生成超时。角色仍未绑定，可以重试，或改用音色库、上传。";
-    list.innerHTML = "";
+    error.textContent = "请填写试听文案。";
     return;
   }
   error.hidden = true;
-  voiceGenerating = true;
-  this.disabled = true;
-  voiceBindPick = null;
-  paintVoiceConfirm();
-  list.innerHTML = '<div class="voice-skeleton"></div><div class="voice-skeleton"></div><div class="voice-skeleton"></div>';
-  var charName = voiceBindChar ? voiceBindChar.name : "";
-  setTimeout(function () {
-    voiceGenerating = false;
-    document.getElementById("voice-gen").disabled = false;
-    if (!document.getElementById("voice-dialog").classList.contains("open")) return;
-    var base = voiceBindChar && voiceBindChar.voiceProfile && voiceBindChar.voiceProfile.gender === "女" ? 1.12 : 0.9;
-    list.innerHTML = [0, 1, 2].map(function (index) {
-      var voice = {
-        id: "gen-" + Date.now() + "-" + index,
-        name: (charName || "角色") + "候选 " + (index + 1),
-        summary: desc.slice(0, 28),
-        pitch: Math.round((base + index * 0.12) * 100) / 100,
-        rate: 0.94 + index * 0.06
-      };
-      return voiceCardHtml(voice, "generated", false).replace(
-        'data-voice-id="' + voice.id + '"',
-        'data-voice-id="' + voice.id + '" data-pitch="' + voice.pitch + '" data-rate="' + voice.rate + '"'
-      );
-    }).join("");
-    paintVoiceConfirm();
-  }, 900);
+  startVoiceGeneration({ prompt: desc, sample: sample, references: voiceReferenceNames.slice() }, null);
 };

@@ -244,8 +244,23 @@
     return clamp((clientX - rect.left) / state.pixelsPerSecond, 0, MT.totalDuration());
   }
 
-  function followPointer(onMove, onUp) {
+  function followPointer(handler, onUp) {
+    var pending = null;
+    var frame = 0;
+    function flush() {
+      frame = 0;
+      if (!pending) return;
+      var e = pending;
+      pending = null;
+      handler(e);
+    }
+    function onMove(e) {
+      pending = e;
+      if (!frame) frame = requestAnimationFrame(flush);
+    }
     function up(e) {
+      cancelAnimationFrame(frame);
+      flush();
       document.removeEventListener("pointermove", onMove);
       document.removeEventListener("pointerup", up);
       document.body.style.userSelect = "";
@@ -469,7 +484,14 @@
     if (asset) MT.addAsset(asset, index);
   });
 
-  window.addEventListener("resize", MT.renderRuler);
+  var resizeFrame = 0;
+  window.addEventListener("resize", function () {
+    if (resizeFrame) return;
+    resizeFrame = requestAnimationFrame(function () {
+      resizeFrame = 0;
+      MT.renderRuler();
+    });
+  });
 
   MT.renderAll();
   MT.renderSaveStatus();

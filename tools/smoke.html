@@ -112,6 +112,7 @@
         }, true);
         setTimeout(function () { resolve({ w: w, errors: errors }); }, 300);
       };
+      sessionStorage.removeItem("replica-deleted-assets");
       frame.src = ROOT + page + "?smoke=" + Date.now();
     });
   }

@@ -8,10 +8,11 @@
 
   MT.stopPlayback = function () {
     state.playing = false;
-    clearInterval(state.timer);
+    cancelAnimationFrame(state.timer);
     state.timer = null;
     $$(".mt-play").forEach(function (button) { button.textContent = "▶"; });
     MT.renderMeter();
+    MT.renderToolbarState();
   };
 
   MT.togglePlayback = function () {
@@ -22,11 +23,16 @@
     if (state.currentTime >= MT.totalDuration()) state.currentTime = 0;
     state.playing = true;
     $$(".mt-play").forEach(function (button) { button.textContent = "❚❚"; });
-    state.timer = setInterval(function () {
-      state.currentTime = Math.min(MT.totalDuration(), state.currentTime + 0.1);
+    var last = performance.now();
+    function step(now) {
+      if (!state.playing) return;
+      state.currentTime = Math.min(MT.totalDuration(), state.currentTime + (now - last) / 1000);
+      last = now;
       MT.renderPlayhead();
       if (state.currentTime >= MT.totalDuration()) MT.stopPlayback();
-    }, 100);
+      else state.timer = requestAnimationFrame(step);
+    }
+    state.timer = requestAnimationFrame(step);
   };
 
   MT.undo = function () {

@@ -24,7 +24,7 @@
       var cards = list.filter(function (asset) { return asset.group === group; }).map(function (asset) {
         var count = MT.doc.clips.filter(function (clip) { return clip.assetId === asset.id; }).length;
         return '<button type="button" class="mt-asset' + (state.selected === asset.id ? " on" : "") + '" data-asset="' + asset.id + '" draggable="true" title="点击查看，拖到时间线添加">' +
-          '<span class="mt-asset-thumb"><img src="' + asset.image + '" alt=""><small class="mt-asset-badge">' + asset.duration + "</small></span>" +
+          '<span class="mt-asset-thumb"><img loading="lazy" decoding="async" src="' + asset.image + '" alt=""><small class="mt-asset-badge">' + asset.duration + "</small></span>" +
           "<span><b>" + esc(asset.title) + '</b><small class="mt-asset-meta">' + asset.duration + "</small></span>" +
           '<em class="' + (count ? "added" : "") + '" data-add-asset="' + asset.id + '" title="添加到播放位置">' + (count ? "已添加" : "＋") + "</em>" +
           "</button>";
@@ -54,9 +54,9 @@
     var fade = clip.opacity / 100 * 0.72;
     var picture = clip.parts
       ? '<em class="mt-clip-strip" style="opacity:' + fade + '">' + MT.partsOf(clip).map(function (part) {
-        return '<img src="' + part.image + '" alt="" style="flex:' + part.duration + '">';
+        return '<img loading="lazy" decoding="async" src="' + part.image + '" alt="" style="flex:' + part.duration + '">';
       }).join("") + "</em>"
-      : '<img src="' + clip.image + '" alt="" style="opacity:' + fade + '">';
+      : '<img loading="lazy" decoding="async" src="' + clip.image + '" alt="" style="opacity:' + fade + '">';
     var tags = [];
     if (clip.opacity < 100) tags.push("不透明 " + clip.opacity + "%");
     if (clip.muted) tags.push("已静音");
@@ -114,11 +114,25 @@
     return "scale(" + clip.scaleX + "," + clip.scaleY + ") rotate(" + clip.rotate + "deg)";
   }
 
+  function setAttr(el, name, value) {
+    if (el.getAttribute(name) !== value) el.setAttribute(name, value);
+  }
+  function setText(el, value) {
+    if (el.textContent !== value) el.textContent = value;
+  }
+  function setStyle(el, name, value) {
+    value = String(value);
+    if (el.style[name] !== value) el.style[name] = value;
+  }
+
   MT.renderPlayhead = function () {
-    $("#playhead").style.left = state.currentTime * state.pixelsPerSecond + "px";
-    $("#playhead").querySelector("span").textContent = MT.mmss(state.currentTime);
-    $("#current-time").textContent = MT.mmss(state.currentTime);
-    $("#total-time").textContent = MT.mmss(MT.totalDuration());
+    var head = $("#playhead");
+    var now = MT.mmss(state.currentTime);
+    setStyle(head, "left", "0px");
+    head.style.transform = "translateX(" + state.currentTime * state.pixelsPerSecond + "px)";
+    setText(head.querySelector("span"), now);
+    setText($("#current-time"), now);
+    setText($("#total-time"), MT.mmss(MT.totalDuration()));
     if (!MT.doc.clips.length) return;
 
     var entry = MT.entryAt(state.currentTime);
@@ -128,37 +142,30 @@
     var base = $("#preview-image");
     var next = $("#preview-next");
     var layer = $("#transition-layer");
+    var baseClip = trans && trans.type === "dissolve" ? trans.from : clip;
+    var baseSrc = trans && trans.type === "dissolve" ? MT.imageAt(trans.from, trans.from.duration) : MT.imageAt(clip, state.currentTime - entry.start);
 
-    base.src = MT.imageAt(clip, state.currentTime - entry.start);
-    base.style.transform = visualTransform(clip);
-    base.style.opacity = clip.opacity / 100;
-    next.hidden = true;
-    layer.className = "mt-transition-layer";
-    layer.style.opacity = 0;
-
-    if (trans) {
-      if (trans.type === "dissolve") {
-        base.src = MT.imageAt(trans.from, trans.from.duration);
-        base.style.transform = visualTransform(trans.from);
-        base.style.opacity = trans.from.opacity / 100;
-        next.hidden = false;
-        next.src = MT.imageAt(trans.to, 0);
-        next.style.transform = visualTransform(trans.to);
-        next.style.opacity = trans.progress * trans.to.opacity / 100;
-      } else {
-        layer.className = "mt-transition-layer " + trans.type;
-        layer.style.opacity = 1 - Math.abs(trans.progress * 2 - 1);
-      }
+    setAttr(base, "src", baseSrc);
+    setStyle(base, "transform", visualTransform(baseClip));
+    setStyle(base, "opacity", baseClip.opacity / 100);
+    next.hidden = !(trans && trans.type === "dissolve");
+    if (trans && trans.type === "dissolve") {
+      setAttr(next, "src", MT.imageAt(trans.to, 0));
+      setStyle(next, "transform", visualTransform(trans.to));
+      setStyle(next, "opacity", trans.progress * trans.to.opacity / 100);
     }
+    var wipe = trans && trans.type !== "dissolve";
+    setAttr(layer, "class", "mt-transition-layer" + (wipe ? " " + trans.type : ""));
+    setStyle(layer, "opacity", wipe ? 1 - Math.abs(trans.progress * 2 - 1) : 0);
 
     $("#transform-box").hidden = !(picked && picked.id === clip.id);
     $("#generating").hidden = !clip.generating;
     var subtitle = state.disabledTracks.subtitle ? null : MT.activeSubtitleAt(state.currentTime);
-    $("#preview-meta").textContent = clip.label + " · " + clip.title + " · " + MT.secText(clip.duration) + (trans ? " · " + MT.TRANSITIONS[trans.type].name : "");
-    $("#caption-preview").textContent = subtitle ? subtitle.text : "";
-    $("#caption-preview").className = "mt-caption-preview" + (state.subtitleStyle === "plain" ? "" : " " + state.subtitleStyle);
+    setText($("#preview-meta"), clip.label + " · " + clip.title + " · " + MT.secText(clip.duration) + (trans ? " · " + MT.TRANSITIONS[trans.type].name : ""));
+    setText($("#caption-preview"), subtitle ? subtitle.text : "");
+    setAttr($("#caption-preview"), "class", "mt-caption-preview" + (state.subtitleStyle === "plain" ? "" : " " + state.subtitleStyle));
     MT.renderMeter();
-    MT.renderToolbarState();
+    if (!state.playing) MT.renderToolbarState();
   };
 
   function audioLevel() {
@@ -251,7 +258,7 @@
       var tabs = '<div class="mt-edit-tabs" role="tablist">' +
         '<button type="button" role="tab" data-inspector-tab="info"' + (state.inspectorTab === "info" ? ' class="on" aria-selected="true"' : ' aria-selected="false"') + ">生成信息</button>" +
         '<button type="button" role="tab" data-inspector-tab="clip"' + (state.inspectorTab === "clip" ? ' class="on" aria-selected="true"' : ' aria-selected="false"') + ">片段设置</button></div>";
-      var head = '<div class="mt-clip-head"><img src="' + MT.imageAt(clip, 0) + '" alt=""><span><b>' + esc(clip.label) + "</b><small>" + esc(clip.title) + " · " + MT.secText(clip.duration) + (clip.version > 1 ? " · 第 " + clip.version + " 版" : "") + "</small></span></div>";
+      var head = '<div class="mt-clip-head"><img loading="lazy" decoding="async" src="' + MT.imageAt(clip, 0) + '" alt=""><span><b>' + esc(clip.label) + "</b><small>" + esc(clip.title) + " · " + MT.secText(clip.duration) + (clip.version > 1 ? " · 第 " + clip.version + " 版" : "") + "</small></span></div>";
       var content = state.inspectorTab === "clip"
         ? '<div class="mt-axis-group"><b>画面</b>' +
           axisRow("缩放 X", "scale-x", clip.scaleX.toFixed(2), "0.5", "2", "0.01", "×") +
@@ -315,7 +322,7 @@
     asset: function (body) {
       var asset = MT.library.find(function (item) { return item.id === state.selected; }) || {};
       $("#inspector-title").textContent = "素材详情";
-      body.innerHTML = '<div class="mt-asset-preview"><img src="' + asset.image + '" alt=""></div>' +
+      body.innerHTML = '<div class="mt-asset-preview"><img decoding="async" src="' + asset.image + '" alt=""></div>' +
         '<div class="mt-setting"><label>当前选择</label><div class="mt-setting-title">' + esc(asset.title) + "</div></div>" +
         '<div class="mt-setting-actions"><button type="button" data-add-asset="' + asset.id + '">添加到播放位置</button></div>';
     }

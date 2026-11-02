@@ -171,7 +171,7 @@ function cardHtml(row) {
   var visual = state === "pending"
     ? '<div class="asset-empty-state" aria-label="' + (kind === "char" ? "五视图尚未生成" : kind === "scene" ? "场景图尚未生成" : "道具图尚未生成") + '">' +
       (kind === "char" ? EMPTY_PERSON_ICON : EMPTY_IMAGE_ICON) + "</div>"
-    : '<img src="' + (showSheet ? a.sheet : a.image) + '" alt="' + a.name + '">';
+    : '<img loading="lazy" decoding="async" src="' + (showSheet ? a.sheet : a.image) + '" alt="' + a.name + '">';
   var key = kind + ":" + row.i;
   var picked = multiOn && !!selectedAssets[key];
   var check = multiOn
@@ -582,6 +582,18 @@ document.getElementById("asset-multi").onclick = function () {
 function deletedToast(text, result) {
   ReplicaUI.toast(text + (result.refund ? "，生成中的任务已取消，退回 " + result.refund + " 积分" : ""));
 }
+function rememberDeletedItem(kind, item) {
+  var code = kind === "char" ? "c" : kind === "scene" ? "s" : "p";
+  var looks = item.looksList || [];
+  var primary = looks.filter(function (look) { return item.look && look.name.indexOf(item.look) !== -1; })[0] || looks[0];
+  ReplicaUI.rememberDeletedAsset(code, item.id, primary ? primary.name : item.name, kind);
+  if (kind === "scene") {
+    looks.forEach(function (look, index) {
+      var key = index === 0 ? item.id : item.id + "/" + look.id;
+      ReplicaUI.rememberDeletedAsset("s", key, look.name);
+    });
+  }
+}
 function deleteAssets(keys) {
   var groups = { char: [], scene: [], prop: [] };
   keys.forEach(function (key) {
@@ -597,6 +609,7 @@ function deleteAssets(keys) {
       if (!list[index]) return;
       if (list[index] === currentChar) removedCurrent = true;
       refund += cancelLookGeneration(list[index].looksList || []);
+      rememberDeletedItem(kind, list[index]);
       list.splice(index, 1);
       removed++;
     });

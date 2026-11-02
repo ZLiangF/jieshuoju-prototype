@@ -32,6 +32,7 @@
   var drag = null;
   var dragAsset = null;
   var wheelTimer = null;
+  var pendingDeleteAsset = null;
 
   function $(s, r) { return (r || document).querySelector(s); }
   function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -71,7 +72,7 @@
     var looks = scene.looksList && scene.looksList.length ? scene.looksList : [{ id: "main", name: scene.name, image: scene.image }];
     return looks.map(function (look, i) {
       return { key: i === 0 ? scene.id : scene.id + "/" + look.id, name: look.name, image: look.image };
-    });
+    }).filter(function (item) { return !ReplicaUI.deletedAssetName("s", item.key); });
   }
 
   function refKind(ref) {
@@ -82,6 +83,7 @@
   }
 
   function sceneRef(key) {
+    if (ReplicaUI.deletedAssetName("s", key)) return null;
     var info = D.stageScenes[key];
     if (info) return { key: key, name: info.name, image: info.image };
     var sc = sceneById(key);
@@ -90,10 +92,10 @@
 
   function charCard(c) {
     var placed = state.view === "stage" && boardOf(shot()).marks.some(function (m) { return m.asset === c.id; });
-    return '<button class="acard ws-acard is-char' + (placed ? " is-placed" : "") + '" draggable="true" data-asset="' + c.id + '" data-kind="char">' +
-      '<span class="thumb"><img loading="lazy" decoding="async" src="' + (c.sheet || c.image) + '" alt=""></span>' +
+    return '<div class="acard ws-acard is-char' + (placed ? " is-placed" : "") + '" role="button" tabindex="0" draggable="true" data-asset="' + c.id + '" data-kind="char">' +
+      '<span class="thumb"><img loading="lazy" decoding="async" src="' + (c.sheet || c.image) + '" alt="">' + assetDeleteButton(c.id, "char", charLabel(c)) + "</span>" +
       '<span class="name">' + charLabel(c) + "</span>" +
-      (placed ? '<span class="ws-placed">已站位</span>' : "") + "</button>";
+      (placed ? '<span class="ws-placed">已站位</span>' : "") + "</div>";
   }
 
   function sceneCard(s) {
@@ -105,14 +107,14 @@
       hot = '<span class="ws-stage-hot ' + (st.apply ? "is-on" : "is-off") + '" data-stage-open="' + s.key + '" role="button" tabindex="0" aria-label="站位图，当前' + (st.apply ? "已启用" : "已关闭") + '" data-tip="站位图">' +
         stageStatusIcon(st.apply) + (n ? "<em>" + n + "</em>" : "") + "</span>";
     }
-    return '<button class="acard ws-acard is-scene" data-asset="' + s.key + '" data-kind="scene">' +
-      '<span class="thumb"><img loading="lazy" decoding="async" src="' + s.image + '" alt=""></span>' + hot +
-      '<span class="name">' + s.name + "</span></button>";
+    return '<div class="acard ws-acard is-scene" role="button" tabindex="0" data-asset="' + s.key + '" data-kind="scene">' +
+      '<span class="thumb"><img loading="lazy" decoding="async" src="' + s.image + '" alt="">' + assetDeleteButton(s.key, "scene", s.name) + "</span>" + hot +
+      '<span class="name">' + s.name + "</span></div>";
   }
 
   function propCard(p) {
-    return '<button class="acard ws-acard is-prop" data-asset="' + p.id + '" data-kind="prop">' +
-      '<span class="thumb"><img loading="lazy" decoding="async" src="' + p.image + '" alt=""></span><span class="name">' + p.name + "</span></button>";
+    return '<div class="acard ws-acard is-prop" role="button" tabindex="0" data-asset="' + p.id + '" data-kind="prop">' +
+      '<span class="thumb"><img loading="lazy" decoding="async" src="' + p.image + '" alt="">' + assetDeleteButton(p.id, "prop", p.name) + '</span><span class="name">' + p.name + "</span></div>";
   }
 
   function group(icon, title, items, render, empty) {
@@ -127,6 +129,11 @@
   var ICON_ZOOM_IN = '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5 7h4M7 5v4M10.4 10.4 13.5 13.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
   var ICON_SCENE = '<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M7 2 12.5 5 7 8 1.5 5z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="m1.5 8 5.5 3 5.5-3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>';
   var ICON_PROP = '<svg viewBox="0 0 14 14" aria-hidden="true"><rect x="2" y="4" width="10" height="8" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M5 4V2.8h4V4" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>';
+  var ICON_DELETE = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M6 4.5V3h4v1.5m1.5 0-.5 9H5l-.5-9M6.8 7v4M9.2 7v4" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  function assetDeleteButton(id, kind, name) {
+    return '<button class="ws-asset-delete" type="button" data-act="delete-asset" data-asset-id="' + id + '" data-asset-kind="' + kind + '" data-asset-name="' + name + '" aria-label="删除' + name + '" data-tip="删除资产">' + ICON_DELETE + "</button>";
+  }
 
   function assetGroups() {
     var s = shot();
@@ -164,7 +171,62 @@
     var all = D.characters.filter(inEpisode).length + D.props.filter(inEpisode).length;
     D.scenes.filter(inEpisode).forEach(function (sc) { all += sceneCards(sc).length; });
     $("#tab-all").textContent = "资产 (" + all + ")";
-    $("#tab-clip").textContent = "当前片段 (" + (shot().refs || []).length + ")";
+    var refs = shot().refs || [];
+    var currentCount = refs.map(charById).filter(Boolean).length +
+      refs.filter(function (ref) { return refKind(ref) === "scene"; }).map(sceneRef).filter(Boolean).length +
+      refs.map(propById).filter(Boolean).length;
+    $("#tab-clip").textContent = "当前片段 (" + currentCount + ")";
+  }
+
+  function openAssetDelete(target) {
+    pendingDeleteAsset = target;
+    $("#asset-delete-desc").textContent = "删除“" + target.name + "”后，已引用位置将标记为“" + target.name + "-已删除”。";
+    $("#asset-delete-modal").classList.add("open");
+    setTimeout(function () { $('[data-act="confirm-asset-delete"]', $("#asset-delete-modal")).focus(); }, 0);
+  }
+
+  function closeAssetDelete() {
+    pendingDeleteAsset = null;
+    $("#asset-delete-modal").classList.remove("open");
+  }
+
+  function confirmAssetDelete() {
+    var target = pendingDeleteAsset;
+    if (!target) return;
+    if (target.kind === "char") {
+      ReplicaUI.rememberDeletedAsset("c", target.id, target.name, "char");
+      D.characters = D.characters.filter(function (item) { return item.id !== target.id; });
+      Object.keys(stages).forEach(function (shotId) {
+        Object.keys(stages[shotId].boards || {}).forEach(function (key) {
+          stages[shotId].boards[key].marks = stages[shotId].boards[key].marks.filter(function (mark) { return mark.asset !== target.id; });
+        });
+      });
+    } else if (target.kind === "prop") {
+      ReplicaUI.rememberDeletedAsset("p", target.id, target.name, "prop");
+      D.props = D.props.filter(function (item) { return item.id !== target.id; });
+    } else {
+      var parts = target.id.split("/");
+      var scene = sceneById(parts[0]);
+      if (parts.length > 1) {
+        ReplicaUI.rememberDeletedAsset("s", target.id, target.name);
+        if (scene && scene.looksList) scene.looksList = scene.looksList.filter(function (look, i) { return i === 0 || look.id !== parts[1]; });
+        delete D.stageScenes[target.id];
+      } else {
+        (scene ? sceneCards(scene) : [target]).forEach(function (card) {
+          ReplicaUI.rememberDeletedAsset("s", card.key || target.id, card.name, card.key === target.id ? "scene" : null);
+          delete D.stageScenes[card.key || target.id];
+        });
+        D.scenes = D.scenes.filter(function (item) { return item.id !== target.id; });
+      }
+      if (state.view === "stage" && (activeKey(shot()) === target.id || activeKey(shot()).indexOf(target.id + "/") === 0)) {
+        state.view = "prompt";
+        state.selected = null;
+      }
+    }
+    closeAssetDelete();
+    state.promptShot = null;
+    renderAll();
+    ReplicaUI.toast("资产已删除");
   }
 
   /* ---------- 提示词 ---------- */
@@ -219,10 +281,14 @@
         var title = val && sceneInfo(val) ? "@站位图·" + sceneInfo(val).name : "@站位图";
         return '<span class="pchip pc-stage" contenteditable="false" title="开启「应用站位」后自动带入，关闭后移除">' + ICON_STAGE + title + "</span>";
       }
-      var label = kind === "c" ? (charById(val) ? charLabel(charById(val)) : val)
-        : kind === "s" ? (sceneRef(val) || { name: val }).name
-        : (propById(val) || { name: val }).name;
+      var asset = kind === "c" ? charById(val) : kind === "s" ? sceneRef(val) : propById(val);
+      var deletedName = ReplicaUI.deletedAssetName(kind, val);
+      var label = deletedName || (kind === "c" ? (asset ? charLabel(asset) : val) : asset ? asset.name : val);
       var cls = kind === "c" ? "pc-char" : kind === "s" ? "pc-scene" : "pc-prop";
+      if (deletedName || !asset) {
+        cls += " is-deleted";
+        label = label.replace(/-已删除$/, "") + "-已删除";
+      }
       return '<span class="pchip ' + cls + '" contenteditable="false">' + CHIP_ICONS[kind] + label + "</span>";
     }).replace(/\n/g, "<br>");
   }
@@ -400,7 +466,7 @@
     $("#sv-scenes").innerHTML = scenes.length > 1 ? scenes.map(function (k) {
       var n = (st.boards[k] || { marks: [] }).marks.length;
       return '<button type="button" class="sv-scene' + (k === key ? " on" : "") + '" data-scene="' + k + '">' +
-        '<img src="' + sceneInfo(k).image + '" alt=""><span><b>' + sceneInfo(k).name + "</b><small>" + (n ? n + " 人" : "未摆放") + "</small></span></button>";
+        '<img loading="lazy" decoding="async" src="' + sceneInfo(k).image + '" alt=""><span><b>' + sceneInfo(k).name + "</b><small>" + (n ? n + " 人" : "未摆放") + "</small></span></button>";
     }).join("") : '<span class="sv-scene-one">' + ICON_SCENE + info.name + "</span>";
 
     $("#sv-undo").disabled = !st.past.length;
@@ -457,7 +523,7 @@
         return '<div class="mk' + (m.id === state.selected ? " on" : "") + (hits[m.id] ? " is-overlap" : "") + (m.locked ? " is-locked" : "") + '" data-mark="' + m.id + '" style="left:' + m.x * 100 + "%;top:" + m.y * 100 + "%;--h:" + hpx.toFixed(1) + "px;--c:" + colorOf(m.asset) + '">' +
           '<span class="mk-name">' + (c ? c.name : m.asset) + (m.locked ? " · 锁" : "") + "</span>" +
           '<span class="mk-head"><span class="mk-dir" style="transform:rotate(' + (-m.dir) + 'deg)"><i data-rotate="' + m.id + '" title="拖动调整朝向"></i></span></span>' +
-          '<span class="mk-body">' + (outfit ? '<img class="mk-wear" src="' + outfit + '" alt="" draggable="false">' : "") + '</span><span class="mk-foot"></span></div>';
+          '<span class="mk-body">' + (outfit ? '<img decoding="async" class="mk-wear" src="' + outfit + '" alt="" draggable="false">' : "") + '</span><span class="mk-foot"></span></div>';
       }).join("");
     }
     $("#sv-layer").innerHTML = html;
@@ -622,8 +688,8 @@
       if (c.voiceOn === false) {
         return '<span class="shot-voice is-empty"><b>' + c.name + '</b><small>音色已关闭</small><a href="assets.html">去开启</a></span>';
       }
-      var src = c.voiceBind.source === "upload" ? "上传" : c.voiceBind.source === "generated" ? "生成" : "音色库";
-      return '<span class="shot-voice"><button type="button" data-preview-voice="' + c.id + '" aria-label="试听' + c.voiceBind.name + '">▶</button><b>' + c.name + "</b><strong>" + c.voiceBind.name + "</strong><i>" + src + "</i></span>";
+      var src = c.voiceBind.source === "upload" ? "上传" : c.voiceBind.source === "generated" ? "按描述生成" : "";
+      return '<span class="shot-voice"><button type="button" data-preview-voice="' + c.id + '" aria-label="试听' + c.voiceBind.name + '">▶</button><b>' + c.name + "</b><strong>" + c.voiceBind.name + "</strong>" + (src ? "<i>" + src + "</i>" : "") + "</span>";
     }).join("") + '<em>' + (missing.some(function (c) { return !c.voiceBind; }) ? "配音前需要先绑定，这里不能临时另选" : missing.length ? "音色已关闭，配音前先到资产库开启" : "旁白和对白默认用角色已绑定的音色") + "</em>";
   }
 
@@ -657,7 +723,7 @@
       var badges = '<span class="stage-badges">' +
         (video.kind === "draft" ? "" : '<span class="player-status"><i></i>' + (D.models.find(function (x) { return x.id === video.model; }) || m).name + " 正片 · " + video.resolution + "</span>") +
         '<span class="station-badge' + (video.station ? " on" : "") + '">' + (video.station ? "已应用站位" : "未应用站位") + "</span></span>";
-      $("#stage").innerHTML = '<img class="video-frame" src="' + frame + '" alt="片段视频">' +
+      $("#stage").innerHTML = '<img decoding="async" class="video-frame" src="' + frame + '" alt="片段视频">' +
         (video.kind === "draft"
           ? '<button class="upgrade-trigger" data-act="upgrade">✦ 生成 1080P 正片</button><span class="draft-watermark">Seedance 2.5 · 样片 480P</span>'
           : "") + badges;
@@ -673,7 +739,7 @@
     $("#tl-track").innerHTML = '<button type="button" class="ws-tl-add" data-act="add-shot" title="在开头添加分镜">+</button>' + D.shots.map(function (s) {
       var v = state.videos[s.id];
       var label = v ? (v.kind === "draft" ? "样片" : v.resolution) : "未生成";
-      var frame = v && sceneInfo((s.scenes || [])[0]) ? '<img src="' + sceneInfo(s.scenes[0]).image + '" alt="">' : '<span class="ws-tl-empty">◷</span>';
+      var frame = v && sceneInfo((s.scenes || [])[0]) ? '<img loading="lazy" decoding="async" src="' + sceneInfo(s.scenes[0]).image + '" alt="">' : '<span class="ws-tl-empty">◷</span>';
       return '<button class="tcard' + (s.id === state.shotId ? " on" : "") + '" data-shot="' + s.id + '"><span class="ws-tl-frame">' + frame + '</span><span class="num">' + s.no + '</span><span class="state' + (v && v.kind === "draft" ? " draft" : "") + '">' + label + '</span><span class="dur">' + mmss(s.duration) + "</span></button>" +
         '<button type="button" class="ws-tl-add" data-act="add-shot" title="添加分镜">+</button>';
     }).join("");
@@ -752,6 +818,7 @@
       }
       return;
     }
+    if (e.target.id === "asset-delete-modal") { closeAssetDelete(); return; }
     if (!t) return;
     if (t.dataset.stageOpen) { openStage(t.dataset.stageOpen, false); return; }
     if (t.dataset.stagePerson) { addStagePerson(t.dataset.stagePerson); return; }
@@ -803,6 +870,12 @@
       return;
     }
     var act = t.getAttribute("data-act");
+    if (act === "delete-asset") {
+      openAssetDelete({ id: t.dataset.assetId, kind: t.dataset.assetKind, name: t.dataset.assetName });
+      return;
+    }
+    if (act === "cancel-asset-delete") { closeAssetDelete(); return; }
+    if (act === "confirm-asset-delete") { confirmAssetDelete(); return; }
     if (act === "list") $("#list-drawer").classList.add("open");
     if (act === "close-list") $("#list-drawer").classList.remove("open");
     if (act === "export") $("#export-modal").classList.add("open");
@@ -1136,6 +1209,10 @@
   }
 
   document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && $("#asset-delete-modal").classList.contains("open")) {
+      closeAssetDelete();
+      return;
+    }
     var hotKey = e.target.closest && e.target.closest("[data-stage-open]");
     if (hotKey && (e.key === "Enter" || e.key === " ")) {
       e.preventDefault();
@@ -1186,7 +1263,14 @@
 
   $("#stage-modal").addEventListener("click", function (e) { if (e.target === this) closeStage(); });
 
-  window.addEventListener("resize", function () { if (state.view === "stage") renderStage(); });
+  var resizeFrame = 0;
+  window.addEventListener("resize", function () {
+    if (state.view !== "stage" || resizeFrame) return;
+    resizeFrame = requestAnimationFrame(function () {
+      resizeFrame = 0;
+      if (state.view === "stage") renderStage();
+    });
+  });
   $("#sv-image").addEventListener("load", function () { if (state.view === "stage") renderStage(); });
 
   $("#asset-search").oninput = function () { state.query = this.value; renderAssets(); };

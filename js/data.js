@@ -339,6 +339,18 @@ window.ReplicaData = {
   ]
 };
 
+(function restoreDeletedAssets() {
+  var state = { names: {}, removed: { char: [], scene: [], prop: [] } };
+  try {
+    var saved = JSON.parse(sessionStorage.getItem("replica-deleted-assets") || "null");
+    if (saved && saved.names && saved.removed) state = saved;
+  } catch (error) { /* 无可恢复记录 */ }
+  ReplicaData.deletedAssets = state.names || {};
+  ReplicaData.characters = ReplicaData.characters.filter(function (item) { return (state.removed.char || []).indexOf(item.id) === -1; });
+  ReplicaData.scenes = ReplicaData.scenes.filter(function (item) { return (state.removed.scene || []).indexOf(item.id) === -1; });
+  ReplicaData.props = ReplicaData.props.filter(function (item) { return (state.removed.prop || []).indexOf(item.id) === -1; });
+})();
+
 window.ReplicaUI = {
   toast: function (msg) {
     var wrap = document.querySelector(".toast-wrap");
@@ -359,6 +371,35 @@ window.ReplicaUI = {
   },
   credits: function () {
     return ReplicaData.credits.toLocaleString("en-US");
+  },
+  /* 合并到每帧最多执行一次，使用最后一次调用的参数 */
+  perFrame: function (fn) {
+    var frame = 0;
+    var args = null;
+    return function () {
+      args = arguments;
+      if (frame) return;
+      frame = requestAnimationFrame(function () {
+        frame = 0;
+        fn.apply(null, args);
+      });
+    };
+  },
+  rememberDeletedAsset: function (kind, id, name, collection) {
+    var state = { names: ReplicaData.deletedAssets || {}, removed: { char: [], scene: [], prop: [] } };
+    try {
+      var saved = JSON.parse(sessionStorage.getItem("replica-deleted-assets") || "null");
+      if (saved && saved.names && saved.removed) state = saved;
+    } catch (error) { /* 使用当前记录 */ }
+    state.names[kind + ":" + id] = String(name || id).replace(/-已删除$/, "");
+    if (collection && state.removed[collection] && state.removed[collection].indexOf(id) === -1) {
+      state.removed[collection].push(id);
+    }
+    ReplicaData.deletedAssets = state.names;
+    try { sessionStorage.setItem("replica-deleted-assets", JSON.stringify(state)); } catch (error) { /* 会话存储不可用 */ }
+  },
+  deletedAssetName: function (kind, id) {
+    return (ReplicaData.deletedAssets || {})[kind + ":" + id] || "";
   }
 };
 

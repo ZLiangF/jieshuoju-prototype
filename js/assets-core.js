@@ -28,15 +28,15 @@ var imageAnalysisSeq = 0;
 var lookImageMode = "upload";
 var lookGenerationSeq = 0;
 var voiceBindChar = null;
-var voiceBindTab = "library";
+var voiceBindTab = "generate";
 var voiceBindPick = null;
 var voiceHeard = {};
 var voicePlayingId = "";
 var voiceDialogAuto = false;
 var voicePromptSkipped = {};
-var voiceFilters = { gender: "", age: "", style: "" };
-var voiceLibraryReady = false;
 var voiceGenerating = false;
+var voiceGenerationSeq = 0;
+var voiceReferenceNames = [];
 var pendingReferenceList = [];
 var REFERENCE_LIMIT = 6;
 var referenceImageValue = "";
@@ -59,27 +59,11 @@ function cleanText(value, limit) {
 }
 
 function voiceSourceLabel(source) {
-  return source === "upload" ? "上传" : source === "generated" ? "生成" : "音色库";
+  return source === "upload" ? "上传" : source === "generated" ? "按描述生成" : "";
 }
 
 function voiceById(id) {
   return (D.voices || []).filter(function (voice) { return voice.id === id; })[0] || null;
-}
-
-function recommendVoices(char) {
-  var profile = (char && char.voiceProfile) || {};
-  var list = (D.voices || []).filter(function (voice) {
-    if (profile.gender && voice.gender !== profile.gender) return false;
-    if (profile.age && voice.age !== profile.age) return false;
-    return true;
-  });
-  if (!list.length) list = (D.voices || []).slice();
-  if (profile.style) {
-    list = list.slice().sort(function (a, b) {
-      return (b.style === profile.style) - (a.style === profile.style);
-    });
-  }
-  return list;
 }
 
 function voiceDraftText(char) {
@@ -109,12 +93,14 @@ function playVoiceSample(voice, button) {
     ReplicaUI.toast("当前环境不能出声，已记为试听过");
     return;
   }
-  var utterance = new SpeechSynthesisUtterance(D.voiceSample || "这是一段统一试听。");
+  var utterance = new SpeechSynthesisUtterance(voice.sample || D.voiceSample || "这是一段统一试听。");
   utterance.lang = "zh-CN";
   utterance.pitch = voice.pitch || 1;
   utterance.rate = voice.rate || 1;
   utterance.onend = function () {
-    if (voicePlayingId === voice.id) stopVoicePreview();
+    if (voicePlayingId !== voice.id) return;
+    stopVoicePreview();
+    if (typeof renderVoiceList === "function" && voiceBindChar) renderVoiceList();
   };
   window.speechSynthesis.speak(utterance);
 }

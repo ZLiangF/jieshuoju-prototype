@@ -176,7 +176,7 @@ function mindNodeHtml(node, looks, primary) {
   var body = node.parent
     ? '<span class="mind-name">' + name + "</span>" + meta
     : '<span class="mind-root-image">' + (state === "ready"
-      ? '<img src="' + look.image + '" alt="' + name + '" draggable="false">'
+      ? '<img loading="lazy" decoding="async" src="' + look.image + '" alt="' + name + '" draggable="false">'
       : (editorKind === "char" ? EMPTY_PERSON_ICON : EMPTY_IMAGE_ICON)) +
       '<small class="mind-root-tag">主' + assetWord() + "</small>" + mindVoiceHtml() + "</span>" +
       '<span class="mind-name">' + name + "</span>" + meta;
@@ -408,6 +408,7 @@ lookLibraryEl.addEventListener("pointerdown", function (e) {
   mindSuppressClick = false;
 });
 
+var applyMindViewPerFrame = ReplicaUI.perFrame(function () { applyMindView(); });
 window.addEventListener("pointermove", function (e) {
   if (!mindDrag) return;
   var dx = e.clientX - mindDrag.startX;
@@ -425,7 +426,7 @@ window.addEventListener("pointermove", function (e) {
   var st = mindState();
   st.view.x = mindDrag.baseX + dx;
   st.view.y = mindDrag.baseY + dy;
-  applyMindView();
+  applyMindViewPerFrame();
 });
 
 window.addEventListener("pointerup", function () {

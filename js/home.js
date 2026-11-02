@@ -220,7 +220,7 @@ function runAutoAssets(done) {
     thumb.innerHTML = '<div class="spin"></div><span>图片生成中</span>';
     card.scrollIntoView({ block: "nearest" });
     autoLater(function () {
-      thumb.innerHTML = '<img src="' + items[i].image + '" alt="">';
+      thumb.innerHTML = '<img loading="lazy" decoding="async" src="' + items[i].image + '" alt="">';
       card.classList.add("done");
       next(i + 1);
     }, 450);
@@ -232,7 +232,7 @@ function runAutoVideos(done) {
   var covers = ["media/scenes/cemetery.png", "media/scenes/office.png", "media/scenes/rain.png"];
   var eps = ReplicaData.episodes;
   $id("auto-body").innerHTML = '<div class="auto-eps">' + eps.map(function (ep, i) {
-    return '<div class="auto-ep" data-i="' + i + '"><div class="auto-ep-cover"><img src="' + covers[i] + '" alt=""></div>' +
+    return '<div class="auto-ep" data-i="' + i + '"><div class="auto-ep-cover"><img loading="lazy" decoding="async" src="' + covers[i] + '" alt=""></div>' +
       '<div class="auto-ep-main"><b>' + ep.title + '</b><div class="auto-bar"><i></i></div>' +
       '<small class="auto-ep-state">排队中 · ' + shotCounts[i] + " 个片段</small></div></div>";
   }).join("") + "</div>";

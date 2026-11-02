@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>资产库 · 离婚后（15集）</title>
-  <link rel="stylesheet" href="css/common.css?v=202611021407" />
-  <link rel="stylesheet" href="css/asset-library.css?v=202611021407" />
-  <link rel="stylesheet" href="css/asset-detail.css?v=202611021407" />
+  <link rel="stylesheet" href="css/common.css?v=202611021805" />
+  <link rel="stylesheet" href="css/asset-library.css?v=202611021805" />
+  <link rel="stylesheet" href="css/asset-detail.css?v=202611021805" />
 </head>
 <body class="asset-page flow-page">
 <div class="app">
@@ -337,64 +337,61 @@
     <div class="voice-current">
       <div class="voice-current-look" id="voice-current-look"></div>
       <div class="voice-current-copy">
-        <strong id="voice-current-title">为一个角色绑定默认音色</strong>
-        <p id="voice-current-desc">先试听再确认。跳过不会写成已绑定，之后旁白和对白也不会临时选一个音色。</p>
+        <strong id="voice-current-title">尚未绑定音色</strong>
+        <p id="voice-current-desc">生成或上传一段音频，试听满意后再绑定到角色。</p>
       </div>
       <button type="button" class="voice-switch" id="voice-switch" role="switch" aria-checked="false" aria-label="启用角色音色"><i></i><span id="voice-switch-label">未开启</span></button>
     </div>
-    <div class="voice-tabs" role="tablist" aria-label="绑定方式">
-      <button type="button" class="on" data-voice-tab="library" role="tab" aria-selected="true">音色库</button>
-      <button type="button" data-voice-tab="upload" role="tab" aria-selected="false">上传</button>
-      <button type="button" data-voice-tab="generate" role="tab" aria-selected="false">按描述生成</button>
-    </div>
-    <div class="voice-pane" data-voice-pane="library">
-      <div class="voice-filters" id="voice-filters">
-        <div class="voice-filter" data-voice-filter="gender">
-          <span>性别</span>
-          <button type="button" class="on" data-voice-filter-value="">全部</button>
-          <button type="button" data-voice-filter-value="男">男</button>
-          <button type="button" data-voice-filter-value="女">女</button>
+    <div class="voice-body">
+      <section class="voice-create" aria-label="新建音色">
+        <div class="voice-seg" role="tablist" aria-label="新建方式">
+          <button type="button" class="on" data-voice-tab="generate" role="tab" aria-selected="true">AI 生成</button>
+          <button type="button" data-voice-tab="upload" role="tab" aria-selected="false">上传音频</button>
         </div>
-        <div class="voice-filter" data-voice-filter="age">
-          <span>年龄</span>
-          <button type="button" class="on" data-voice-filter-value="">全部</button>
-          <button type="button" data-voice-filter-value="青年">青年</button>
-          <button type="button" data-voice-filter-value="中年">中年</button>
-          <button type="button" data-voice-filter-value="年长">年长</button>
+        <div class="voice-pane" data-voice-pane="generate">
+          <p class="voice-generate-context">已参考角色形象与描述</p>
+          <label class="voice-custom">
+            <span>声音描述<b id="voice-desc-count">0 / 400</b></span>
+            <textarea class="look-area" id="voice-desc" maxlength="400" placeholder="年龄、音色、语速、情绪，例如：青年男性，声音低沉，语速偏慢"></textarea>
+          </label>
+          <label class="voice-custom voice-sample-field">
+            <span>试听文案</span>
+            <textarea class="look-area" id="voice-sample-text" maxlength="120"></textarea>
+          </label>
+          <div class="voice-reference-audio">
+            <span>参考音频<em>可选，最多 3 条</em></span>
+            <div class="voice-ref-chips" id="voice-ref-chips"></div>
+            <button class="voice-ref-add" id="voice-ref-btn" type="button">＋ 添加参考音频</button>
+            <input id="voice-ref-input" type="file" accept="audio/*" multiple hidden />
+          </div>
+          <p class="voice-upload-msg is-error" id="voice-gen-error" hidden></p>
+          <button class="btn purple voice-create-btn" id="voice-gen" type="button">生成音频</button>
         </div>
-        <div class="voice-filter" data-voice-filter="style">
-          <span>风格</span>
-          <button type="button" class="on" data-voice-filter-value="">全部</button>
-          <button type="button" data-voice-filter-value="沉稳">沉稳</button>
-          <button type="button" data-voice-filter-value="清冷">清冷</button>
-          <button type="button" data-voice-filter-value="明亮">明亮</button>
-          <button type="button" data-voice-filter-value="尖细">尖细</button>
-          <button type="button" data-voice-filter-value="张扬">张扬</button>
+        <div class="voice-pane" data-voice-pane="upload" hidden>
+          <button type="button" class="voice-drop" id="voice-upload-btn">
+            <strong>点击或拖入音频</strong>
+            <small>MP3 / WAV / M4A，10–60 秒，不超过 20MB</small>
+          </button>
+          <input id="voice-upload-input" type="file" accept="audio/*,.mp3,.wav,.m4a" hidden />
+          <div class="voice-upload-state" id="voice-upload-state" hidden></div>
+          <ul class="voice-upload-tips">
+            <li>单人说话，无背景音乐和明显噪声</li>
+            <li>请确保拥有该声音的使用授权</li>
+          </ul>
         </div>
-      </div>
-      <div class="voice-library-grid" id="voice-library-grid"></div>
-      <p class="voice-empty" id="voice-library-empty" hidden>没有符合筛选的音色</p>
-    </div>
-    <div class="voice-pane" data-voice-pane="upload" hidden>
-      <p class="voice-pane-lead">上传一段干净人声。过短、过吵或检测不到人声时，不能选为音色。</p>
-      <button class="btn" id="voice-upload-btn" type="button">选择音频</button>
-      <input id="voice-upload-input" type="file" accept="audio/*" hidden />
-      <p class="voice-upload-msg" id="voice-upload-msg"></p>
-      <div class="voice-library-grid" id="voice-upload-result"></div>
-    </div>
-    <div class="voice-pane" data-voice-pane="generate" hidden>
-      <label class="voice-custom">
-        <span>声音描述<em>只用来出候选，确认的是能播放的音色</em></span>
-        <textarea class="look-area" id="voice-desc" maxlength="120" placeholder="例如：青年男性，语速偏慢，情绪克制"></textarea>
-      </label>
-      <button class="btn" id="voice-gen" type="button">生成 3 条候选</button>
-      <p class="voice-upload-msg is-error" id="voice-gen-error" hidden></p>
-      <div class="voice-library-grid" id="voice-gen-list"></div>
+      </section>
+      <section class="voice-list-wrap" aria-label="音色列表">
+        <div class="voice-list-head">
+          <strong>音色列表</strong>
+          <span id="voice-list-count"></span>
+        </div>
+        <div class="voice-list" id="voice-list" role="radiogroup" aria-label="选择音色"></div>
+      </section>
     </div>
     <div class="voice-sheet-foot">
-      <span class="voice-foot-note" id="voice-foot-note">同一时间只播一条</span>
+      <span class="voice-foot-note" id="voice-foot-note"></span>
       <div>
-        <button class="btn" id="voice-cancel" type="button">跳过，稍后再说</button>
+        <button class="btn" id="voice-cancel" type="button">取消</button>
         <button class="btn primary" id="voice-save" type="button" disabled>使用此音色</button>
       </div>
     </div>
@@ -620,15 +617,15 @@
   </div>
 </div>
 
-<script src="js/data.js?v=202611021407"></script>
-<script src="js/assets-core.js?v=202611021407"></script>
-<script src="js/assets-library.js?v=202611021407"></script>
-<script src="js/assets-dialogs.js?v=202611021407"></script>
-<script src="js/assets-detail.js?v=202611021407"></script>
-<script src="js/assets-mindmap.js?v=202611021407"></script>
-<script src="js/assets-preview.js?v=202611021407"></script>
-<script src="js/assets-composer.js?v=202611021407"></script>
-<script src="js/image-editor.js?v=202611021407"></script>
-<script src="js/assets-boot.js?v=202611021407"></script>
+<script src="js/data.js?v=202611021805"></script>
+<script src="js/assets-core.js?v=202611021805"></script>
+<script src="js/assets-library.js?v=202611021805"></script>
+<script src="js/assets-dialogs.js?v=202611021805"></script>
+<script src="js/assets-detail.js?v=202611021805"></script>
+<script src="js/assets-mindmap.js?v=202611021805"></script>
+<script src="js/assets-preview.js?v=202611021805"></script>
+<script src="js/assets-composer.js?v=202611021805"></script>
+<script src="js/image-editor.js?v=202611021805"></script>
+<script src="js/assets-boot.js?v=202611021805"></script>
 </body>
 </html>

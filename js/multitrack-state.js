@@ -37,7 +37,7 @@
 
   function sceneOf(shot) {
     var sceneId = String((shot.scenes || [])[0] || "").split("/")[0];
-    return D.scenes.find(function (scene) { return scene.id === sceneId; }) || D.scenes[0];
+    return D.scenes.find(function (scene) { return scene.id === sceneId; }) || D.scenes[0] || { image: "" };
   }
   function coverOf(shot) {
     var scene = sceneOf(shot);
@@ -47,6 +47,11 @@
       if (child && child.image) return child.image;
     }
     return scene.image;
+  }
+
+  function imageOf(list, id) {
+    var item = list.find(function (entry) { return entry.id === id; });
+    return item ? item.image : "";
   }
 
   MT.makeClip = function (source) {
@@ -102,10 +107,10 @@
     { id: "a5", group: "01 集片段分组", title: "第1集｜片段03｜分镜01｜智能预演", duration: "0:05", shot: 3 },
     { id: "a6", group: "01 集片段分组", title: "第1集｜片段03｜分镜02｜智能预演", duration: "0:05", shot: 4 },
     { id: "a7", group: "01 集片段分组", title: "第1集｜片段04｜分镜01｜智能预演", duration: "0:07", shot: 5 },
-    { id: "c1", group: "角色与场景", title: "萧铭 · 外卖服基础形象", duration: "角色", image: D.characters[0].image },
-    { id: "c2", group: "角色与场景", title: "贺芷 · 职业装基础形象", duration: "角色", image: D.characters[1].image },
-    { id: "s1", group: "角色与场景", title: "墓地 · 阴天全景", duration: "场景", image: D.scenes[0].image }
-  ].concat(D.props.filter(function (prop) { return prop.eps.indexOf(1) > -1 && prop.status === "ready"; }).map(function (prop) {
+    { id: "c1", group: "角色与场景", title: "萧铭 · 外卖服基础形象", duration: "角色", image: imageOf(D.characters, "xiaoming") },
+    { id: "c2", group: "角色与场景", title: "贺芷 · 职业装基础形象", duration: "角色", image: imageOf(D.characters, "hezhi") },
+    { id: "s1", group: "角色与场景", title: "墓地 · 阴天全景", duration: "场景", image: imageOf(D.scenes, "cemetery") }
+  ].filter(function (asset) { return typeof asset.shot === "number" || asset.image; }).concat(D.props.filter(function (prop) { return prop.eps.indexOf(1) > -1 && prop.status === "ready"; }).map(function (prop) {
     return { id: "p-" + prop.id, group: "道具", title: prop.name, duration: "道具", image: prop.image };
   })).map(function (asset) {
     if (typeof asset.shot === "number") {
