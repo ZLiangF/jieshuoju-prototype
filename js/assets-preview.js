@@ -28,8 +28,17 @@ function failedLookBoardHtml() {
     '<strong>生成失败</strong><span>可以调整提示词或参考图后重新生成</span></div>';
 }
 
-function previewImageHtml(src, alt) {
+function hdButtonHtml(look) {
+  var level = look && look.upscale || "";
+  var title = level === "4K" ? "当前已是 4K" : "超清到 4K，消耗 4 积分";
+  return '<button type="button" class="img-hd-hover" data-upscale="1" aria-label="超清" title="' + title + '"' +
+    (level === "4K" || upscaleBusy ? " disabled" : "") + ">HD</button>";
+}
+
+function previewImageHtml(src, alt, badge) {
   return '<img class="five-view-sheet" src="' + src + '" alt="' + alt + '">' +
+    (badge ? '<span class="upscale-badge">' + badge + "</span>" : "") +
+    hdButtonHtml(editingLook) +
     '<button type="button" class="img-edit-hover" data-edit-image="1">编辑</button>';
 }
 
@@ -66,7 +75,7 @@ function renderCurrentLookOutput(look) {
   previewRailSrc = hasSheet ? sheetForLook(look) : "";
   historySelectedId = "";
   preview.innerHTML = hasSheet
-    ? previewImageHtml(previewRailSrc, currentChar.name + "五视图")
+    ? previewImageHtml(previewRailSrc, currentChar.name + "五视图", look && look.upscale ? "超清 " + look.upscale : "")
     : state === "generating" && look
     ? generationLookBoardHtml(look)
     : state === "failed"
@@ -83,6 +92,7 @@ function renderCurrentLookOutput(look) {
   generate.textContent = state === "generating" ? "" : "↑";
   if (state === "generating") generate.setAttribute("aria-label", "生成中");
   else if (typeof paintGenControls === "function") paintGenControls();
+  paintUpscaleButton(look, state);
 }
 
 function escapeHtml(text) {
@@ -135,7 +145,7 @@ function recordLookHistory(item, look) {
 
 function previewHistoryItems(look) {
   return ensureLookHistory(look).slice().reverse().map(function (item) {
-    return { id: item.id, src: item.src, label: "V" + item.version, prompt: item.prompt, time: item.time };
+    return { id: item.id, src: item.src, label: "V" + item.version + (item.tag ? " · " + item.tag : ""), prompt: item.prompt, time: item.time, tag: item.tag || "" };
   });
 }
 
@@ -197,7 +207,7 @@ function showHistoryImage(item) {
   historySelectedId = item.id;
   previewRailSrc = item.src;
   var preview = document.getElementById("f-preview");
-  preview.innerHTML = previewImageHtml(item.src, "V" + item.version);
+  preview.innerHTML = previewImageHtml(item.src, "V" + item.version, item.tag || "");
   preview.closest(".look-current-output").classList.remove("is-empty");
   renderPreviewRail(editingLook, true);
 }
@@ -573,6 +583,105 @@ document.getElementById("look-image-input").onchange = function () {
   reader.readAsDataURL(file);
 };
 
+var UPSCALE_COST = 4;
+var upscaleBusy = false;
+var upscaleSeq = 0;
+
+function paintUpscaleButton(look, state) {
+  var button = document.querySelector("#f-preview .img-hd-hover");
+  if (!button) return;
+  var done = look && state === "ready" && look.upscale === "4K";
+  button.disabled = upscaleBusy || done;
+  button.title = done ? "当前已是 4K" : "超清到 4K，消耗 4 积分";
+}
+
+function paintUpscaleNote() {
+  var enough = D.credits >= UPSCALE_COST;
+  var note = document.getElementById("upscale-note");
+  note.textContent = enough
+    ? "完成后作为新版本，原图留在历史记录。"
+    : "积分不足：当前余额 ✦ " + D.credits.toLocaleString("en-US") + "，本次需要 ✦ " + UPSCALE_COST + "。";
+  note.classList.toggle("is-error", !enough);
+  document.getElementById("upscale-ok").disabled = !enough;
+}
+
+function openUpscaleDialog() {
+  if (!editingLook || upscaleBusy) return;
+  if (!previewRailSrc) {
+    ReplicaUI.toast("当前没有可以超清的图片");
+    return;
+  }
+  if (editingLook.upscale === "4K") {
+    ReplicaUI.toast("这张图已经是 4K");
+    return;
+  }
+  paintUpscaleNote();
+  document.getElementById("upscale-dialog").classList.add("open");
+}
+
+function closeUpscaleDialog() {
+  document.getElementById("upscale-dialog").classList.remove("open");
+}
+
+function paintUpscaleOverlay(progress, stage) {
+  var preview = document.getElementById("f-preview");
+  var live = preview.querySelector(".upscale-live");
+  if (!live) {
+    live = document.createElement("div");
+    live.className = "upscale-live";
+    preview.appendChild(live);
+  }
+  live.innerHTML = '<span class="look-generation-spinner" aria-hidden="true"></span><strong>' + stage + '</strong>' +
+    '<div class="look-generation-track"><i style="width:' + progress + '%"></i></div>';
+}
+
+function pushUpscaleHistory(look, level) {
+  var list = ensureLookHistory(look);
+  var src = previewRailSrc || sheetForLook(look);
+  if (!src) return;
+  list.push({
+    id: look.id + "-hd-" + Date.now(),
+    version: list.length + 1,
+    time: historyStamp(),
+    prompt: look.prompt || "",
+    src: src,
+    tag: "超清 " + level
+  });
+}
+
+function startUpscale() {
+  var look = editingLook;
+  var item = currentChar;
+  var level = "4K";
+  var cost = UPSCALE_COST;
+  if (!look || upscaleBusy || D.credits < cost) return;
+  D.credits -= cost;
+  document.getElementById("credits").textContent = ReplicaUI.credits();
+  closeUpscaleDialog();
+  upscaleBusy = true;
+  paintUpscaleButton(look, "ready");
+  paintUpscaleOverlay(18, "正在提升到 " + level);
+  ReplicaUI.toast("已扣除 " + cost + " 积分，正在生成 " + level);
+  var token = ++upscaleSeq;
+  setTimeout(function () {
+    if (token === upscaleSeq && editingLook === look) paintUpscaleOverlay(68, "正在补充细节");
+  }, 700);
+  setTimeout(function () {
+    if (token !== upscaleSeq) return;
+    look.upscale = level;
+    pushUpscaleHistory(look, level);
+    upscaleBusy = false;
+    if (currentChar === item && editingLook === look) renderCurrentLookOutput(look);
+    if (typeof render === "function") render();
+    ReplicaUI.toast("超清完成 · " + level);
+  }, 1600);
+}
+
+document.getElementById("upscale-cancel").onclick = closeUpscaleDialog;
+document.getElementById("upscale-dialog").onclick = function (e) {
+  if (e.target.id === "upscale-dialog") closeUpscaleDialog();
+};
+document.getElementById("upscale-ok").onclick = startUpscale;
 document.getElementById("local-upload").onclick = function () { openLookImagePicker("upload"); };
 document.getElementById("reverse-image").onclick = function () { openLookImagePicker("reverse"); };
 document.getElementById("replace-view").onclick = function () { openLookImagePicker("upload"); };
@@ -622,6 +731,11 @@ document.getElementById("f-preview").onclick = function (e) {
     if (button.dataset.emptyUpload === "local") openLookImagePicker("upload");
     else if (button.dataset.emptyUpload === "reverse") openLookImagePicker("reverse");
     else ReplicaUI.toast("演示：从资产库选择形象图");
+    return;
+  }
+  var upscale = e.target.closest("[data-upscale]");
+  if (upscale) {
+    openUpscaleDialog();
     return;
   }
   var edit = e.target.closest("[data-edit-image]");

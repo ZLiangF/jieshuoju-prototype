@@ -176,7 +176,8 @@ function lookCardHtml(look, index, flat) {
       ? '<img src="' + look.image + '" alt="' + shortName + '">'
       : state === "generating"
       ? '<span class="look-card-empty is-generating" aria-hidden="true"><i></i><small>' + (look.generationProgress || 8) + "%</small></span>"
-      : '<span class="look-card-empty" aria-hidden="true">' + (editorKind === "char" ? EMPTY_PERSON_ICON : EMPTY_IMAGE_ICON) + "</span>") + check +
+      : '<span class="look-card-empty" aria-hidden="true">' + (editorKind === "char" ? EMPTY_PERSON_ICON : EMPTY_IMAGE_ICON) + "</span>") +
+    (state === "ready" && look.upscale ? '<span class="look-hd">超清 ' + look.upscale + "</span>" : "") + check +
     (state === "ready" ? "" : '<span class="look-state-tag ' + state + '">' + lookStateIcon(state) + lookStateText(state) + "</span>") +
     (editorKind === "char" && lookMultiOn ? "" : '<button type="button" class="look-card-del" data-del-look="' + look.id + '" title="删除' + assetWord() + '" aria-label="删除' + shortName + '">' + TRASH_ICON + "</button>") +
     addChild +

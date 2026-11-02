@@ -913,6 +913,23 @@
 .asset-page .char-grid.is-square .asset-prop .asset-card-media {
   aspect-ratio: 1 / 1;
 }
+.asset-hd {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 4;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  color: #f4eeff;
+  background: rgba(91, 55, 145, .9);
+  border: 1px solid rgba(205, 176, 255, .4);
+  font-size: 11px;
+  font-weight: 620;
+  pointer-events: none;
+}
 .asset-flag {
   position: absolute;
   left: 50%;

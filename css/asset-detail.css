@@ -554,6 +554,48 @@
 .img-edit-hover:hover {
   background: #111;
 }
+.img-hd-hover {
+  position: absolute;
+  top: 14px;
+  right: 52px;
+  z-index: 3;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: rgba(20,18,26,.82);
+  border: 1px solid rgba(255,255,255,.14);
+  box-shadow: 0 4px 14px rgba(0,0,0,.24);
+  backdrop-filter: blur(8px);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  opacity: 0;
+  pointer-events: none;
+  cursor: pointer;
+  transition: opacity .15s ease, background .15s ease, border-color .15s ease;
+}
+.look-current-output.is-rail-open .img-hd-hover {
+  right: 12px;
+}
+.look-current-output .stage:hover .img-hd-hover,
+.img-hd-hover:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.img-hd-hover:hover {
+  background: rgba(91,55,145,.92);
+  border-color: rgba(205,176,255,.5);
+}
+.look-current-output .stage:hover .img-hd-hover:disabled,
+.img-hd-hover:disabled:focus-visible {
+  opacity: .4;
+  pointer-events: none;
+  cursor: default;
+}
 .look-current-output .stage > img.five-view-sheet {
   width: calc(100% - 18px);
   height: calc(100% - 14px);
@@ -1602,6 +1644,68 @@ body.asset-editor-page-open {
   margin-left: 3px;
   color: #d7baff;
   font-size: 12px;
+}
+.asset-page #look-dialog .look-current-output .output-actions .btn:disabled {
+  opacity: .55;
+  cursor: default;
+}
+.upscale-badge,
+.look-hd {
+  position: absolute;
+  z-index: 3;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  color: #f4eeff;
+  background: rgba(91, 55, 145, .9);
+  border: 1px solid rgba(205, 176, 255, .4);
+  font-size: 11px;
+  font-weight: 620;
+  letter-spacing: .02em;
+  pointer-events: none;
+}
+.upscale-badge {
+  top: 12px;
+  left: 12px;
+}
+.look-hd {
+  top: 7px;
+  left: 7px;
+  height: 20px;
+  font-size: 10px;
+}
+.upscale-live {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: rgba(8, 8, 12, .46);
+}
+.upscale-live strong {
+  margin-top: 12px;
+  font-size: 13px;
+  font-weight: 620;
+}
+.upscale-live .look-generation-track {
+  width: min(220px, 70%);
+}
+#upscale-dialog {
+  z-index: 80;
+}
+.upscale-modal {
+  width: min(380px, calc(100vw - 32px));
+}
+.upscale-modal .asset-generate-summary {
+  margin-top: 16px;
+}
+.upscale-modal .asset-generate-note {
+  margin-top: 14px;
 }
 .image-analyze-badge {
   position: absolute;

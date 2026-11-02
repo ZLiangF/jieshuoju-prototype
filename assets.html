@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>资产库 · 离婚后（15集）</title>
-  <link rel="stylesheet" href="css/common.css?v=202610271533" />
-  <link rel="stylesheet" href="css/asset-library.css?v=202610271533" />
-  <link rel="stylesheet" href="css/asset-detail.css?v=202610271533" />
+  <link rel="stylesheet" href="css/common.css?v=202611021407" />
+  <link rel="stylesheet" href="css/asset-library.css?v=202611021407" />
+  <link rel="stylesheet" href="css/asset-detail.css?v=202611021407" />
 </head>
 <body class="asset-page flow-page">
 <div class="app">
@@ -504,6 +504,27 @@
   </div>
 </div>
 
+<div class="modal-mask" id="upscale-dialog">
+  <div class="modal asset-generate-modal upscale-modal" role="dialog" aria-modal="true" aria-labelledby="upscale-title">
+    <div class="asset-generate-head">
+      <span class="asset-generate-icon" aria-hidden="true">✦</span>
+      <div>
+        <h3 id="upscale-title">超清当前图片</h3>
+        <p>提升到 4K，不改人物、服装和构图</p>
+      </div>
+    </div>
+    <div class="asset-generate-summary">
+      <div><span>清晰度</span><strong>4K</strong></div>
+      <div><span>消耗积分</span><strong class="asset-generate-cost">✦ 4</strong></div>
+    </div>
+    <p class="asset-generate-note" id="upscale-note">完成后作为新版本，原图留在历史记录。</p>
+    <div class="asset-generate-acts">
+      <button type="button" class="btn" id="upscale-cancel">取消</button>
+      <button type="button" class="btn purple" id="upscale-ok">开始超清</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-mask" id="asset-generate-dialog">
   <div class="modal asset-generate-modal" role="dialog" aria-modal="true" aria-labelledby="asset-generate-title" aria-describedby="asset-generate-note">
     <div class="asset-generate-head">
@@ -599,15 +620,15 @@
   </div>
 </div>
 
-<script src="js/data.js?v=202610271533"></script>
-<script src="js/assets-core.js?v=202610271533"></script>
-<script src="js/assets-library.js?v=202610271533"></script>
-<script src="js/assets-dialogs.js?v=202610271533"></script>
-<script src="js/assets-detail.js?v=202610271533"></script>
-<script src="js/assets-mindmap.js?v=202610271533"></script>
-<script src="js/assets-preview.js?v=202610271533"></script>
-<script src="js/assets-composer.js?v=202610271533"></script>
-<script src="js/image-editor.js?v=202610271533"></script>
-<script src="js/assets-boot.js?v=202610271533"></script>
+<script src="js/data.js?v=202611021407"></script>
+<script src="js/assets-core.js?v=202611021407"></script>
+<script src="js/assets-library.js?v=202611021407"></script>
+<script src="js/assets-dialogs.js?v=202611021407"></script>
+<script src="js/assets-detail.js?v=202611021407"></script>
+<script src="js/assets-mindmap.js?v=202611021407"></script>
+<script src="js/assets-preview.js?v=202611021407"></script>
+<script src="js/assets-composer.js?v=202611021407"></script>
+<script src="js/image-editor.js?v=202611021407"></script>
+<script src="js/assets-boot.js?v=202611021407"></script>
 </body>
 </html>

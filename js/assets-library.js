@@ -127,7 +127,7 @@ function subCardHtml(row, entry) {
     : '<button type="button" class="asset-flag is-action ' + state + '" data-gen-look="' + key + "|" + look.id + '" title="生成这个子角色">' + lookStateIcon(state) + (state === "failed" ? "重新生成" : "生成") + "</button>";
   var chip = episodeChip(look.eps);
   return '<article class="char-card asset-card asset-char asset-sub is-' + state + '" data-kind="char" data-i="' + row.i + '" data-key="' + key + '" data-look="' + look.id + '"' + (multiOn ? ' title="多选按角色整体选择"' : "") + ">" +
-    '<div class="asset-card-media is-' + state + (state === "ready" ? " is-sheet" : state === "pending" ? " is-empty" : "") + '">' + visual + flag + "</div>" +
+    '<div class="asset-card-media is-' + state + (state === "ready" ? " is-sheet" : state === "pending" ? " is-empty" : "") + '">' + visual + hdBadge(look.upscale) + flag + "</div>" +
     '<div class="asset-card-info"><div class="asset-card-title"><h3 title="' + look.name + '"><span class="asset-name">' + shortName + '</span><span class="tag asset-sub-tag">子角色</span></h3>' +
     '<span class="looks" title="' + chip.title + '">' + chip.html.replace(/<[^>]+>/g, "") + "</span></div>" +
     '<p class="asset-sub-owner">' + SUB_ICON + "隶属 " + item.name + "</p>" +
@@ -192,11 +192,23 @@ function cardHtml(row) {
     : '<span class="asset-flag ' + flagState + '">' + flagIcon + (multiOn && actionable ? (state === "partial" ? pending + " 个待生成" : "待生成") : flagText) + "</span>";
   var voiceBtn = kind === "char" && charVoiceReady(a) ? cardVoiceHtml(a) : "";
   return '<article class="char-card asset-card asset-' + kind + " is-" + state + (picked ? " is-picked" : "") + '" data-kind="' + kind + '" data-i="' + row.i + '" data-key="' + key + '">' +
-    '<div class="' + mediaClass + '">' + visual + check + voiceBtn + delBtn + flag + "</div>" +
+    '<div class="' + mediaClass + '">' + visual + hdBadge(cardUpscale(a)) + check + voiceBtn + delBtn + flag + "</div>" +
     '<div class="asset-card-info"><div class="asset-card-title"><h3><span class="asset-name" title="' + a.name + '">' + a.name + "</span>" +
     roleTagsHtml(a, kind) + "</h3>" + (kind === "char" || looks > 1 ? lookMeta : "") + "</div>" +
     (a.desc ? "<p>" + a.desc + "</p>" : '<p class="asset-empty-desc">点击卡片直接编辑资产</p>') +
     "</div></article>";
+}
+
+function cardUpscale(item) {
+  var looks = item.looksList || [];
+  var primary = looks.filter(function (look) {
+    return item.look && look.name.indexOf(item.look) !== -1;
+  })[0] || looks[0];
+  return primary && primary.upscale ? primary.upscale : "";
+}
+
+function hdBadge(level) {
+  return level ? '<span class="asset-hd">超清 ' + level + "</span>" : "";
 }
 
 function cardVoiceHtml(char) {
