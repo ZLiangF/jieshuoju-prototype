@@ -67,6 +67,7 @@
     var first = entry.clip;
     var second = clone(first);
     second.id = MT.nextId("clip");
+    second.gap = 0;
     second.srcIn = MT.round1(first.srcIn + offset);
     second.duration = MT.round1(first.duration - offset);
     first.duration = MT.round1(offset);
@@ -121,6 +122,7 @@
     var index = clips.indexOf(clip);
     var next = clips[index + 1];
     if (!next) return MT.toast("后面没有片段可以合并");
+    if ((next.gap || 0) > 0.05) return MT.toast("两段之间有 " + MT.secText(next.gap) + " 空隙，先把后一段拖过来贴紧再合并");
     if (busyReason(clip) || busyReason(next)) return MT.toast(busyReason(clip) || busyReason(next));
     MT.saveHistory("合并片段");
     MT.audioOfClip(next.id).forEach(function (item) {
@@ -190,9 +192,20 @@
       var entry = MT.entryOf(clip);
       MT.saveHistory("删除片段");
       delete MT.doc.transitions[clip.id];
-      MT.doc.clips.splice(MT.doc.clips.indexOf(clip), 1);
+      var at = MT.doc.clips.indexOf(clip);
+      var follower = MT.doc.clips[at + 1];
+      MT.doc.clips.splice(at, 1);
       MT.doc.extraAudio = MT.doc.extraAudio.filter(function (item) { return item.clipId !== clip.id; });
-      var removed = MT.retimeSubtitles(entry.start, -clip.duration);
+      var removed = 0;
+      if (state.magnet === false && follower) {
+        follower.gap = MT.round1((follower.gap || 0) + (clip.gap || 0) + clip.duration);
+        var inside = MT.subtitlesIn(entry.start, entry.end);
+        MT.doc.subtitles = MT.doc.subtitles.filter(function (item) { return inside.indexOf(item) < 0; });
+        removed = inside.length;
+      } else {
+        if (follower) follower.gap = MT.round1((follower.gap || 0) + (clip.gap || 0));
+        removed = MT.retimeSubtitles(entry.start, -clip.duration);
+      }
       MT.dropDanglingTransition();
       MT.toast("已删除 " + clip.label + (removed ? "，同步移除 " + removed + " 条字幕" : ""));
     } else if (kind === "subtitle") {

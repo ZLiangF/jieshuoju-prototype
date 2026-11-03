@@ -147,16 +147,27 @@
   };
 
   MT.totalDuration = function () {
-    return MT.doc.clips.reduce(function (sum, clip) { return sum + clip.duration; }, 0);
+    return MT.doc.clips.reduce(function (sum, clip) { return sum + (clip.gap || 0) + clip.duration; }, 0);
   };
 
+  /* clip.gap：磁吸关闭时片段前面留出的空白秒数，片段顺序不变 */
   MT.clipEntries = function () {
     var cursor = 0;
     return MT.doc.clips.map(function (clip, index) {
+      cursor += clip.gap || 0;
       var item = { clip: clip, index: index, start: cursor, end: cursor + clip.duration };
       cursor += clip.duration;
       return item;
     });
+  };
+
+  MT.inGap = function (time) {
+    var entry = MT.entryAt(time);
+    return !!entry && (time < entry.start - 0.01 || time > entry.end + 0.01);
+  };
+
+  MT.gapCount = function () {
+    return MT.doc.clips.filter(function (clip) { return (clip.gap || 0) > 0.05; }).length;
   };
 
   MT.entryOf = function (clip) {

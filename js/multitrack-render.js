@@ -101,7 +101,7 @@
     var half = MT.TRANSITION_SECONDS / 2;
     for (var i = 0; i < entries.length - 1; i += 1) {
       var type = MT.doc.transitions[entries[i].clip.id];
-      if (!type) continue;
+      if (!type || (entries[i + 1].clip.gap || 0) > 0.05) continue;
       var boundary = entries[i].end;
       if (time >= boundary - half && time < boundary + half) {
         return { type: type, from: entries[i].clip, to: entries[i + 1].clip, progress: (time - (boundary - half)) / MT.TRANSITION_SECONDS };
@@ -158,10 +158,12 @@
     setAttr(layer, "class", "mt-transition-layer" + (wipe ? " " + trans.type : ""));
     setStyle(layer, "opacity", wipe ? 1 - Math.abs(trans.progress * 2 - 1) : 0);
 
-    $("#transform-box").hidden = !(picked && picked.id === clip.id);
-    $("#generating").hidden = !clip.generating;
+    var gap = MT.inGap(state.currentTime);
+    if (gap) setStyle(base, "opacity", 0);
+    $("#transform-box").hidden = gap || !(picked && picked.id === clip.id);
+    $("#generating").hidden = gap || !clip.generating;
     var subtitle = state.disabledTracks.subtitle ? null : MT.activeSubtitleAt(state.currentTime);
-    setText($("#preview-meta"), clip.label + " · " + clip.title + " · " + MT.secText(clip.duration) + (trans ? " · " + MT.TRANSITIONS[trans.type].name : ""));
+    setText($("#preview-meta"), gap ? "空隙 · 无画面" : clip.label + " · " + clip.title + " · " + MT.secText(clip.duration) + (trans ? " · " + MT.TRANSITIONS[trans.type].name : ""));
     setText($("#caption-preview"), subtitle ? subtitle.text : "");
     setAttr($("#caption-preview"), "class", "mt-caption-preview" + (state.subtitleStyle === "plain" ? "" : " " + state.subtitleStyle));
     MT.renderMeter();
@@ -179,7 +181,7 @@
       gain += (MT.activeSubtitleAt(t) ? 0.82 : 0.42) * (audio.volume / 100) * Math.max(0, fadeGain);
     }
     var clip = MT.entryAt(t).clip;
-    if (!clip.muted) gain += 0.22 * (clip.volume / 100);
+    if (!clip.muted && !MT.inGap(t)) gain += 0.22 * (clip.volume / 100);
     MT.audioEntries().forEach(function (entry) {
       var item = entry.item;
       if (item.muted || item.generating) return;
@@ -241,7 +243,7 @@
   var EMPTY_TIPS = [
     ["点选片段", "改画面描述、重新生成、缩放旋转"],
     ["右键片段", "复制、剪切、创建副本、片段重拍等"],
-    ["拖动片段", "调整顺序；拖两端可裁剪"],
+    ["拖动片段", "磁吸开：调整顺序；磁吸关：自由移动、可留空隙；拖两端可裁剪"],
     ["S", "在播放头处分割"],
     ["空格", "播放 / 暂停"]
   ];

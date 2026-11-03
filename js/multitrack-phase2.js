@@ -98,13 +98,19 @@
     var firstVid = state.tracks.video[0];
     var vidLane = firstVid && $("#lane-" + firstVid.id);
     if (vidLane) {
-      var marks = entries.slice(0, -1).map(function (entry) {
+      var gaps = entries.map(function (entry) {
+        var gap = entry.clip.gap || 0;
+        if (gap < 0.05) return "";
+        return '<div class="mt-gap" style="left:' + ((entry.start - gap) * px) + "px;width:" + (gap * px) + 'px"><span>' + MT.secText(gap) + "</span></div>";
+      }).join("");
+      var marks = entries.slice(0, -1).map(function (entry, i) {
+        if ((entries[i + 1].clip.gap || 0) > 0.05) return "";
         var type = doc.transitions[entry.clip.id];
         var on = state.selectedKind === "transition" && state.selected === entry.clip.id;
         return '<button type="button" class="mt-transition-mark' + (type ? " has" : "") + (on ? " on" : "") + '" data-transition-at="' + entry.clip.id + '" style="left:' + (entry.end * px) + 'px" title="' + (type ? MT.TRANSITIONS[type].name : "添加转场") + '">' +
           (type ? MT.TRANSITIONS[type].name.slice(0, 1) : "＋") + "</button>";
       }).join("");
-      vidLane.innerHTML = entries.map(function (entry) {
+      vidLane.innerHTML = gaps + entries.map(function (entry) {
         return baseVideoClipHtml(entry);
       }).join("") + marks;
     }
@@ -309,14 +315,38 @@
     button.textContent = on ? "🧲 磁吸开" : "🧲 磁吸关";
   }
 
+  /* 合拢视频轨所有空隙；字幕按它前面被去掉的空隙长度一起前移 */
+  MT.closeGaps = function () {
+    var holes = MT.clipEntries().map(function (entry) {
+      var gap = entry.clip.gap || 0;
+      return { from: entry.start - gap, gap: gap };
+    }).filter(function (hole) { return hole.gap > 0.05; });
+    if (!holes.length) return 0;
+    MT.doc.subtitles.forEach(function (item) {
+      var removed = holes.reduce(function (sum, hole) { return sum + MT.clamp(item.start - hole.from, 0, hole.gap); }, 0);
+      item.start = MT.round1(item.start - removed);
+    });
+    MT.doc.clips.forEach(function (clip) { clip.gap = 0; });
+    return holes.length;
+  };
+
   MT.toggleMagnet = function () {
     state.magnet = !state.magnet;
     syncMagnetButton();
     if (!state.magnet) {
       state.lastSnap = null;
       MT.showSnapGuide(0, false);
+      return MT.toast("磁吸已关闭：片段、字幕可以自由拖动并留出空隙，不再自动对齐（按住 ⌥ 临时吸附）");
     }
-    MT.toast(state.magnet ? "磁吸已开启：拖动片段、字幕或播放头时，靠近边缘会自动对齐（按住 ⌥ 临时关闭）" : "磁吸已关闭：拖动自由定位（按住 ⌥ 临时开启）");
+    var count = MT.gapCount();
+    if (count) {
+      MT.saveHistory("开启磁吸，合拢空隙");
+      MT.closeGaps();
+      state.currentTime = MT.clamp(state.currentTime, 0, MT.totalDuration());
+      MT.refreshTimeline();
+      return MT.toast("磁吸已开启：已合拢视频轨 " + count + " 处空隙，可撤销");
+    }
+    MT.toast("磁吸已开启：视频片段首尾相接，拖动时靠近边缘自动对齐（按住 ⌥ 临时关闭吸附）");
   };
 
   function setBypass(on) {
@@ -662,7 +692,7 @@
     link(scroll, labels);
   })();
 
-  /* 截图演示：?demo=upload|draft|readonly|tracks|magnet-off|snap */
+  /* 截图演示：?demo=upload|draft|readonly|tracks|magnet-off|gaps|snap */
   var demo = new URLSearchParams(location.search).get("demo");
   if (demo === "upload") setTimeout(function () { MT.openUpload(); }, 200);
   if (demo === "draft") setTimeout(function () {
@@ -683,6 +713,19 @@
   if (demo === "magnet-off") setTimeout(function () {
     if (state.magnet) MT.toggleMagnet();
   }, 200);
+  if (demo === "gaps") setTimeout(function () {
+    if (state.magnet) MT.toggleMagnet();
+    var anchors = MT.doc.subtitles.map(function (item) {
+      var entry = MT.entryAt(item.start);
+      return { item: item, clip: entry.clip, offset: item.start - entry.start };
+    });
+    MT.doc.clips[1].gap = 2.5;
+    MT.doc.clips[3].gap = 4;
+    anchors.forEach(function (a) { a.item.start = MT.round1(MT.entryOf(a.clip).start + a.offset); });
+    MT.normalizeDoc();
+    state.currentTime = MT.clipEntries()[1].start - 1.2;
+    MT.refreshTimeline();
+  }, 300);
   if (demo === "snap") setTimeout(function () {
     var subtitle = MT.doc.subtitles[1];
     var target = MT.clipEntries()[1];

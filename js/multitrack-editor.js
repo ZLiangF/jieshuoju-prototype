@@ -270,7 +270,8 @@
     document.addEventListener("pointerup", up);
   }
 
-  /* 拖动片段：中间拖 = 调换顺序；两端拖 = 裁剪。字幕中间拖 = 改开始时间，两端拖 = 改时长。移动不足 4px 当作点击。 */
+  /* 拖动片段：磁吸开时中间拖 = 调换顺序、两端拖 = 裁剪并带动后面片段；磁吸关时中间拖 = 自由移动、两端拖 = 裁剪并留出空隙，后面片段不动（被顶到才往后推）。
+     字幕中间拖 = 改开始时间，两端拖 = 改时长。移动不足 4px 当作点击。 */
   function beginClipDrag(event, button) {
     var px = state.pixelsPerSecond;
     var startX = event.clientX;
@@ -279,10 +280,27 @@
     var subtitle = button.dataset.selectSubtitle ? MT.subtitleById(button.dataset.selectSubtitle) : null;
     if (!clip && !subtitle) return;
     var before = MT.snapshot();
-    var origin = clip ? { srcIn: clip.srcIn, duration: clip.duration, start: MT.entryOf(clip).start } : { start: subtitle.start, duration: subtitle.duration };
+    var origin = clip ? { srcIn: clip.srcIn, duration: clip.duration, start: MT.entryOf(clip).start, gap: clip.gap || 0 } : { start: subtitle.start, duration: subtitle.duration };
+    var free = !!clip && state.magnet === false;
+    var next = clip ? MT.doc.clips[MT.doc.clips.indexOf(clip) + 1] : null;
+    if (next) {
+      origin.nextGap = next.gap || 0;
+      origin.nextStart = MT.entryOf(next).start;
+    }
+    var riders = free && !trim ? MT.subtitlesIn(origin.start, origin.start + origin.duration) : [];
     var originLeft = parseFloat(button.style.left) || 0;
     var moved = false;
     MT.stopPlayback();
+
+    /* 片段尾部后移时先吃掉后一段前面的空隙，不够再把后面整体往后推；尾部前移则在后面留出空隙 */
+    function shiftFree(gap, duration) {
+      clip.gap = MT.round1(Math.max(0, gap));
+      clip.duration = MT.round1(duration);
+      if (next) next.gap = MT.round1(Math.max(0, origin.nextGap - (clip.gap + clip.duration - origin.gap - origin.duration)));
+      MT.renderRuler();
+      MT.renderTracks();
+      markDragging();
+    }
 
     function markDragging() {
       var current = $('[data-select-shot="' + clip.id + '"]');
@@ -297,10 +315,23 @@
         button.classList.add("is-dragging");
         document.body.style.userSelect = "none";
       }
-      if (subtitle || trim) MT.showSnapMarks(true, subtitle ? subtitle.id : clip.id, clip ? { ripple: true } : null);
+      if (subtitle || trim || free) MT.showSnapMarks(true, subtitle ? subtitle.id : clip.id, clip ? { ripple: true } : null);
       var ds = dx / px;
       var origEnd = origin.start + origin.duration;
-      if (subtitle && trim && trim.dataset.trim === "right") {
+      var lead = clip ? origin.start - origin.gap : 0;
+      if (free && !trim) {
+        var placed = MT.snapRange(lead + Math.max(0, origin.gap + ds), origin.duration, clip.id, { ripple: true });
+        shiftFree(placed - lead, origin.duration);
+      } else if (free && trim.dataset.trim === "right") {
+        var freeEnd = MT.snapTime(origin.start + clamp(origin.duration + ds, MT.MIN_CLIP, clip.sourceDuration - clip.srcIn), clip.id, { ripple: true });
+        shiftFree(origin.gap, clamp(freeEnd - origin.start, MT.MIN_CLIP, clip.sourceDuration - clip.srcIn));
+      } else if (free) {
+        var minShift = -Math.min(origin.srcIn, origin.gap);
+        var freeStart = MT.snapTime(origin.start + clamp(ds, minShift, origin.duration - MT.MIN_CLIP), clip.id, { ripple: true });
+        var cut = clamp(freeStart - origin.start, minShift, origin.duration - MT.MIN_CLIP);
+        clip.srcIn = MT.round1(origin.srcIn + cut);
+        shiftFree(origin.gap + cut, origin.duration - cut);
+      } else if (subtitle && trim && trim.dataset.trim === "right") {
         var maxDur = Math.min(20, MT.totalDuration() - origin.start);
         var end = MT.snapTime(origin.start + clamp(origin.duration + ds, MT.MIN_CLIP, maxDur), subtitle.id);
         subtitle.duration = MT.round1(clamp(end - origin.start, MT.MIN_CLIP, maxDur));
@@ -348,14 +379,19 @@
           other.classList.toggle("is-drop-after", hit && center >= left + other.offsetWidth / 2);
         });
       }
-      if (subtitle || trim) MT.showSnapGuide(0, true);
+      if (subtitle || trim || free) MT.showSnapGuide(0, true);
     }, function (e) {
       MT.showSnapGuide(0, false);
       MT.showSnapMarks(false);
       if (!moved) return;
       state.suppressClick = true;
       setTimeout(function () { state.suppressClick = false; }, 0);
-      if (clip && !trim) {
+      if (free) {
+        var push = next ? MT.entryOf(next).start - origin.nextStart : 0;
+        if (push > 0.01) MT.doc.subtitles.forEach(function (item) { if (item.start >= origin.nextStart - 0.01) item.start = MT.round1(item.start + push); });
+        var startDelta = MT.entryOf(clip).start - origin.start;
+        riders.forEach(function (item) { item.start = MT.round1(item.start + startDelta); });
+      } else if (clip && !trim) {
         var center = originLeft + (e.clientX - startX) + button.offsetWidth / 2;
         var others = MT.clipEntries().filter(function (entry) { return entry.clip !== clip; });
         var index = others.filter(function (entry) { return (entry.start + entry.end) / 2 * px < center; }).length;
@@ -378,7 +414,7 @@
         });
         MT.dropDanglingTransition();
       }
-      if (clip && trim) {
+      if (clip && trim && !free) {
         if (trim.dataset.trim === "right") {
           MT.retimeSubtitles(origin.start + Math.min(origin.duration, clip.duration), clip.duration - origin.duration);
         } else {
@@ -390,8 +426,9 @@
       state.selected = subtitle ? subtitle.id : clip.id;
       if (clip) state.currentTime = MT.entryOf(clip).start;
       MT.refreshTimeline();
-      if (clip && !trim) MT.toast("已移到第 " + (MT.doc.clips.indexOf(clip) + 1) + " 段");
-      if (clip && trim) MT.toast(clip.label + " 时长 " + MT.secText(clip.duration));
+      if (free && !trim) MT.toast(clip.label + " 已移到 " + MT.secText(state.currentTime) + (clip.gap > 0.05 ? "，前面空 " + MT.secText(clip.gap) : ""));
+      else if (clip && !trim) MT.toast("已移到第 " + (MT.doc.clips.indexOf(clip) + 1) + " 段");
+      if (clip && trim) MT.toast(clip.label + " 时长 " + MT.secText(clip.duration) + (free ? "，后面片段位置不变" : ""));
       if (subtitle && trim) MT.toast("字幕时长 " + MT.secText(subtitle.duration));
     });
   }

@@ -1891,6 +1891,22 @@ body.mt-page {
   to { box-shadow: 0 0 8px 1px rgba(244,114,182,.55); }
 }
 
+.mt-gap {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed rgba(255,255,255,.14);
+  border-radius: 4px;
+  background: repeating-linear-gradient(135deg, rgba(255,255,255,.04) 0 6px, transparent 6px 12px);
+  color: #71717a;
+  font-size: 10px;
+  pointer-events: none;
+  overflow: hidden;
+}
+
 .mt-clip.is-snap-target {
   box-shadow: 0 0 0 2px #f472b6 inset, 0 0 10px rgba(244,114,182,.45);
 }
