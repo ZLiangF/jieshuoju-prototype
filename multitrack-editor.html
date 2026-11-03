@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>多轨编辑器 · 第1集：墓地贺芷提离婚协议</title>
-  <link rel="stylesheet" href="css/common.css?v=202611032129" />
-  <link rel="stylesheet" href="css/multitrack-editor.css?v=202611032129" />
-  <link rel="stylesheet" href="css/multitrack-timeline.css?v=202611032129" />
+  <link rel="stylesheet" href="css/common.css?v=202611032139" />
+  <link rel="stylesheet" href="css/multitrack-editor.css?v=202611032139" />
+  <link rel="stylesheet" href="css/multitrack-timeline.css?v=202611032139" />
 </head>
 <body class="mt-page">
 <div class="mt-app">
@@ -139,7 +139,7 @@
           <button type="button" class="is-purple" data-act="add-subtitle">▣ 添加字幕</button>
         </div>
         <div class="mt-view-tools">
-          <button type="button" class="mt-magnet on" data-act="toggle-magnet" aria-pressed="true" title="磁吸：拖动/裁剪时吸附相邻片段">🧲 磁吸</button>
+          <button type="button" class="mt-magnet on" data-act="toggle-magnet" aria-pressed="true" title="磁吸：拖动字幕、裁剪片段、拖播放头时，靠近片段边缘或播放头会自动对齐。按住 ⌥ 临时切换">🧲 磁吸开</button>
           <button type="button" data-act="collapse-timeline" aria-label="收起时间线">⌄</button>
           <button type="button" data-act="settings" aria-label="时间轴设置">⚙</button>
           <button type="button" data-act="mute-all" aria-label="静音">♬</button>
@@ -157,6 +157,7 @@
           <div class="mt-canvas" id="timeline-canvas">
             <div class="mt-ruler" id="ruler"></div>
             <div class="mt-tracks" id="track-lanes"></div>
+            <div class="mt-snap-marks" id="snap-marks" hidden></div>
             <div class="mt-snap-guide" id="snap-guide" hidden></div>
             <button type="button" class="mt-playhead" id="playhead" aria-label="时间线">
               <i></i><span></span>
@@ -221,14 +222,14 @@
   该项目正在其他页面编辑，当前为只读；内容以服务端最新保存为准。
 </div>
 
-<script src="js/data.js?v=202611032129"></script>
-<script src="js/multitrack-state.js?v=202611032129"></script>
-<script src="js/multitrack-render.js?v=202611032129"></script>
-<script src="js/multitrack-actions.js?v=202611032129"></script>
-<script src="js/multitrack-menu.js?v=202611032129"></script>
-<script src="js/multitrack-save.js?v=202611032129"></script>
-<script src="js/multitrack-export.js?v=202611032129"></script>
-<script src="js/multitrack-phase2.js?v=202611032129"></script>
-<script src="js/multitrack-editor.js?v=202611032129"></script>
+<script src="js/data.js?v=202611032139"></script>
+<script src="js/multitrack-state.js?v=202611032139"></script>
+<script src="js/multitrack-render.js?v=202611032139"></script>
+<script src="js/multitrack-actions.js?v=202611032139"></script>
+<script src="js/multitrack-menu.js?v=202611032139"></script>
+<script src="js/multitrack-save.js?v=202611032139"></script>
+<script src="js/multitrack-export.js?v=202611032139"></script>
+<script src="js/multitrack-phase2.js?v=202611032139"></script>
+<script src="js/multitrack-editor.js?v=202611032139"></script>
 </body>
 </html>

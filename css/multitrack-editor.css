@@ -1807,9 +1807,19 @@ body.mt-page {
   gap: 4px;
 }
 
+.mt-view-tools .mt-magnet {
+  color: #71717a;
+  border: 1px solid rgba(255,255,255,.08) !important;
+}
+
 .mt-view-tools .mt-magnet.on {
-  color: #ddd6fe;
-  background: rgba(167,139,250,.18);
+  color: #fbcfe8;
+  background: rgba(244,114,182,.16);
+  border-color: rgba(244,114,182,.45) !important;
+}
+
+.mt-view-tools .mt-magnet.is-bypass {
+  border-style: dashed !important;
 }
 
 .mt-add-track-row {
@@ -1834,15 +1844,55 @@ body.mt-page {
   border-bottom: 1px dashed rgba(255,255,255,.04);
 }
 
+.mt-snap-marks {
+  position: absolute;
+  inset: 30px 0 0 0;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.mt-snap-marks i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px dashed rgba(244,114,182,.28);
+}
+
 .mt-snap-guide {
   position: absolute;
   top: 30px;
   bottom: 0;
   width: 0;
-  border-left: 1.5px solid #f472b6;
-  box-shadow: 0 0 0 1px rgba(244,114,182,.25);
+  border-left: 2px solid #f472b6;
+  box-shadow: 0 0 8px 1px rgba(244,114,182,.55);
   pointer-events: none;
   z-index: 8;
+}
+
+.mt-snap-guide span {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #f472b6;
+  color: #1f1020;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mt-snap-guide.is-flash {
+  animation: mt-snap-flash .22s ease-out;
+}
+
+@keyframes mt-snap-flash {
+  from { box-shadow: 0 0 16px 4px rgba(244,114,182,.9); }
+  to { box-shadow: 0 0 8px 1px rgba(244,114,182,.55); }
+}
+
+.mt-clip.is-snap-target {
+  box-shadow: 0 0 0 2px #f472b6 inset, 0 0 10px rgba(244,114,182,.45);
 }
 
 .mt-clip.is-missing {

@@ -190,55 +190,148 @@
   };
 
   /* —— 磁吸 —— */
-  MT.snapPoints = function (excludeId) {
-    var points = [0];
-    MT.clipEntries().forEach(function (entry) {
+  var SNAP_PX = 12;
+  state.lastSnap = null;
+  state.snapBypass = false;
+
+  MT.magnetActive = function () {
+    return state.magnet !== state.snapBypass;
+  };
+
+  MT.snapPoints = function (excludeId, options) {
+    var points = [{ time: 0, label: "起点" }];
+    if (!(options && options.skipPlayhead)) points.push({ time: state.currentTime, label: "播放头", sel: "#playhead" });
+    var rippleIndex = options && options.ripple ? MT.doc.clips.indexOf(MT.clipById(excludeId)) : -1;
+    var moving = {};
+    MT.clipEntries().forEach(function (entry, i) {
+      if (rippleIndex >= 0 && i >= rippleIndex) {
+        moving[entry.clip.id] = true;
+        return;
+      }
       if (entry.clip.id === excludeId) return;
-      points.push(entry.start, entry.end);
+      var sel = '[data-select-shot="' + entry.clip.id + '"]';
+      points.push({ time: entry.start, label: "镜头" + (i + 1) + " 开头", sel: sel });
+      points.push({ time: entry.end, label: "镜头" + (i + 1) + " 结尾", sel: sel });
     });
     MT.doc.subtitles.forEach(function (item) {
       if (item.id === excludeId) return;
-      points.push(item.start, item.start + item.duration);
+      var sel = '[data-select-subtitle="' + item.id + '"]';
+      points.push({ time: item.start, label: "字幕开头", sel: sel });
+      points.push({ time: item.start + item.duration, label: "字幕结尾", sel: sel });
+    });
+    if (MT.audioEntries) MT.audioEntries().forEach(function (entry) {
+      if (entry.item.id === excludeId || moving[entry.item.clipId]) return;
+      var sel = '[data-select-extra="' + entry.item.id + '"]';
+      points.push({ time: entry.start, label: "音频开头", sel: sel });
+      points.push({ time: entry.start + entry.duration, label: "音频结尾", sel: sel });
     });
     return points;
   };
 
-  MT.snapTime = function (time, excludeId) {
-    if (!state.magnet) return time;
-    var threshold = 8 / state.pixelsPerSecond;
-    var best = time;
-    var bestDist = threshold;
-    MT.snapPoints(excludeId).forEach(function (point) {
-      var dist = Math.abs(point - time);
-      if (dist < bestDist) {
-        bestDist = dist;
-        best = point;
-      }
+  /* edges：被拖动对象上参与吸附的位置相对 time 的偏移，返回吸附后的 time，命中信息记在 state.lastSnap */
+  function snapEdges(time, edges, excludeId, options) {
+    state.lastSnap = null;
+    if (!MT.magnetActive()) return time;
+    var bestDist = SNAP_PX / state.pixelsPerSecond;
+    var best = null;
+    var points = MT.snapPoints(excludeId, options);
+    edges.forEach(function (offset) {
+      points.forEach(function (point) {
+        var dist = Math.abs(point.time - (time + offset));
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = { time: point.time, label: point.label, sel: point.sel, shift: point.time - offset };
+        }
+      });
     });
-    return MT.round1(best);
+    if (!best) return time;
+    state.lastSnap = best;
+    return MT.round1(best.shift);
+  }
+
+  MT.snapTime = function (time, excludeId, options) {
+    return snapEdges(time, [0], excludeId, options);
+  };
+
+  MT.snapRange = function (start, duration, excludeId, options) {
+    return snapEdges(start, [0, duration], excludeId, options);
   };
 
   MT.showSnapGuide = function (time, active) {
     var guide = $("#snap-guide");
+    $$(".is-snap-target").forEach(function (el) { el.classList.remove("is-snap-target"); });
     if (!guide) return;
-    if (!active || !state.magnet) {
+    var hit = active && state.lastSnap;
+    if (!hit) {
       guide.hidden = true;
+      guide.classList.remove("is-flash");
+      state.snapGuideAt = null;
       return;
     }
+    if (state.snapGuideAt !== hit.time) {
+      guide.classList.remove("is-flash");
+      void guide.offsetWidth;
+      guide.classList.add("is-flash");
+      state.snapGuideAt = hit.time;
+    }
     guide.hidden = false;
-    guide.style.left = (time * state.pixelsPerSecond) + "px";
+    guide.style.left = (hit.time * state.pixelsPerSecond) + "px";
+    guide.innerHTML = "<span>吸附 · " + esc(hit.label) + " " + MT.secText(hit.time) + "</span>";
+    var target = hit.sel && $(hit.sel);
+    if (target && target.id !== "playhead") target.classList.add("is-snap-target");
   };
+
+  MT.showSnapMarks = function (show, excludeId, options) {
+    var box = $("#snap-marks");
+    if (!box) return;
+    if (!show || !MT.magnetActive()) {
+      box.hidden = true;
+      box.innerHTML = "";
+      return;
+    }
+    var seen = {};
+    box.innerHTML = MT.snapPoints(excludeId, options).map(function (point) {
+      var key = point.time.toFixed(1);
+      if (seen[key]) return "";
+      seen[key] = true;
+      return '<i style="left:' + (point.time * state.pixelsPerSecond) + 'px"></i>';
+    }).join("");
+    box.hidden = false;
+  };
+
+  function syncMagnetButton() {
+    var button = $('[data-act="toggle-magnet"]');
+    if (!button) return;
+    var on = MT.magnetActive();
+    button.classList.toggle("on", on);
+    button.classList.toggle("is-bypass", state.snapBypass);
+    button.setAttribute("aria-pressed", state.magnet ? "true" : "false");
+    button.textContent = on ? "🧲 磁吸开" : "🧲 磁吸关";
+  }
 
   MT.toggleMagnet = function () {
     state.magnet = !state.magnet;
-    var button = $('[data-act="toggle-magnet"]');
-    if (button) {
-      button.classList.toggle("on", state.magnet);
-      button.setAttribute("aria-pressed", state.magnet ? "true" : "false");
+    syncMagnetButton();
+    if (!state.magnet) {
+      state.lastSnap = null;
+      MT.showSnapGuide(0, false);
     }
-    if (!state.magnet) MT.showSnapGuide(0, false);
-    MT.toast(state.magnet ? "磁吸已开启" : "磁吸已关闭");
+    MT.toast(state.magnet ? "磁吸已开启：拖动片段、字幕或播放头时，靠近边缘会自动对齐（按住 ⌥ 临时关闭）" : "磁吸已关闭：拖动自由定位（按住 ⌥ 临时开启）");
   };
+
+  function setBypass(on) {
+    if (state.snapBypass === on) return;
+    state.snapBypass = on;
+    syncMagnetButton();
+    if (!MT.magnetActive()) {
+      state.lastSnap = null;
+      MT.showSnapGuide(0, false);
+      MT.showSnapMarks(false);
+    }
+  }
+  document.addEventListener("keydown", function (event) { if (event.key === "Alt") setBypass(true); });
+  document.addEventListener("keyup", function (event) { if (event.key === "Alt") setBypass(false); });
+  window.addEventListener("blur", function () { setBypass(false); });
 
   /* —— 素材区渲染（文件夹） —— */
   MT.renderAssets = function () {
@@ -569,7 +662,7 @@
     link(scroll, labels);
   })();
 
-  /* 截图演示：?demo=upload|draft|readonly|tracks|magnet-off */
+  /* 截图演示：?demo=upload|draft|readonly|tracks|magnet-off|snap */
   var demo = new URLSearchParams(location.search).get("demo");
   if (demo === "upload") setTimeout(function () { MT.openUpload(); }, 200);
   if (demo === "draft") setTimeout(function () {
@@ -590,6 +683,19 @@
   if (demo === "magnet-off") setTimeout(function () {
     if (state.magnet) MT.toggleMagnet();
   }, 200);
+  if (demo === "snap") setTimeout(function () {
+    var subtitle = MT.doc.subtitles[1];
+    var target = MT.clipEntries()[1];
+    if (!subtitle || !target) return;
+    subtitle.start = MT.snapRange(target.start + 0.3, subtitle.duration, subtitle.id);
+    var hit = state.lastSnap;
+    state.selectedKind = "subtitle";
+    state.selected = subtitle.id;
+    MT.refreshTimeline();
+    state.lastSnap = hit;
+    MT.showSnapMarks(true, subtitle.id);
+    MT.showSnapGuide(0, true);
+  }, 300);
   if (demo === "folders") setTimeout(function () {
     state.collapsedFolders = {};
     MT.renderAssets();

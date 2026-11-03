@@ -297,48 +297,45 @@
         button.classList.add("is-dragging");
         document.body.style.userSelect = "none";
       }
+      if (subtitle || trim) MT.showSnapMarks(true, subtitle ? subtitle.id : clip.id, clip ? { ripple: true } : null);
       var ds = dx / px;
+      var origEnd = origin.start + origin.duration;
       if (subtitle && trim && trim.dataset.trim === "right") {
-        var end = origin.start + clamp(origin.duration + ds, MT.MIN_CLIP, Math.min(20, MT.totalDuration() - origin.start));
-        end = MT.snapTime ? MT.snapTime(end, subtitle.id) : end;
-        subtitle.duration = MT.round1(clamp(end - origin.start, MT.MIN_CLIP, Math.min(20, MT.totalDuration() - origin.start)));
+        var maxDur = Math.min(20, MT.totalDuration() - origin.start);
+        var end = MT.snapTime(origin.start + clamp(origin.duration + ds, MT.MIN_CLIP, maxDur), subtitle.id);
+        subtitle.duration = MT.round1(clamp(end - origin.start, MT.MIN_CLIP, maxDur));
         button.style.width = Math.max(24, subtitle.duration * px) + "px";
-        if (MT.showSnapGuide) MT.showSnapGuide(subtitle.start + subtitle.duration, true);
         MT.renderPlayhead();
       } else if (subtitle && trim) {
-        var start = clamp(origin.start + ds, Math.max(0, origin.start + origin.duration - 20), origin.start + origin.duration - MT.MIN_CLIP);
-        start = MT.snapTime ? MT.snapTime(start, subtitle.id) : start;
+        var minStart = Math.max(0, origEnd - 20);
+        var start = MT.snapTime(clamp(origin.start + ds, minStart, origEnd - MT.MIN_CLIP), subtitle.id);
+        start = clamp(start, minStart, origEnd - MT.MIN_CLIP);
         subtitle.start = MT.round1(start);
-        subtitle.duration = MT.round1(origin.duration - (start - origin.start));
+        subtitle.duration = MT.round1(origEnd - subtitle.start);
         button.style.left = subtitle.start * px + "px";
         button.style.width = Math.max(24, subtitle.duration * px) + "px";
-        if (MT.showSnapGuide) MT.showSnapGuide(subtitle.start, true);
         MT.renderPlayhead();
       } else if (subtitle) {
-        var movedStart = clamp(origin.start + ds, 0, Math.max(0, MT.totalDuration() - subtitle.duration));
-        movedStart = MT.snapTime ? MT.snapTime(movedStart, subtitle.id) : movedStart;
-        subtitle.start = MT.round1(movedStart);
+        var maxStart = Math.max(0, MT.totalDuration() - subtitle.duration);
+        var movedStart = MT.snapRange(clamp(origin.start + ds, 0, maxStart), subtitle.duration, subtitle.id);
+        subtitle.start = MT.round1(clamp(movedStart, 0, maxStart));
         button.style.left = subtitle.start * px + "px";
-        if (MT.showSnapGuide) MT.showSnapGuide(subtitle.start, true);
         MT.renderPlayhead();
       } else if (trim && trim.dataset.trim === "right") {
-        var rightEnd = origin.start + clamp(origin.duration + ds, MT.MIN_CLIP, clip.sourceDuration - clip.srcIn);
-        rightEnd = MT.snapTime ? MT.snapTime(rightEnd, clip.id) : rightEnd;
-        clip.duration = MT.round1(clamp(rightEnd - origin.start, MT.MIN_CLIP, clip.sourceDuration - clip.srcIn));
+        var maxClip = clip.sourceDuration - clip.srcIn;
+        var rightEnd = MT.snapTime(origin.start + clamp(origin.duration + ds, MT.MIN_CLIP, maxClip), clip.id, { ripple: true });
+        clip.duration = MT.round1(clamp(rightEnd - origin.start, MT.MIN_CLIP, maxClip));
         MT.renderRuler();
         MT.renderTracks();
-        if (MT.showSnapGuide) MT.showSnapGuide(origin.start + clip.duration, true);
         markDragging();
       } else if (trim) {
         var shift = clamp(ds, -origin.srcIn, origin.duration - MT.MIN_CLIP);
-        var leftEdge = MT.snapTime ? MT.snapTime(origin.start + shift, clip.id) : origin.start + shift;
-        shift = leftEdge - origin.start;
-        shift = clamp(shift, -origin.srcIn, origin.duration - MT.MIN_CLIP);
+        var trimmedEnd = MT.snapTime(origEnd - shift, clip.id, { ripple: true });
+        shift = clamp(origEnd - trimmedEnd, -origin.srcIn, origin.duration - MT.MIN_CLIP);
         clip.srcIn = MT.round1(origin.srcIn + shift);
         clip.duration = MT.round1(origin.duration - shift);
         MT.renderRuler();
         MT.renderTracks();
-        if (MT.showSnapGuide) MT.showSnapGuide(MT.entryOf(clip).start, true);
         markDragging();
       } else {
         button.style.transform = "translateX(" + dx + "px)";
@@ -351,7 +348,10 @@
           other.classList.toggle("is-drop-after", hit && center >= left + other.offsetWidth / 2);
         });
       }
+      if (subtitle || trim) MT.showSnapGuide(0, true);
     }, function (e) {
+      MT.showSnapGuide(0, false);
+      MT.showSnapMarks(false);
       if (!moved) return;
       state.suppressClick = true;
       setTimeout(function () { state.suppressClick = false; }, 0);
@@ -389,7 +389,6 @@
       state.selectedKind = subtitle ? "subtitle" : "shot";
       state.selected = subtitle ? subtitle.id : clip.id;
       if (clip) state.currentTime = MT.entryOf(clip).start;
-      if (MT.showSnapGuide) MT.showSnapGuide(0, false);
       MT.refreshTimeline();
       if (clip && !trim) MT.toast("已移到第 " + (MT.doc.clips.indexOf(clip) + 1) + " 段");
       if (clip && trim) MT.toast(clip.label + " 时长 " + MT.secText(clip.duration));
@@ -404,16 +403,21 @@
     if (clipButton) return beginClipDrag(event, clipButton);
     if (event.target.closest(".mt-clip")) return;
     MT.stopPlayback();
-    state.currentTime = timeFromPointer(event.clientX);
+    state.currentTime = MT.snapTime(timeFromPointer(event.clientX), null, { skipPlayhead: true });
     MT.renderPlayhead();
   });
 
   $("#playhead").addEventListener("pointerdown", function (event) {
     event.preventDefault();
     MT.stopPlayback();
+    MT.showSnapMarks(true, null, { skipPlayhead: true });
     followPointer(function (e) {
-      state.currentTime = timeFromPointer(e.clientX);
+      state.currentTime = MT.snapTime(timeFromPointer(e.clientX), null, { skipPlayhead: true });
       MT.renderPlayhead();
+      MT.showSnapGuide(0, true);
+    }, function () {
+      MT.showSnapGuide(0, false);
+      MT.showSnapMarks(false);
     });
   });
 
