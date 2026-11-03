@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>创作 · 跳跃视界</title>
-  <link rel="stylesheet" href="css/common.css?v=202611021805" />
-  <link rel="stylesheet" href="css/home.css?v=202611021805" />
+  <link rel="stylesheet" href="css/common.css?v=202611031026" />
+  <link rel="stylesheet" href="css/home.css?v=202611031026" />
 </head>
 <body class="home">
   <header class="topbar">
@@ -161,8 +161,15 @@
     </section>
 
     <section class="home-projects">
-      <h2>我的影视项目 <a href="episodes.html">全部</a></h2>
-      <div class="strip">
+      <h2>我的影视项目
+        <span class="proj-head-tools">
+          <label class="proj-search">
+            <input id="proj-search" type="search" placeholder="搜索文件" aria-label="搜索文件" autocomplete="off">
+          </label>
+          <a href="episodes.html">全部</a>
+        </span>
+      </h2>
+      <div class="strip" id="proj-strip">
         <a class="proj" href="outline.html">
           <div class="thumb" style="display:flex;background:#fff"><img loading="lazy" decoding="async" src="media/characters/xiaoming.png" style="width:50%;object-fit:cover;object-position:top"><img loading="lazy" decoding="async" src="media/characters/heyi.png" style="width:50%;object-fit:cover;object-position:top"></div>
           <div class="proj-title">离婚后（15集）</div>
@@ -188,6 +195,7 @@
           <div class="proj-sub">可一键成片 · 2026-09-18</div>
         </a>
       </div>
+      <p class="proj-empty" id="proj-empty" hidden>没有找到相关文件</p>
     </section>
 
     <section class="home-showcase">
@@ -338,7 +346,7 @@
     </div>
   </div>
 
-  <script src="js/data.js?v=202611021805"></script>
-  <script src="js/home.js?v=202611021805"></script>
+  <script src="js/data.js?v=202611031026"></script>
+  <script src="js/home.js?v=202611031026"></script>
 </body>
 </html>

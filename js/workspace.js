@@ -14,6 +14,7 @@
     resolution: "720P",
     modelOpen: false,
     resolutionOpen: false,
+    ratioOpen: false,
     generating: null,
     upgrading: null,
     videos: {},
@@ -715,20 +716,20 @@
     var video = state.videos[s.id];
     $("#time-label").textContent = "00:00 / " + mmss(s.duration);
     if (state.generating === s.id) {
-      $("#stage").innerHTML = '<div class="stage-loading"><div class="spin"></div><div style="margin-top:8px">' + (m.draft ? "480P 样片生成中" : "片段生成中") + "</div></div>";
+      $("#stage").innerHTML = '<div class="ws-frame"><div class="stage-loading"><div class="spin"></div><div style="margin-top:8px">' + (m.draft ? "480P 样片生成中" : "片段生成中") + "</div></div></div>";
     } else if (state.upgrading === s.id) {
-      $("#stage").innerHTML = '<div class="stage-loading"><div class="spin"></div><div style="margin-top:8px">正在基于样片生成 ' + finalResolution + " 正片</div></div>";
+      $("#stage").innerHTML = '<div class="ws-frame"><div class="stage-loading"><div class="spin"></div><div style="margin-top:8px">正在基于样片生成 ' + finalResolution + " 正片</div></div></div>";
     } else if (video) {
       var frame = sceneInfo((s.scenes || [])[0]) ? sceneInfo(s.scenes[0]).image : "media/scenes/cemetery.png";
       var badges = '<span class="stage-badges">' +
         (video.kind === "draft" ? "" : '<span class="player-status"><i></i>' + (D.models.find(function (x) { return x.id === video.model; }) || m).name + " 正片 · " + video.resolution + "</span>") +
         '<span class="station-badge' + (video.station ? " on" : "") + '">' + (video.station ? "已应用站位" : "未应用站位") + "</span></span>";
-      $("#stage").innerHTML = '<img decoding="async" class="video-frame" src="' + frame + '" alt="片段视频">' +
+      $("#stage").innerHTML = '<div class="ws-frame"><img decoding="async" class="video-frame" src="' + frame + '" alt="片段视频">' +
         (video.kind === "draft"
           ? '<button class="upgrade-trigger" data-act="upgrade">✦ 生成 1080P 正片</button><span class="draft-watermark">Seedance 2.5 · 样片 480P</span>'
-          : "") + badges;
+          : "") + badges + "</div>";
     } else {
-      $("#stage").textContent = "暂无视频";
+      $("#stage").innerHTML = '<div class="ws-frame">暂无视频</div>';
     }
   }
 
@@ -757,7 +758,19 @@
     if (link) link.href = "multitrack-editor.html?shot=" + encodeURIComponent(state.shotId);
   }
 
-  function renderAll() { renderAssets(); renderEditor(); renderTimeline(); syncEditLink(); }
+  function paintVideoRatio() {
+    var ratio = D.project.ratio === "16:9" ? "16:9" : "9:16";
+    D.project.ratio = ratio;
+    document.body.dataset.videoRatio = ratio;
+    $("#ws-ratio-label").textContent = ratio;
+    $("#ws-ratio-btn").setAttribute("aria-expanded", state.ratioOpen ? "true" : "false");
+    $("#ws-ratio-menu").hidden = !state.ratioOpen;
+    $$("#ws-ratio-menu [data-ratio]").forEach(function (button) {
+      button.setAttribute("aria-checked", button.dataset.ratio === ratio ? "true" : "false");
+    });
+  }
+
+  function renderAll() { paintVideoRatio(); renderAssets(); renderEditor(); renderTimeline(); syncEditLink(); }
 
   function openStage(key, turnOn) {
     var s = shot();
@@ -804,6 +817,10 @@
       state.modelOpen = false;
       state.resolutionOpen = false;
       renderToolbar();
+    }
+    if (state.ratioOpen && !e.target.closest(".ws-ratio")) {
+      state.ratioOpen = false;
+      paintVideoRatio();
     }
     var previewVoice = e.target.closest("[data-preview-voice]");
     if (previewVoice) {
@@ -878,6 +895,18 @@
     if (act === "confirm-asset-delete") { confirmAssetDelete(); return; }
     if (act === "list") $("#list-drawer").classList.add("open");
     if (act === "close-list") $("#list-drawer").classList.remove("open");
+    if (act === "toggle-ratio") {
+      state.ratioOpen = !state.ratioOpen;
+      paintVideoRatio();
+      return;
+    }
+    if (act === "set-ratio") {
+      D.project.ratio = t.dataset.ratio === "16:9" ? "16:9" : "9:16";
+      state.ratioOpen = false;
+      paintVideoRatio();
+      ReplicaUI.toast("已切换为 " + D.project.ratio + "，作用于当前集全部分镜");
+      return;
+    }
     if (act === "export") $("#export-modal").classList.add("open");
     if (act === "close-export") $("#export-modal").classList.remove("open");
     if (act === "add") ReplicaUI.toast("演示：新增素材");

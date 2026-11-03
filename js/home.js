@@ -387,6 +387,30 @@ document.getElementById("confirm-paste").onclick = function () {
 };
 document.getElementById("remove-file").onclick = showEmpty;
 document.getElementById("new-project").onclick = function () { ReplicaUI.toast("演示：打开 AIGC 训练营"); };
+
+function fuzzyHit(text, query) {
+  var source = String(text || "").toLowerCase();
+  var from = 0;
+  return query.split("").every(function (ch) {
+    if (/\s/.test(ch)) return true;
+    var at = source.indexOf(ch.toLowerCase(), from);
+    if (at < 0) return false;
+    from = at + 1;
+    return true;
+  });
+}
+
+document.getElementById("proj-search").oninput = function () {
+  var query = this.value.trim();
+  var shown = 0;
+  document.querySelectorAll("#proj-strip .proj").forEach(function (card) {
+    var text = card.textContent;
+    var hit = !query || fuzzyHit(text, query);
+    card.classList.toggle("is-hidden", !hit);
+    if (hit) shown += 1;
+  });
+  document.getElementById("proj-empty").hidden = shown > 0;
+};
 document.getElementById("start-create").onclick = startCreate;
 
 document.getElementById("f-cat").onchange = function () {

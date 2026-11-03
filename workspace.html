@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>创作 · 第1集：墓地贺芷提离婚协议</title>
-  <link rel="stylesheet" href="css/common.css?v=202611021805" />
-  <link rel="stylesheet" href="css/workspace.css?v=202611021805" />
+  <link rel="stylesheet" href="css/common.css?v=202611031026" />
+  <link rel="stylesheet" href="css/workspace.css?v=202611031026" />
 </head>
 <body class="ws-page">
 <div class="app">
@@ -19,6 +19,16 @@
       <div class="ws-seg" role="tablist" aria-label="编辑视图">
         <button type="button" class="on" role="tab" aria-selected="true">中控台</button>
         <button type="button" role="tab" aria-selected="false" data-act="list">分镜列表</button>
+      </div>
+      <div class="ws-ratio">
+        <button type="button" class="ws-ratio-btn" id="ws-ratio-btn" data-act="toggle-ratio" aria-haspopup="menu" aria-expanded="false" aria-controls="ws-ratio-menu">
+          <span id="ws-ratio-label">9:16</span>
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 6.2 8 10l3.8-3.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="ws-ratio-menu" id="ws-ratio-menu" role="menu" hidden>
+          <button type="button" role="menuitemradio" data-act="set-ratio" data-ratio="9:16" aria-checked="true">9:16（竖屏）</button>
+          <button type="button" role="menuitemradio" data-act="set-ratio" data-ratio="16:9" aria-checked="false">16:9（横屏）</button>
+        </div>
       </div>
       <button type="button" class="ws-export" data-act="export">
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7M5 6.8 8 9.8l3-3M3 11v1.6c0 .5.4.9.9.9h8.2c.5 0 .9-.4.9-.9V11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>导出
@@ -216,7 +226,7 @@
   </div>
 </div>
 <div class="toast-wrap"></div>
-<script src="js/data.js?v=202611021805"></script>
-<script src="js/workspace.js?v=202611021805"></script>
+<script src="js/data.js?v=202611031026"></script>
+<script src="js/workspace.js?v=202611031026"></script>
 </body>
 </html>

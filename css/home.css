@@ -469,10 +469,42 @@
   font-size: 20px;
   font-weight: 650;
   color: #f2f0f5;
+  align-items: center;
 }
 .home-projects h2 a {
   font-size: 13px;
   color: #e8e5ed;
+}
+.proj-head-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+.proj-search input {
+  width: 168px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 16px;
+  color: #f4f4f5;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.08);
+  font-size: 13px;
+}
+.proj-search input::placeholder {
+  color: #71717a;
+}
+.proj-search input:focus {
+  border-color: rgba(167,139,250,.55);
+  outline: none;
+}
+.proj.is-hidden {
+  display: none;
+}
+.proj-empty {
+  margin: 8px 0 0;
+  color: #8d8796;
+  font-size: 13px;
 }
 .home .strip {
   gap: 16px;
