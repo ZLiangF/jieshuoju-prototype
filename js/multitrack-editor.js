@@ -9,7 +9,6 @@
 
   var TOAST_ONLY = {
     ratio: "当前画幅：9:16",
-    "new-asset": "演示：上传素材或创建文件夹",
     "episode-filter": "演示：筛选素材",
     "type-filter": "演示：筛选素材",
     settings: "演示：时间轴设置",
@@ -300,31 +299,46 @@
       }
       var ds = dx / px;
       if (subtitle && trim && trim.dataset.trim === "right") {
-        subtitle.duration = MT.round1(clamp(origin.duration + ds, MT.MIN_CLIP, Math.min(20, MT.totalDuration() - origin.start)));
+        var end = origin.start + clamp(origin.duration + ds, MT.MIN_CLIP, Math.min(20, MT.totalDuration() - origin.start));
+        end = MT.snapTime ? MT.snapTime(end, subtitle.id) : end;
+        subtitle.duration = MT.round1(clamp(end - origin.start, MT.MIN_CLIP, Math.min(20, MT.totalDuration() - origin.start)));
         button.style.width = Math.max(24, subtitle.duration * px) + "px";
+        if (MT.showSnapGuide) MT.showSnapGuide(subtitle.start + subtitle.duration, true);
         MT.renderPlayhead();
       } else if (subtitle && trim) {
         var start = clamp(origin.start + ds, Math.max(0, origin.start + origin.duration - 20), origin.start + origin.duration - MT.MIN_CLIP);
+        start = MT.snapTime ? MT.snapTime(start, subtitle.id) : start;
         subtitle.start = MT.round1(start);
         subtitle.duration = MT.round1(origin.duration - (start - origin.start));
         button.style.left = subtitle.start * px + "px";
         button.style.width = Math.max(24, subtitle.duration * px) + "px";
+        if (MT.showSnapGuide) MT.showSnapGuide(subtitle.start, true);
         MT.renderPlayhead();
       } else if (subtitle) {
-        subtitle.start = MT.round1(clamp(origin.start + ds, 0, Math.max(0, MT.totalDuration() - subtitle.duration)));
+        var movedStart = clamp(origin.start + ds, 0, Math.max(0, MT.totalDuration() - subtitle.duration));
+        movedStart = MT.snapTime ? MT.snapTime(movedStart, subtitle.id) : movedStart;
+        subtitle.start = MT.round1(movedStart);
         button.style.left = subtitle.start * px + "px";
+        if (MT.showSnapGuide) MT.showSnapGuide(subtitle.start, true);
         MT.renderPlayhead();
       } else if (trim && trim.dataset.trim === "right") {
-        clip.duration = MT.round1(clamp(origin.duration + ds, MT.MIN_CLIP, clip.sourceDuration - clip.srcIn));
+        var rightEnd = origin.start + clamp(origin.duration + ds, MT.MIN_CLIP, clip.sourceDuration - clip.srcIn);
+        rightEnd = MT.snapTime ? MT.snapTime(rightEnd, clip.id) : rightEnd;
+        clip.duration = MT.round1(clamp(rightEnd - origin.start, MT.MIN_CLIP, clip.sourceDuration - clip.srcIn));
         MT.renderRuler();
         MT.renderTracks();
+        if (MT.showSnapGuide) MT.showSnapGuide(origin.start + clip.duration, true);
         markDragging();
       } else if (trim) {
         var shift = clamp(ds, -origin.srcIn, origin.duration - MT.MIN_CLIP);
+        var leftEdge = MT.snapTime ? MT.snapTime(origin.start + shift, clip.id) : origin.start + shift;
+        shift = leftEdge - origin.start;
+        shift = clamp(shift, -origin.srcIn, origin.duration - MT.MIN_CLIP);
         clip.srcIn = MT.round1(origin.srcIn + shift);
         clip.duration = MT.round1(origin.duration - shift);
         MT.renderRuler();
         MT.renderTracks();
+        if (MT.showSnapGuide) MT.showSnapGuide(MT.entryOf(clip).start, true);
         markDragging();
       } else {
         button.style.transform = "translateX(" + dx + "px)";
@@ -375,6 +389,7 @@
       state.selectedKind = subtitle ? "subtitle" : "shot";
       state.selected = subtitle ? subtitle.id : clip.id;
       if (clip) state.currentTime = MT.entryOf(clip).start;
+      if (MT.showSnapGuide) MT.showSnapGuide(0, false);
       MT.refreshTimeline();
       if (clip && !trim) MT.toast("已移到第 " + (MT.doc.clips.indexOf(clip) + 1) + " 段");
       if (clip && trim) MT.toast(clip.label + " 时长 " + MT.secText(clip.duration));

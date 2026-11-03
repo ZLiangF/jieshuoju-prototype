@@ -1,13 +1,39 @@
-/* 多轨编辑器 · 保存：状态（已保存 / 未保存 / 保存中 / 保存失败）、手动保存、延迟自动保存、刷新恢复、离开前保存。
-   原型用 localStorage 代替服务端；?mock=save-fail 让第一次保存失败，用来演示重试。 */
+/* 多轨编辑器 · 保存：状态（已保存 / 未保存 / 保存中 / 保存失败）、手动保存、5–10 秒自动保存、
+   服务端(localStorage) + 本地草稿兜底、刷新恢复、失败重试。?mock=save-fail 演示失败。 */
 (function () {
   var MT = window.MT;
   var KEY = "jieshuoju.multitrack.ep1.v2";
-  var AUTO_SAVE_DELAY = 1500;
+  var DRAFT_KEY = "jieshuoju.multitrack.ep1.draft";
+  var AUTO_SAVE_DELAY = 6000;
   var status = "saved";
   var savedAt = null;
   var timer = null;
   var mockFailed = false;
+  var pendingDraft = null;
+
+  function clock(time) {
+    var date = new Date(time);
+    return String(date.getHours()).padStart(2, "0") + ":" + String(date.getMinutes()).padStart(2, "0");
+  }
+
+  function writeServer() {
+    if (MT.mock["save-fail"] && !mockFailed) {
+      mockFailed = true;
+      throw new Error("mock save failure");
+    }
+    savedAt = Date.now();
+    localStorage.setItem(KEY, JSON.stringify({ savedAt: savedAt, doc: MT.doc }));
+  }
+
+  function writeDraft() {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ savedAt: Date.now(), doc: MT.doc }));
+    } catch (error) {}
+  }
+
+  function clearDraft() {
+    try { localStorage.removeItem(DRAFT_KEY); } catch (error) {}
+  }
 
   try {
     var raw = localStorage.getItem(KEY);
@@ -22,18 +48,16 @@
     localStorage.removeItem(KEY);
   }
 
-  function clock(time) {
-    var date = new Date(time);
-    return String(date.getHours()).padStart(2, "0") + ":" + String(date.getMinutes()).padStart(2, "0");
-  }
-
-  function write() {
-    if (MT.mock["save-fail"] && !mockFailed) {
-      mockFailed = true;
-      throw new Error("mock save failure");
+  try {
+    var draftRaw = localStorage.getItem(DRAFT_KEY);
+    var draft = draftRaw && JSON.parse(draftRaw);
+    if (draft && draft.doc && draft.doc.clips && draft.doc.clips.length) {
+      if (!savedAt || (draft.savedAt || 0) > savedAt + 500) {
+        pendingDraft = draft;
+      }
     }
-    savedAt = Date.now();
-    localStorage.setItem(KEY, JSON.stringify({ savedAt: savedAt, doc: MT.doc }));
+  } catch (error) {
+    clearDraft();
   }
 
   MT.renderSaveStatus = function () {
@@ -50,8 +74,10 @@
   };
 
   MT.markDirty = function () {
+    if (MT.state && MT.state.readonly) return;
     if (status !== "saving") status = "dirty";
     MT.renderSaveStatus();
+    writeDraft();
     clearTimeout(timer);
     timer = setTimeout(function () { MT.saveNow(false); }, AUTO_SAVE_DELAY);
   };
@@ -59,31 +85,61 @@
   MT.isSaved = function () { return status === "saved"; };
 
   MT.saveNow = function (manual) {
+    if (MT.state && MT.state.readonly) return MT.toast("只读模式，无法保存");
     clearTimeout(timer);
     status = "saving";
     MT.renderSaveStatus();
     setTimeout(function () {
       try {
-        write();
+        writeServer();
+        clearDraft();
         status = "saved";
         if (manual) MT.toast("已保存");
       } catch (error) {
         status = "failed";
-        MT.toast("保存失败，修改仍保留在当前页面，可点顶部「重试」");
+        writeDraft();
+        MT.toast("保存失败，已写入本地草稿，可点顶部「重试」");
+        setTimeout(function () {
+          if (status === "failed") MT.saveNow(false);
+        }, 2500);
       }
       MT.renderSaveStatus();
     }, 450);
   };
 
+  MT.applyDraftRestore = function (restore) {
+    var modal = MT.$("#draft-modal");
+    if (modal) modal.hidden = true;
+    if (restore && pendingDraft) {
+      MT.restore(JSON.stringify(pendingDraft.doc));
+      MT.normalizeDoc();
+      MT.renderAll && MT.renderAll();
+      MT.toast("已恢复本地草稿");
+      MT.markDirty();
+    } else {
+      clearDraft();
+      MT.toast("已放弃本地草稿");
+    }
+    pendingDraft = null;
+  };
+
   window.addEventListener("beforeunload", function (event) {
     if (status === "saved") return;
     try {
-      write();
+      writeDraft();
+      writeServer();
     } catch (error) {
       event.preventDefault();
       event.returnValue = "";
     }
   });
 
-  if (MT.restoredFromSave) setTimeout(function () { MT.toast("已恢复上次保存的编辑内容" + (savedAt ? "（" + clock(savedAt) + "）" : "")); }, 300);
+  if (pendingDraft) {
+    setTimeout(function () {
+      var modal = MT.$("#draft-modal");
+      if (modal) modal.hidden = false;
+    }, 400);
+  } else if (MT.restoredFromSave) {
+    setTimeout(function () { MT.toast("已恢复上次保存的编辑内容" + (savedAt ? "（" + clock(savedAt) + "）" : "")); }, 300);
+  }
 })();
