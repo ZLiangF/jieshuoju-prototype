@@ -62,7 +62,7 @@
           extras += '<button type="button" data-act="add-subtitle" title="在播放位置添加字幕">＋</button>';
         }
         extras += '<button type="button" data-track-toggle="' + track.id + '" title="' + (track.enabled ? "停用" : "启用") + track.name + '" class="' + (track.enabled ? "" : "off") + '">' + (track.enabled ? "◉" : "⊘") + "</button>";
-        if (state.tracks[type].length > 1 || type !== "video") {
+        if (index > 0) {
           extras += '<button type="button" data-act="remove-track" data-track-type="' + type + '" data-track-id="' + track.id + '" title="删除轨道">−</button>';
         }
         htmlLabels += '<div class="mt-label-row" data-track-row="' + track.id + '">' +
@@ -179,15 +179,9 @@
   MT.removeTrack = function (type, id) {
     if (state.readonly) return;
     var list = state.tracks[type];
-    if (list.length <= 1) return MT.toast("至少保留 1 条" + MT.TRACK_LABEL[type] + "轨");
-    if (type === "audio" && list[0] && list[0].id === id) return MT.toast("旁白所在音频轨不可删除，可先停用");
-    if (type === "video" && list[0] && list[0].id === id) return MT.toast("主视频轨不可删除");
-    if (type === "subtitle" && list[0] && list[0].id === id && list.length > 1) {
-      /* allow removing first only if empty and not only - keep simple: only remove last empty extras */
-    }
     var index = list.findIndex(function (track) { return track.id === id; });
     if (index < 0) return;
-    if (index === 0) return MT.toast("主轨不可删除，可停用或先删空轨");
+    if (index === 0) return MT.toast("主轨不可删除，可以停用");
     list.splice(index, 1);
     list.forEach(function (track, i) { track.name = MT.TRACK_LABEL[type] + " " + (i + 1); });
     MT.renderTracks();
@@ -543,6 +537,19 @@
   });
 
   MT.renderResolution();
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key !== "Escape") return;
+    if (!$("#upload-modal").hidden) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      MT.closeUpload();
+    } else if (!$("#draft-modal").hidden) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      MT.applyDraftRestore(false);
+    }
+  }, true);
 
   /* 多轨超出可视高度时，左右栏纵向同步滚动 */
   (function syncTrackScroll() {

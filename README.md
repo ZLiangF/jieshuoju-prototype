@@ -7,7 +7,7 @@
 纯静态 HTML，无构建、无后端。现网链路：
 
 ```text
-首页 → 剧本大纲 → 资产库 → 分集视频（全集）→ 单集工作台
+首页 → 剧本大纲 → 资产库 → 分集视频（全集）→ 单集工作台 → 多轨编辑器
 ```
 
 ## 文件结构
@@ -18,6 +18,7 @@ outline.html                   剧本大纲（脚本很短，直接写在页面�
 assets.html                    资产库列表 + 资产详情工作台（脚本见下方「资产库脚本」）
 episodes.html + js/episodes.js 分集视频全集（一键成片 / 专业分镜 / 导演级分镜）
 workspace.html + js/workspace.js 第1集单集工作台（样片 480P / 正片 1080P）
+multitrack-editor.html         多轨编辑器（从单集工作台「多轨编辑器」进入，脚本见下方「多轨编辑器」）
 console.html                   旧入口，自动跳转到分集视频
 js/data.js                     演示数据 ReplicaData + 公共方法 ReplicaUI（toast、积分）
 
@@ -27,6 +28,8 @@ css/asset-library.css          资产库列表
 css/asset-detail.css           资产详情（形象库、预览、提示词与生成、音色、参考图、图片编辑）
 css/workspace.css              单集工作台
 css/episodes.css               分集视频
+css/multitrack-editor.css      多轨编辑器：顶栏、素材区、预览、右侧设置、弹窗
+css/multitrack-timeline.css    多轨编辑器：时间线工具栏、轨道、片段、播放头、响度表
 media/                         角色、五视图、场景、道具图片
 tools/check.py                 自检脚本
 tools/regress.html             样式回归检查
@@ -73,6 +76,29 @@ js/image-editor.js     图片编辑（裁剪、旋转、缩放）
 js/assets-boot.js      Esc 关闭顺序（从最上层弹窗开始）+ 首次渲染
 ```
 
+## 多轨编辑器
+
+所有 `multitrack-*.js` 都挂在 `window.MT` 上，按下面的顺序加载：
+
+```text
+js/multitrack-state.js    数据层：时间线数据、素材列表、界面状态、撤销重做
+js/multitrack-render.js   渲染：素材区、标尺、轨道、预览、响度表、右侧面板
+js/multitrack-actions.js  编辑操作：分割、合并、转场、字幕、配音、重新生成、静音
+js/multitrack-menu.js     右键菜单、转场弹窗、快捷键
+js/multitrack-save.js     保存：有改动 6 秒后自动保存，失败自动重试；本地草稿兜底，崩溃后重新进入可选恢复
+js/multitrack-export.js   导出成片 / 导出 XML
+js/multitrack-phase2.js   二期：轨道上限、磁吸、素材文件夹与上传、分辨率显示、只读互斥、多轨纵向滚动
+js/multitrack-editor.js   事件绑定（点击、拖动、面板缩放）和首屏渲染
+```
+
+- 轨道上限：字幕 3、视频 3、音频 5，空轨也算。到上限后新增不生效，提示「{类型}轨道最多支持 N 轨」。主轨（字幕 1、视频 1、音频 1）不能删，只能停用。
+- 轨道由 `multitrack-phase2.js` 的 `MT.renderTrackChrome()` 按 `MT.state.tracks` 生成，左侧轨道名和中间轨道会同步上下滚动。
+- 磁吸默认开启，拖动或裁剪片段、字幕时吸附到相邻片段首尾和时间线起点，并显示对齐线。
+- 素材区只有一层文件夹，删除文件夹时组内素材移回「未分组」。上传在原型里不解码文件，时长和分辨率超限用文件名演示：文件名带 `over30s` 视为超时长，视频文件名带 `4k` 视为超分辨率。
+- 同一项目只允许一个页面编辑：用 localStorage 记录占用，第二个标签页进入只读并顶部提示。
+
+截图或演示时可在地址栏加 `?demo=`：`tracks`（轨道加满）、`upload`（上传弹窗）、`draft`（草稿恢复弹窗）、`readonly`（只读）、`magnet-off`（磁吸关闭）。另有 `?mock=save-fail` 演示保存失败。
+
 ## 样式的分层
 
 每个文件内部仍然按“基础 → 现网精修 → 覆盖”从上往下叠加，**写在后面的生效**，页面之间用加载顺序（`common.css` 在前）保证同样的效果。改样式前先在这一页加载的样式文件里搜索这个选择器，改最后生效的那一处。
@@ -84,7 +110,7 @@ js/assets-boot.js      Esc 关闭顺序（从最上层弹窗开始）+ 首次渲
 1. 改了 `css/` 或 `js/` 下的文件后，运行 `python3 tools/check.py --bump`，把所有页面的版本号统一换新。否则别人浏览器里还会用旧缓存。
 2. 推送前运行 `python3 tools/check.py`，有「错误」要先修。推到 GitHub 后也会自动跑一遍，结果在仓库的 Actions 页面。
 3. 只改样式、不想改变其他页面时，先打开 `tools/regress.html` 点「记录基线」，改完点「对比」。只有你想改的地方出现差异，才算没误伤。
-4. 改了交互后，打开 `tools/smoke.html` 点「开始检查」。它会依次打开首页、剧本大纲、资产库、资产详情、分集视频、单集工作台，把能点的按钮逐个点一遍，任何一步出现脚本报错都会标红，并写明点的是哪个按钮。全部「通过」再推送。
+4. 改了交互后，打开 `tools/smoke.html` 点「开始检查」。它会依次打开首页、剧本大纲、资产库、资产详情、分集视频、单集工作台、多轨编辑器（含轨道加满、上传弹窗、草稿恢复），把能点的按钮逐个点一遍，任何一步出现脚本报错都会标红，并写明点的是哪个按钮。全部「通过」再推送。
 5. `check.py` 除了版本号和无用文件，还会检查：每个页面的脚本里用 `getElementById` / `querySelector("#…")` 取的元素是否存在；同一页面的几个脚本有没有重名的全局函数或变量（重名时后加载的会悄悄覆盖前面的）。
 6. 新增图片放进 `media/` 对应目录。不再使用的图片和样式及时删掉，`check.py` 会列出来。
 

@@ -197,19 +197,6 @@
   color: #ef4444;
 }
 
-.mt-audio2-label,
-.mt-audio2-track {
-  display: none;
-}
-
-.mt-main.has-audio2 .mt-audio2-label {
-  display: flex;
-}
-
-.mt-main.has-audio2 .mt-audio2-track {
-  display: block;
-}
-
 .mt-scroll {
   min-width: 0;
   min-height: 0;
