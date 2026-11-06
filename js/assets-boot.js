@@ -1,5 +1,6 @@
 document.addEventListener("keydown", function (e) {
   if (e.key !== "Escape") return;
+  if (document.getElementById("prompt-required-dialog").classList.contains("open")) { closePromptRequiredDialog(); return; }
   if (!document.getElementById("img-edit").hidden) { closeImageEditor(false); return; }
   if (document.getElementById("asset-generate-dialog").classList.contains("open")) { closeGenerationConfirm(); return; }
   if (document.getElementById("asset-delete-dialog").classList.contains("open")) { closeDeleteConfirm(); return; }
@@ -19,7 +20,7 @@ document.addEventListener("keydown", function (e) {
     selectedLooks = {};
     renderLookLibrary();
   }
-  else if (document.getElementById("look-dialog").classList.contains("open")) closeLookDialog();
+  else if (document.getElementById("look-dialog").classList.contains("open")) requestCloseLookDialog();
   else if (multiOn) setMultiSelect(false);
 });
 

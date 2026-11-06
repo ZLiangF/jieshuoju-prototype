@@ -86,7 +86,12 @@
   function sceneRef(key) {
     if (ReplicaUI.deletedAssetName("s", key)) return null;
     var info = D.stageScenes[key];
-    if (info) return { key: key, name: info.name, image: info.image };
+    if (info) {
+      var parts = key.split("/");
+      var owner = sceneById(parts[0]);
+      var look = owner && parts[1] ? (owner.looksList || []).find(function (entry) { return entry.id === parts[1]; }) : null;
+      return { key: key, name: look ? look.name : owner ? owner.name : info.name, image: info.image };
+    }
     var sc = sceneById(key);
     return sc ? { key: key, name: sc.name, image: sc.image } : null;
   }

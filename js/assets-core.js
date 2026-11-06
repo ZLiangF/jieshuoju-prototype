@@ -17,6 +17,7 @@ var imgEdit = { scale: 1, rotate: 0, x: 0, y: 0, locked: false, cropping: false,
 var historySelectedId = "";
 var newLookParentId = "";
 var roleCreateMode = "asset";
+var editingNameTarget = null;
 var roleEpsNumbers = [];
 var expandedLooks = {};
 var episodePanelIndex = -1;
@@ -56,6 +57,14 @@ var PLUS_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3
 var READY_MARK = '<span class="asset-done" role="img" aria-label="已完成" title="已完成"><svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="7" fill="currentColor"/><path d="M4.2 7.2 6.1 9 9.8 5.2" fill="none" stroke="#0f1f17" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
 function cleanText(value, limit) {
   return String(value || "").replace(/[<>"&]/g, "").replace(/\s+/g, " ").trim().slice(0, limit);
+}
+
+function assetNameOf(item) {
+  return item ? (item.name || "") : "";
+}
+
+function assetNameEditable() {
+  return false;
 }
 
 function voiceSourceLabel(source) {

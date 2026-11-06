@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>资产库 · 离婚后（15集）</title>
-  <link rel="stylesheet" href="css/common.css?v=202611032159" />
-  <link rel="stylesheet" href="css/asset-library.css?v=202611032159" />
-  <link rel="stylesheet" href="css/asset-detail.css?v=202611032159" />
+  <link rel="stylesheet" href="css/common.css?v=202611051021" />
+  <link rel="stylesheet" href="css/asset-library.css?v=202611051021" />
+  <link rel="stylesheet" href="css/asset-detail.css?v=202611051021" />
 </head>
 <body class="asset-page flow-page">
 <div class="app">
@@ -116,7 +116,7 @@
           <div class="asset-editor-character">
             <div class="character-avatar" id="editor-char-avatar"></div>
             <div>
-              <strong id="editor-char-name"></strong>
+              <span class="editable-asset-title"><strong id="editor-char-name"></strong><button type="button" id="edit-asset-name" aria-label="查看资产名称" title="查看资产名称">✎</button></span>
               <span id="editor-char-desc"></span>
             </div>
           </div>
@@ -148,7 +148,7 @@
         <input type="hidden" id="f-look-eps" />
         <header class="look-gen-head">
           <div class="look-gen-title">
-            <strong id="current-look-name"></strong>
+            <span class="editable-asset-title"><strong id="current-look-name"></strong><button type="button" id="edit-look-name" aria-label="查看资产名称" title="查看资产名称">✎</button></span>
             <div class="look-gen-meta" id="current-look-meta"></div>
           </div>
           <span class="current-look-state" id="current-look-state" hidden></span>
@@ -440,8 +440,15 @@
       <h3 id="role-title">新增角色</h3>
       <button class="icon-round" id="role-x">×</button>
     </div>
-    <label id="role-name-label">名称*</label>
-    <input class="look-field" id="role-name" placeholder="请输入名称" maxlength="30" />
+    <label id="role-name-label" class="asset-create-label">名称 <i>*</i>
+      <button class="name-tip" type="button" aria-label="命名建议" data-tip="最优命名：角色名称+服装穿着+角色状态">?</button>
+    </label>
+    <div class="child-name-editor" id="role-child-name" hidden>
+      <span id="role-parent-prefix"></span>
+      <input class="look-field" id="role-name" placeholder="请输入名称" maxlength="30" />
+    </div>
+    <input class="look-field" id="role-main-name" placeholder="请输入名称" maxlength="30" />
+    <p class="asset-full-name" id="role-full-name" hidden>完整名称：<strong></strong></p>
     <div id="role-tier-wrap">
       <label>角色类型</label>
       <div class="role-tier" id="role-tier" role="radiogroup" aria-label="角色类型">
@@ -451,8 +458,9 @@
       </div>
     </div>
     <div id="role-desc-wrap">
-      <label>角色描述</label>
-    <textarea class="look-area" id="role-desc" placeholder="请输入角色描述" maxlength="200"></textarea>
+      <label class="asset-create-label" id="role-desc-label" for="role-desc">角色描述 <i>*</i></label>
+      <textarea class="look-area asset-create-prompt" id="role-desc" placeholder="请输入角色描述" maxlength="2000"></textarea>
+      <p class="asset-field-error" id="role-desc-error" hidden>请输入角色描述</p>
     </div>
     <label>关联集</label>
     <input class="look-field" id="role-eps" placeholder="例如 1-3,8" />
@@ -463,7 +471,7 @@
       <span></span>
       <div style="display:flex;gap:8px">
         <button class="btn" id="role-cancel">取消</button>
-        <button class="btn primary" id="role-save">保存</button>
+        <button class="btn primary" id="role-save" disabled>保存</button>
       </div>
     </div>
   </div>
@@ -476,16 +484,31 @@
       <button class="icon-round" id="plain-x">×</button>
     </div>
     <div class="ref-slot" style="width:120px;height:120px;margin:8px 0 16px" id="plain-img"></div>
-    <label>名称</label>
-    <input class="look-field" id="plain-name" />
-    <label>描述</label>
-    <textarea class="look-area" id="plain-desc" placeholder="请输入描述"></textarea>
+    <label>资产名称</label>
+    <div class="child-name-editor" id="plain-child-name" hidden>
+      <span id="plain-parent-prefix"></span>
+      <input class="look-field" id="plain-name" maxlength="30" />
+    </div>
+    <input class="look-field" id="plain-main-name" maxlength="60" />
+    <p class="asset-field-error" id="plain-name-error" hidden></p>
+    <p class="asset-name-note" id="plain-name-note"></p>
     <div class="look-foot">
-      <button class="btn purple" id="plain-gen">生成</button>
+      <span></span>
       <div style="display:flex;gap:8px">
         <button class="btn" id="plain-cancel">取消</button>
         <button class="btn primary" id="plain-save">保存</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-mask" id="prompt-required-dialog">
+  <div class="modal prompt-required-modal" role="alertdialog" aria-modal="true" aria-labelledby="prompt-required-title" aria-describedby="prompt-required-desc">
+    <div class="prompt-required-icon" aria-hidden="true">!</div>
+    <h3 id="prompt-required-title">请先填写提示词</h3>
+    <p id="prompt-required-desc">当前形象还没有提示词，填写后才能返回资产库。</p>
+    <div class="asset-delete-acts">
+      <button type="button" class="btn primary" id="prompt-required-ok">返回填写</button>
     </div>
   </div>
 </div>
@@ -617,15 +640,15 @@
   </div>
 </div>
 
-<script src="js/data.js?v=202611032159"></script>
-<script src="js/assets-core.js?v=202611032159"></script>
-<script src="js/assets-library.js?v=202611032159"></script>
-<script src="js/assets-dialogs.js?v=202611032159"></script>
-<script src="js/assets-detail.js?v=202611032159"></script>
-<script src="js/assets-mindmap.js?v=202611032159"></script>
-<script src="js/assets-preview.js?v=202611032159"></script>
-<script src="js/assets-composer.js?v=202611032159"></script>
-<script src="js/image-editor.js?v=202611032159"></script>
-<script src="js/assets-boot.js?v=202611032159"></script>
+<script src="js/data.js?v=202611051021"></script>
+<script src="js/assets-core.js?v=202611051021"></script>
+<script src="js/assets-library.js?v=202611051021"></script>
+<script src="js/assets-dialogs.js?v=202611051021"></script>
+<script src="js/assets-detail.js?v=202611051021"></script>
+<script src="js/assets-mindmap.js?v=202611051021"></script>
+<script src="js/assets-preview.js?v=202611051021"></script>
+<script src="js/assets-composer.js?v=202611051021"></script>
+<script src="js/image-editor.js?v=202611051021"></script>
+<script src="js/assets-boot.js?v=202611051021"></script>
 </body>
 </html>

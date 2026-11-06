@@ -1150,6 +1150,9 @@
 #role-dialog [hidden] {
   display: none;
 }
+#plain-dialog [hidden] {
+  display: none !important;
+}
 .role-sheet label {
   display: block;
   color: var(--muted);
@@ -1158,6 +1161,126 @@
 }
 .role-sheet .look-area {
   min-height: 96px;
+}
+.asset-create-label {
+  display: flex !important;
+  align-items: center;
+  gap: 5px;
+}
+.asset-create-label i {
+  color: #ff7185;
+  font-style: normal;
+}
+.name-tip {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border-radius: 50%;
+  color: #a9a4b2;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.12);
+  font-size: 10px;
+}
+.name-tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  z-index: 4;
+  width: max-content;
+  padding: 6px 9px;
+  border-radius: 7px;
+  color: #f5f2f8;
+  background: #34313b;
+  box-shadow: 0 8px 20px rgba(0,0,0,.35);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 4px);
+  transition: opacity .14s, transform .14s;
+}
+.name-tip:hover::after,
+.name-tip:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+.child-name-editor {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 8px;
+  background: rgba(255,255,255,.04);
+  overflow: hidden;
+}
+.child-name-editor[hidden] {
+  display: none;
+}
+.child-name-editor > span {
+  max-width: 190px;
+  padding: 0 10px;
+  overflow: hidden;
+  color: #aaa5b2;
+  font-size: 13px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.child-name-editor .look-field {
+  border: 0;
+  border-left: 1px solid rgba(255,255,255,.1);
+  border-radius: 0;
+  background: rgba(255,255,255,.025);
+}
+.asset-full-name {
+  margin: 7px 0 0;
+  color: #77727f;
+  font-size: 11px;
+}
+.asset-full-name strong {
+  color: #b9b4c2;
+  font-weight: 500;
+}
+.asset-create-prompt {
+  min-height: 84px !important;
+}
+.asset-field-error {
+  margin: 6px 0 0;
+  color: #ff7185;
+  font-size: 12px;
+}
+.asset-name-note {
+  margin: 8px 0 0;
+  color: #817c89;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.locked-field {
+  color: #77727f;
+  background: rgba(255,255,255,.025);
+  cursor: not-allowed;
+}
+.editable-asset-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.editable-asset-title button {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 6px;
+  color: #8e8997;
+  background: transparent;
+  opacity: .58;
+  transition: opacity .15s, color .15s, background .15s;
+}
+.editable-asset-title:hover button,
+.editable-asset-title button:focus-visible {
+  opacity: 1;
+}
+.editable-asset-title button:hover {
+  color: #efe8ff;
+  background: rgba(139,92,246,.18);
 }
 .char-card {
   cursor: pointer;

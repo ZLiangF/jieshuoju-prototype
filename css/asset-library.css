@@ -607,6 +607,41 @@
 #asset-delete-dialog {
   z-index: 70;
 }
+#prompt-required-dialog {
+  z-index: 82;
+}
+.prompt-required-modal {
+  width: min(380px, calc(100vw - 32px));
+  text-align: center;
+}
+.prompt-required-icon {
+  width: 42px;
+  height: 42px;
+  margin: 0 auto 14px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #f3e8ff;
+  background: rgba(139,92,246,.2);
+  border: 1px solid rgba(196,181,253,.32);
+  font-size: 20px;
+  font-weight: 650;
+}
+.prompt-required-modal h3 {
+  font-size: 17px;
+}
+.prompt-required-modal p {
+  margin: 9px 0 22px;
+  color: #a7a2af;
+  font-size: 13px;
+  line-height: 1.65;
+}
+.prompt-required-modal .asset-delete-acts {
+  justify-content: center;
+}
+.prompt-required-modal .btn {
+  min-width: 110px;
+}
 .asset-delete-modal {
   width: 380px;
 }

@@ -10,7 +10,10 @@ function paintPending(kind, n) {
 function matchesQuery(row) {
   var q = query.trim().toLowerCase();
   if (!q) return true;
-  return ((row.item.name || "") + " " + (row.item.desc || "") + " " + (row.item.tag || "") + " " + (row.item.role || "")).toLowerCase().indexOf(q) !== -1;
+  var lookNames = (row.item.looksList || []).map(function (look) {
+    return [look.name, look.customName].filter(Boolean).join(" ");
+  }).join(" ");
+  return ([row.item.name, row.item.desc, row.item.tag, row.item.role, lookNames].filter(Boolean).join(" ")).toLowerCase().indexOf(q) !== -1;
 }
 
 function matchedRows(kind) {

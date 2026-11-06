@@ -9,10 +9,13 @@ function assetWord() {
 function ensureEditorLooks(item) {
   if (editorKind === "char" || (item.looksList && item.looksList.length)) return;
   var eps = Array.isArray(item.eps) ? item.eps.join(",") : (item.eps || "");
-  item.look = item.name;
+  item.look = assetNameOf(item);
   item.looksList = [{
     id: item.id + "-main",
-    name: item.name,
+    name: assetNameOf(item) + " - 默认" + assetWord(),
+    customName: "默认" + assetWord(),
+    nameEditable: assetNameEditable(item),
+    source: item.source,
     eps: eps,
     image: item.image,
     sheet: item.status && item.status !== "pending" ? item.image : "",
@@ -131,7 +134,7 @@ document.getElementById("preview-voice").onclick = function () {
 };
 
 function lookShortName(look) {
-  return look.name.replace(currentChar.name + "-", "");
+  return look.customName || look.name.replace(assetNameOf(currentChar) + " - ", "").replace(assetNameOf(currentChar) + "-", "");
 }
 
 function lookStatusParts(look) {
@@ -214,7 +217,8 @@ function primaryLookIndex(looks) {
 function renderLookLibrary() {
   closeEpisodeEditor();
   var looks = currentChar.looksList || [];
-  document.getElementById("editor-char-name").textContent = currentChar.name;
+  document.getElementById("editor-char-name").textContent = assetNameOf(currentChar);
+  document.getElementById("edit-asset-name").title = "查看资产名称";
   document.getElementById("editor-char-desc").textContent = currentChar.desc || "";
   document.getElementById("editor-char-desc").title = currentChar.desc || "";
   paintPreviewVoice();
@@ -455,6 +459,7 @@ function fillLookForm(look) {
   }
   ensureEditorLooks(currentChar);
   editingLook = look;
+  document.getElementById("edit-look-name").title = "查看资产名称";
   lookDirty = false;
   imageAnalysisSeq++;
   document.getElementById("image-analyze-badge").hidden = true;
@@ -485,11 +490,18 @@ function fillLookForm(look) {
 
 function stashLookDraft() {
   if (!lookDirty || !editingLook) return;
-  editingLook.name = document.getElementById("f-look-name").value.trim() || editingLook.name;
   editingLook.eps = document.getElementById("f-look-eps").value.trim() || editingLook.eps;
   editingLook.prompt = document.getElementById("f-prompt").value.trim();
   lookDirty = false;
 }
+
+document.getElementById("edit-asset-name").onclick = function () {
+  if (currentChar) openNameEditor(currentChar, null);
+};
+
+document.getElementById("edit-look-name").onclick = function () {
+  if (currentChar && editingLook) openNameEditor(currentChar, editingLook);
+};
 
 function closeEpisodeEditor() {
   episodePanelIndex = -1;
@@ -594,6 +606,23 @@ function closeLookDialog() {
   document.body.classList.remove("asset-editor-page-open");
   document.getElementById("look-dialog").classList.remove("open");
 }
+
+function closePromptRequiredDialog() {
+  document.getElementById("prompt-required-dialog").classList.remove("open");
+  setTimeout(function () { document.getElementById("f-prompt").focus(); }, 30);
+}
+
+function requestCloseLookDialog() {
+  if (editingLook && !document.getElementById("f-prompt").value.trim()) {
+    document.getElementById("prompt-required-dialog").classList.add("open");
+    document.getElementById("prompt-required-ok").focus();
+    return;
+  }
+  stashLookDraft();
+  closeLookDialog();
+}
+
+document.getElementById("prompt-required-ok").onclick = closePromptRequiredDialog;
 
 function confirmDeleteLooks(removing) {
   var looks = currentChar.looksList || [];
@@ -793,7 +822,7 @@ document.getElementById("look-view-switch").onclick = function (e) {
   renderLookLibrary();
 };
 
-document.getElementById("look-dialog-x").onclick = closeLookDialog;
+document.getElementById("look-dialog-x").onclick = requestCloseLookDialog;
 document.getElementById("look-multi").onclick = function () {
   lookMultiOn = !lookMultiOn;
   if (!lookMultiOn) selectedLooks = {};
