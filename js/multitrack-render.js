@@ -220,7 +220,7 @@
       split: MT.canSplit(),
       merge: !!hasNext,
       "add-transition": !!hasNext,
-      "delete-selection": !!state.selected && state.selectedKind !== "asset" && state.selectedKind !== "audio",
+      "delete-selection": (state.multi && state.multi.length > 0) || (!!state.selected && state.selectedKind !== "asset" && state.selectedKind !== "audio" && state.selectedKind !== "multi"),
       "generate-audio": !!shot && !MT.busyReason(shot),
       "recognize-subtitles": !state.asrBusy && MT.doc.clips.length > 0,
       "translate-subtitles": !state.translateBusy && MT.doc.subtitles.length > 0,
@@ -249,7 +249,8 @@
     ["右键片段", "复制、剪切、创建副本、片段重拍等"],
     ["拖动片段", "磁吸开：调整顺序；磁吸关：自由移动、可留空隙；拖两端可裁剪"],
     ["S", "在播放头处分割"],
-    ["空格", "播放 / 暂停"]
+    ["空格", "播放 / 暂停"],
+    ["框选", "在时间线空白处拖出一个框，一次选中多个片段和字幕；按住 Shift 再框选会追加"]
   ];
 
   var inspectors = {
@@ -353,6 +354,19 @@
         }).reverse().join("") + '</div></div>' +
         '<div class="mt-setting-actions"><button type="button" class="danger" data-act="delete-selection">删除当前版本</button></div>';
     },
+    multi: function (body) {
+      var shots = state.multi.filter(function (item) { return item.kind === "shot"; }).length;
+      var subtitles = state.multi.filter(function (item) { return item.kind === "subtitle"; }).length;
+      var extras = state.multi.filter(function (item) { return item.kind === "extra"; }).length;
+      var parts = [];
+      if (shots) parts.push(shots + " 个视频片段");
+      if (subtitles) parts.push(subtitles + " 条字幕");
+      if (extras) parts.push(extras + " 段音频");
+      $("#inspector-title").textContent = "框选";
+      body.innerHTML = '<div class="mt-setting"><label>当前选择</label><div class="mt-setting-title">已框选 ' + state.multi.length + " 项</div>" +
+        "<p class=\"mt-hint\">" + parts.join("，") + "。按住 Shift 再框选可以追加；点空白处拖动可重新框选。</p></div>" +
+        '<div class="mt-setting-actions"><button type="button" class="danger" data-act="delete-selection">删除框选内容</button></div>';
+    },
     asset: function (body) {
       var asset = MT.library.find(function (item) { return item.id === state.selected; }) || {};
       $("#inspector-title").textContent = "素材详情";
@@ -364,7 +378,7 @@
 
   MT.renderInspector = function () {
     var body = $("#inspector-body");
-    var kind = state.selected ? state.selectedKind : "empty";
+    var kind = state.selectedKind === "multi" ? "multi" : (state.selected ? state.selectedKind : "empty");
     (inspectors[kind] || inspectors.empty)(body);
   };
 
@@ -385,8 +399,12 @@
   };
 
   MT.select = function (kind, id, time) {
-    state.selectedKind = kind;
-    state.selected = id;
+    if (kind === "shot" || kind === "subtitle" || kind === "extra") MT.setMulti([{ kind: kind, id: id }]);
+    else {
+      state.multi = [];
+      state.selectedKind = kind;
+      state.selected = id;
+    }
     if (typeof time === "number") state.currentTime = MT.clamp(time, 0, MT.totalDuration());
     MT.renderSelection();
     MT.renderPlayhead();
@@ -394,6 +412,7 @@
 
   MT.refreshTimeline = function () {
     MT.normalizeDoc();
+    if (state.multi && state.multi.length) MT.setMulti(state.multi);
     if (state.selectedKind === "subtitle" && !MT.selectedSubtitle()) MT.clearSelection();
     if (state.selectedKind === "extra" && !MT.doc.extraAudio.some(function (item) { return item.id === state.selected; })) MT.clearSelection();
     state.currentTime = MT.clamp(state.currentTime, 0, MT.totalDuration());

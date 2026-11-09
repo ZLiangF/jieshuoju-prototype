@@ -13,7 +13,7 @@
     "type-filter": "演示：筛选素材",
     settings: "演示：时间轴设置",
     fullscreen: "演示：全屏预览",
-    "track-menu": "右键轨道上的片段可以打开编辑菜单"
+    "track-menu": "轨道右侧 ◉ 可隐藏，× 可删除。主视频轨和旁白轨不能删除"
   };
 
   function toggleLayout(flag, className, button, labels) {
@@ -495,15 +495,129 @@
     });
   }
 
+  function selectionItem(button) {
+    if (!button) return null;
+    if (button.dataset.selectShot) return { kind: "shot", id: button.dataset.selectShot };
+    if (button.dataset.selectSubtitle) return { kind: "subtitle", id: button.dataset.selectSubtitle };
+    if (button.dataset.selectExtra) return { kind: "extra", id: button.dataset.selectExtra };
+    return null;
+  }
+
+  function toggleMulti(item) {
+    var list = (state.multi || []).slice();
+    if (!list.length && (state.selectedKind === "shot" || state.selectedKind === "subtitle" || state.selectedKind === "extra")) {
+      list = [{ kind: state.selectedKind, id: state.selected }];
+    }
+    var index = list.findIndex(function (row) { return row.kind === item.kind && row.id === item.id; });
+    if (index >= 0) list.splice(index, 1);
+    else list.push(item);
+    MT.setMulti(list);
+    MT.renderSelection();
+    MT.renderPlayhead();
+  }
+
+  function paintMulti() {
+    var chosen = {};
+    (state.multi || []).forEach(function (item) { chosen[item.kind + ":" + item.id] = true; });
+    $$("#timeline-canvas .mt-clip").forEach(function (clip) {
+      var item = selectionItem(clip);
+      if (!item) return;
+      clip.classList.toggle("on", !!chosen[item.kind + ":" + item.id]);
+    });
+  }
+
+  var renderTracksForSelection = MT.renderTracks;
+  MT.renderTracks = function () {
+    renderTracksForSelection();
+    paintMulti();
+  };
+
+  function hitsInBox(x1, y1, x2, y2) {
+    var canvas = $("#timeline-canvas").getBoundingClientRect();
+    var left = Math.min(x1, x2);
+    var right = Math.max(x1, x2);
+    var top = Math.min(y1, y2);
+    var bottom = Math.max(y1, y2);
+    var hits = [];
+    $$("#timeline-canvas [data-select-shot], #timeline-canvas [data-select-subtitle], #timeline-canvas [data-select-extra]").forEach(function (clip) {
+      var rect = clip.getBoundingClientRect();
+      var clipLeft = rect.left - canvas.left;
+      var clipTop = rect.top - canvas.top;
+      var clipRight = rect.right - canvas.left;
+      var clipBottom = rect.bottom - canvas.top;
+      if (clipRight < left || clipLeft > right || clipBottom < top || clipTop > bottom) return;
+      var item = selectionItem(clip);
+      if (item) hits.push(item);
+    });
+    return hits;
+  }
+
+  function selectionSummary(items) {
+    var shots = items.filter(function (item) { return item.kind === "shot"; }).length;
+    var subtitles = items.filter(function (item) { return item.kind === "subtitle"; }).length;
+    var extras = items.filter(function (item) { return item.kind === "extra"; }).length;
+    var parts = [];
+    if (shots) parts.push(shots + " 个片段");
+    if (subtitles) parts.push(subtitles + " 条字幕");
+    if (extras) parts.push(extras + " 段音频");
+    return parts.join("、");
+  }
+
   $("#timeline-canvas").addEventListener("pointerdown", function (event) {
     if (event.button !== 0) return;
-    if (event.target.closest("#playhead") || event.target.closest(".mt-transition-mark")) return;
-    var clipButton = event.target.closest(".mt-video-clip, .mt-subtitle-clip");
-    if (clipButton) return beginClipDrag(event, clipButton);
+    if (event.target.closest("#playhead") || event.target.closest(".mt-transition-mark") || event.target.closest(".mt-trim")) return;
+    var clipButton = event.target.closest(".mt-video-clip, .mt-subtitle-clip, [data-select-extra]");
+    if (clipButton && event.shiftKey) {
+      var toggled = selectionItem(clipButton);
+      if (!toggled) return;
+      event.preventDefault();
+      state.suppressClick = true;
+      toggleMulti(toggled);
+      return;
+    }
+    if (clipButton && clipButton.matches(".mt-video-clip, .mt-subtitle-clip")) return beginClipDrag(event, clipButton);
     if (event.target.closest(".mt-clip")) return;
+
+    var canvas = $("#timeline-canvas");
+    var startX = event.clientX;
+    var startY = event.clientY;
+    var marquee = $("#marquee");
+    var dragged = false;
+    var additive = event.shiftKey || event.metaKey;
+    var base = additive ? (state.multi || []).slice() : [];
+    function point(clientX, clientY) {
+      var rect = canvas.getBoundingClientRect();
+      return { x: clientX - rect.left, y: clientY - rect.top };
+    }
     MT.stopPlayback();
-    state.currentTime = MT.snapTime(timeFromPointer(event.clientX), null, { skipPlayhead: true });
-    MT.renderPlayhead();
+    followPointer(function (e) {
+      var from = point(startX, startY);
+      var to = point(e.clientX, e.clientY);
+      if (!dragged && Math.abs(to.x - from.x) < 4 && Math.abs(to.y - from.y) < 4) return;
+      dragged = true;
+      document.body.style.userSelect = "none";
+      marquee.hidden = false;
+      marquee.style.left = Math.min(from.x, to.x) + "px";
+      marquee.style.top = Math.min(from.y, to.y) + "px";
+      marquee.style.width = Math.abs(to.x - from.x) + "px";
+      marquee.style.height = Math.abs(to.y - from.y) + "px";
+    }, function (e) {
+      marquee.hidden = true;
+      if (!dragged) {
+        state.currentTime = MT.snapTime(timeFromPointer(e.clientX), null, { skipPlayhead: true });
+        MT.renderPlayhead();
+        return;
+      }
+      state.suppressClick = true;
+      setTimeout(function () { state.suppressClick = false; }, 0);
+      var from = point(startX, startY);
+      var to = point(e.clientX, e.clientY);
+      var hits = hitsInBox(from.x, from.y, to.x, to.y);
+      MT.setMulti(base.concat(hits));
+      MT.renderSelection();
+      MT.renderPlayhead();
+      MT.toast(state.multi.length ? "已框选 " + selectionSummary(state.multi) : "框选范围内没有片段或字幕");
+    });
   });
 
   $("#playhead").addEventListener("pointerdown", function (event) {

@@ -123,6 +123,7 @@
   MT.state = {
     selected: null,
     selectedKind: null,
+    multi: [],
     currentTime: 0,
     pixelsPerSecond: 18,
     playing: false,
@@ -238,6 +239,33 @@
   MT.clearSelection = function () {
     MT.state.selected = null;
     MT.state.selectedKind = null;
+    MT.state.multi = [];
+  };
+
+  /* 框选结果。多于一项时主选择记为 multi，单项时仍走原来的片段/字幕选中。 */
+  MT.setMulti = function (items) {
+    var seen = {};
+    var state = MT.state;
+    state.multi = (items || []).filter(function (item) {
+      if (!item || !item.id) return false;
+      var key = item.kind + ":" + item.id;
+      if (seen[key]) return false;
+      seen[key] = true;
+      if (item.kind === "shot") return !!MT.clipById(item.id);
+      if (item.kind === "subtitle") return !!MT.subtitleById(item.id);
+      if (item.kind === "extra") return MT.doc.extraAudio.some(function (audio) { return audio.id === item.id; });
+      return false;
+    });
+    if (state.multi.length > 1) {
+      state.selectedKind = "multi";
+      state.selected = "multi";
+    } else if (state.multi.length === 1) {
+      state.selectedKind = state.multi[0].kind;
+      state.selected = state.multi[0].id;
+    } else if (state.selectedKind === "multi" || state.selectedKind === "shot" || state.selectedKind === "subtitle" || state.selectedKind === "extra") {
+      state.selected = null;
+      state.selectedKind = null;
+    }
   };
 
   MT.snapshot = function () {
@@ -251,6 +279,7 @@
     MT.state.asrBusy = false;
     MT.state.translateBusy = false;
     var state = MT.state;
+    if (state.multi && state.multi.length) MT.setMulti(state.multi);
     if (state.selectedKind === "shot" && !MT.clipById(state.selected)) MT.clearSelection();
     if (state.selectedKind === "subtitle" && !MT.subtitleById(state.selected)) MT.clearSelection();
     if (state.selectedKind === "transition" && !MT.doc.transitions[state.selected]) MT.clearSelection();

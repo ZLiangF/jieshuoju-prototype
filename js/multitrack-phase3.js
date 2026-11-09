@@ -265,7 +265,7 @@
   MT.recognizeSubtitles = function () {
     var targets = MT.doc.clips.slice().filter(Boolean);
     if (!targets.length) return MT.toast("时间线上没有可识别的视频片段");
-    if (state.tracks.subtitle.length >= MT.TRACK_LIMITS.subtitle) return MT.toast("字幕轨已达上限，请删除一条字幕轨后再识别");
+    if (state.tracks.subtitle.length >= MT.TRACK_LIMITS.subtitle) return MT.toast("字幕轨已达上限，请点击轨道右侧 × 删除一条后再识别");
     if (MT.videoTaskBusy()) return lockedToast();
     var seconds = targets.reduce(function (sum, clip) { return sum + clip.duration; }, 0);
     MT.confirm({
@@ -475,7 +475,7 @@
     if (!MT.doc.clips.length) return MT.toast("先编辑视频再生成 BGM");
     if (!MT.hasValidSubtitlesForBgm()) return MT.toast("请先生成字幕、再生成BGM");
     if (MT.videoTaskBusy()) return lockedToast();
-    if (!MT.doc.bgm && state.tracks.audio.length >= MT.TRACK_LIMITS.audio) return MT.toast("音频轨已达上限，请删除一条音频轨后再生成");
+    if (!MT.doc.bgm && state.tracks.audio.length >= MT.TRACK_LIMITS.audio) return MT.toast("音频轨已达上限，请点击轨道右侧 × 删除一条后再生成");
     if (MT.doc.bgm && MT.doc.bgm.versions.length >= MT.BGM_VERSION_LIMIT) {
       return MT.toast("BGM 历史版本最多保留 " + MT.BGM_VERSION_LIMIT + " 个，请先删除旧版本后再生成");
     }
@@ -528,22 +528,46 @@
     MT.toast("已删除 BGM 版本");
   };
 
-  /* 删除轨道时同步清理对应内容。 */
+  function performRemoveTrack(type, id) {
+    MT.saveHistory("删除轨道");
+    removeTrackData(type, id);
+    state.tracks[type].forEach(function (track, i) {
+      if (String(track.name || "").indexOf("AI ") === 0) return;
+      track.name = trackName(type, i);
+    });
+    if (type === "subtitle" && !state.tracks.subtitle.some(function (track) { return track.id === state.activeSubtitleTrackId; })) {
+      state.activeSubtitleTrackId = (state.tracks.subtitle[0] || {}).id || "";
+    }
+    MT.clearSelection();
+    MT.refreshTimeline();
+    MT.toast("已删除" + MT.TRACK_LABEL[type] + "轨");
+  }
+
+  /* 删除轨道时同步清理对应内容。主视频轨和旁白音轨只可隐藏。 */
   MT.removeTrack = function (type, id) {
     if (state.readonly) return;
     var list = state.tracks[type];
     var index = list.findIndex(function (track) { return track.id === id; });
-    if (index <= 0) return index === 0 ? MT.toast("主轨不可删除，可以停用") : undefined;
+    if (index < 0) return;
+    if (type === "video" && index === 0) return MT.toast("主视频轨不可删除，可以隐藏");
+    if (type === "audio" && index === 0) return MT.toast("旁白音轨不可删除，可以隐藏");
     if (type === "subtitle" && MT.doc.subtitles.some(function (subtitle) { return subtitle.trackId === id && MT.isSubtitleLocked(subtitle.id); })) return lockedToast();
     if (type === "audio" && MT.doc.bgm && MT.doc.bgm.trackId === id && activeTask("bgm")) return lockedToast();
-    MT.saveHistory("删除轨道");
-    removeTrackData(type, id);
-    state.tracks[type].forEach(function (track, i) {
-      if (!(type === "audio" && track.name === "AI BGM")) track.name = trackName(type, i);
+    var track = list[index];
+    var body = "删除后可以撤销，不退回已结算积分。";
+    if (type === "subtitle") {
+      var count = MT.doc.subtitles.filter(function (subtitle) { return subtitle.trackId === id; }).length;
+      body = "将同时删除该轨上的 " + count + " 条字幕。" + body;
+    } else if (type === "audio" && MT.doc.bgm && MT.doc.bgm.trackId === id) {
+      body = "将同时删除这条 BGM 的全部历史版本。" + body;
+    }
+    MT.confirm({
+      title: "删除「" + track.name + "」？",
+      body: body,
+      ok: "删除轨道",
+      danger: true,
+      onOk: function () { performRemoveTrack(type, id); }
     });
-    MT.clearSelection();
-    MT.refreshTimeline();
-    MT.toast("已删除" + MT.TRACK_LABEL[type] + "轨");
   };
 
   /* 关键编辑操作二次检查任务锁。 */
@@ -585,6 +609,10 @@
   };
   var baseAddSubtitle = MT.addSubtitle;
   MT.addSubtitle = function () {
+    if (!state.tracks.subtitle.length) addTrack("subtitle", "字幕 1");
+    if (!state.tracks.subtitle.some(function (track) { return track.id === state.activeSubtitleTrackId; })) {
+      state.activeSubtitleTrackId = state.tracks.subtitle[0].id;
+    }
     baseAddSubtitle();
     var subtitle = MT.selectedSubtitle();
     if (subtitle) {

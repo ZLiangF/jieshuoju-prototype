@@ -151,7 +151,7 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 112px minmax(0, 1fr) 68px;
+  grid-template-columns: 168px minmax(0, 1fr) 68px;
 }
 
 .mt-track-labels {
@@ -188,10 +188,19 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+  flex: 1;
   color: #d4d4d8;
-  white-space: nowrap;
   font-size: 12px;
   font-weight: 560;
+}
+
+.mt-track-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
 }
 
 .mt-track-icon {
@@ -211,6 +220,12 @@
 
 .mt-label-row > span {
   display: flex;
+  flex: none;
+}
+
+.mt-label-row > span button.mt-track-delete:hover {
+  color: #fecaca;
+  background: rgba(239,68,68,.18);
 }
 
 .mt-label-row > span button {
@@ -299,6 +314,15 @@
 .mt-clip.on {
   border-color: #c4b5fd;
   box-shadow: 0 0 0 1px rgba(167,139,250,.25);
+}
+
+.mt-marquee {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  border: 1px solid #c4b5fd;
+  background: rgba(167,139,250,.18);
+  border-radius: 2px;
 }
 
 .mt-clip span {

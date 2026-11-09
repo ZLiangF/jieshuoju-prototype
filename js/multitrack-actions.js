@@ -183,7 +183,71 @@
     insertClip(clip, typeof index === "number" ? index : insertIndexAtPlayhead(), "已添加到视频轨");
   };
 
+  function deleteMulti() {
+    var shots = state.multi.filter(function (item) { return item.kind === "shot"; }).map(function (item) { return MT.clipById(item.id); }).filter(Boolean);
+    var subtitles = state.multi.filter(function (item) { return item.kind === "subtitle"; }).map(function (item) { return MT.subtitleById(item.id); }).filter(Boolean);
+    var extras = state.multi.filter(function (item) { return item.kind === "extra"; }).map(function (item) {
+      return MT.doc.extraAudio.find(function (audio) { return audio.id === item.id; });
+    }).filter(Boolean);
+    var skipped = 0;
+    shots = shots.filter(function (clip) {
+      if (MT.isClipLocked && MT.isClipLocked(clip.id)) { skipped += 1; return false; }
+      return true;
+    });
+    subtitles = subtitles.filter(function (subtitle) {
+      if (MT.isSubtitleLocked && MT.isSubtitleLocked(subtitle.id)) { skipped += 1; return false; }
+      return true;
+    });
+    extras = extras.filter(function (audio) {
+      if (audio.generating) { skipped += 1; return false; }
+      return true;
+    });
+    var keptClip = null;
+    if (shots.length && MT.doc.clips.length - shots.length < 1) {
+      shots.sort(function (a, b) { return MT.entryOf(a).start - MT.entryOf(b).start; });
+      keptClip = shots.shift();
+    }
+    if (!shots.length && !subtitles.length && !extras.length) {
+      return MT.toast(skipped ? "框选内容正在生成，完成后再删除" : "没有可删除的框选内容");
+    }
+    MT.saveHistory("删除框选内容");
+    var subtitleIds = {};
+    subtitles.forEach(function (subtitle) { subtitleIds[subtitle.id] = true; });
+    MT.doc.subtitles = MT.doc.subtitles.filter(function (subtitle) { return !subtitleIds[subtitle.id]; });
+    var extraIds = {};
+    extras.forEach(function (audio) { extraIds[audio.id] = true; });
+    MT.doc.extraAudio = MT.doc.extraAudio.filter(function (audio) { return !extraIds[audio.id]; });
+    shots.sort(function (a, b) { return MT.entryOf(b).start - MT.entryOf(a).start; });
+    shots.forEach(function (clip) {
+      var entry = MT.entryOf(clip);
+      var at = MT.doc.clips.indexOf(clip);
+      var follower = MT.doc.clips[at + 1];
+      delete MT.doc.transitions[clip.id];
+      MT.doc.clips.splice(at, 1);
+      MT.doc.extraAudio = MT.doc.extraAudio.filter(function (audio) { return audio.clipId !== clip.id; });
+      if (state.magnet === false && follower) {
+        follower.gap = MT.round1((follower.gap || 0) + (clip.gap || 0) + clip.duration);
+        var inside = MT.subtitlesIn(entry.start, entry.end);
+        var insideIds = {};
+        inside.forEach(function (subtitle) { insideIds[subtitle.id] = true; });
+        MT.doc.subtitles = MT.doc.subtitles.filter(function (subtitle) { return !insideIds[subtitle.id]; });
+      } else {
+        if (follower) follower.gap = MT.round1((follower.gap || 0) + (clip.gap || 0));
+        MT.retimeSubtitles(entry.start, -clip.duration);
+      }
+    });
+    MT.dropDanglingTransition();
+    MT.clearSelection();
+    MT.refreshTimeline();
+    var summary = [];
+    if (shots.length) summary.push(shots.length + " 个片段");
+    if (subtitles.length) summary.push(subtitles.length + " 条字幕");
+    if (extras.length) summary.push(extras.length + " 段音频");
+    MT.toast("已删除 " + summary.join("、") + (keptClip ? "，至少保留一个视频片段" : "") + (skipped ? "，生成中的内容已跳过" : ""));
+  }
+
   MT.deleteSelection = function () {
+    if (state.multi && state.multi.length > 1) return deleteMulti();
     var kind = state.selectedKind;
     if (kind === "shot") {
       var clip = MT.selectedShot();

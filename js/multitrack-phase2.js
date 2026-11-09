@@ -61,12 +61,13 @@
         if (type === "subtitle" && index === 0) {
           extras += '<button type="button" data-act="add-subtitle" title="在播放位置添加字幕">＋</button>';
         }
-        extras += '<button type="button" data-track-toggle="' + track.id + '" title="' + (track.enabled ? "停用" : "启用") + track.name + '" class="' + (track.enabled ? "" : "off") + '">' + (track.enabled ? "◉" : "⊘") + "</button>";
-        if (index > 0) {
-          extras += '<button type="button" data-act="remove-track" data-track-type="' + type + '" data-track-id="' + track.id + '" title="删除轨道">−</button>';
+        extras += '<button type="button" data-track-toggle="' + track.id + '" title="' + (track.enabled ? "隐藏" : "显示") + track.name + '" class="' + (track.enabled ? "" : "off") + '">' + (track.enabled ? "◉" : "⊘") + "</button>";
+        var canDelete = !(type === "video" && index === 0) && !(type === "audio" && index === 0);
+        if (canDelete) {
+          extras += '<button type="button" class="mt-track-delete" data-act="remove-track" data-track-type="' + type + '" data-track-id="' + track.id + '" title="删除' + track.name + '" aria-label="删除' + track.name + '">×</button>';
         }
         htmlLabels += '<div class="mt-label-row" data-track-row="' + track.id + '">' +
-          '<button type="button" data-act="track-menu"><i class="mt-track-icon ' + (type === "subtitle" ? "sub" : type) + '">' + icon + "</i>" + esc(track.name) + "</button>" +
+          '<button type="button" data-act="track-menu" title="右侧 ◉ 显示或隐藏，× 删除这条轨道"><i class="mt-track-icon ' + (type === "subtitle" ? "sub" : type) + '">' + icon + '</i><em class="mt-track-name">' + esc(track.name) + "</em></button>" +
           "<span>" + extras + "</span></div>";
         htmlLanes += '<div class="mt-track mt-' + type + '-track' + (track.enabled ? "" : " is-disabled") + '" id="lane-' + track.id + '" data-lane-type="' + type + '" data-lane-id="' + track.id + '"></div>';
       });
@@ -190,7 +191,8 @@
     var list = state.tracks[type];
     var index = list.findIndex(function (track) { return track.id === id; });
     if (index < 0) return;
-    if (index === 0) return MT.toast("主轨不可删除，可以停用");
+    if (type === "video" && index === 0) return MT.toast("主视频轨不可删除，可以隐藏");
+    if (type === "audio" && index === 0) return MT.toast("旁白音轨不可删除，可以隐藏");
     list.splice(index, 1);
     list.forEach(function (track, i) { track.name = MT.TRACK_LABEL[type] + " " + (i + 1); });
     MT.renderTracks();
