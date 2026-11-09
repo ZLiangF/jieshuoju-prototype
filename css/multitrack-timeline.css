@@ -87,8 +87,8 @@
 
 .mt-tool-group button.is-sub-required {
   position: relative;
-  color: #71717a;
-  background: rgba(255,255,255,.04);
+  color: #52525b;
+  background: rgba(255,255,255,.03);
   cursor: not-allowed;
 }
 

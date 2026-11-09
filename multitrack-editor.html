@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>多轨编辑器 · 第1集：墓地贺芷提离婚协议</title>
   <link rel="stylesheet" href="css/common.css?v=202611091102" />
-  <link rel="stylesheet" href="css/multitrack-editor.css?v=202611091636" />
-  <link rel="stylesheet" href="css/multitrack-timeline.css?v=202611091710" />
+  <link rel="stylesheet" href="css/multitrack-editor.css?v=202611091900" />
+  <link rel="stylesheet" href="css/multitrack-timeline.css?v=202611091900" />
 </head>
 <body class="mt-page">
 <div class="mt-app">
@@ -41,7 +41,8 @@
     <aside class="mt-library" aria-label="素材库">
       <div class="mt-library-tabs" role="tablist" aria-label="素材类型">
         <button type="button" class="on" role="tab" aria-selected="true" data-library-tab="assets">资产库</button>
-        <button type="button" role="tab" aria-selected="false" data-library-tab="subtitles">字幕</button>
+        <button type="button" role="tab" aria-selected="false" data-library-tab="overview">字幕一览</button>
+        <button type="button" role="tab" aria-selected="false" data-library-tab="subtitles">字幕样式</button>
         <span></span>
         <button type="button" class="mt-pane-collapse" data-act="collapse-library" title="收起资产库" aria-label="收起资产库">‹</button>
       </div>
@@ -65,10 +66,14 @@
         <div class="mt-assets" id="asset-list"></div>
       </div>
 
+      <div class="mt-library-pane" data-library-pane="overview">
+        <div class="mt-sub-overview" id="subtitle-overview"></div>
+      </div>
+
       <div class="mt-library-pane" data-library-pane="subtitles">
         <div class="mt-sub-preset-head">
           <b>字幕样式</b>
-          <small>应用到新增字幕</small>
+          <small>应用到全部显示中的字幕轨</small>
         </div>
         <button type="button" class="mt-sub-preset on" data-sub-style="plain">
           <span class="mt-sub-demo">示例字幕</span>
@@ -248,7 +253,8 @@
       <span><b id="translate-quantity">0</b> 字符</span>
       <strong>预计 <i>✦</i> 0</strong>
     </div>
-    <button type="button" class="mt-translate-submit" data-act="confirm-translate">生成双语字幕</button>
+    <p class="mt-translate-note" id="translate-output">将在原字幕轨下方新建「英文字幕」轨，原文轨保持不变</p>
+    <button type="button" class="mt-translate-submit" data-act="confirm-translate">生成译文字幕轨</button>
   </div>
 </div>
 
@@ -258,13 +264,13 @@
 
 <script src="js/data.js?v=202611091102"></script>
 <script src="js/multitrack-state.js?v=202611091710"></script>
-<script src="js/multitrack-render.js?v=202611091710"></script>
-<script src="js/multitrack-actions.js?v=202611091710"></script>
+<script src="js/multitrack-render.js?v=202611091900"></script>
+<script src="js/multitrack-actions.js?v=202611091900"></script>
 <script src="js/multitrack-menu.js?v=202611091404"></script>
 <script src="js/multitrack-save.js?v=202611091102"></script>
-<script src="js/multitrack-export.js?v=202611091102"></script>
+<script src="js/multitrack-export.js?v=202611091900"></script>
 <script src="js/multitrack-phase2.js?v=202611091700"></script>
-<script src="js/multitrack-phase3.js?v=202611091700"></script>
-<script src="js/multitrack-editor.js?v=202611091710"></script>
+<script src="js/multitrack-phase3.js?v=202611091900"></script>
+<script src="js/multitrack-editor.js?v=202611091900"></script>
 </body>
 </html>

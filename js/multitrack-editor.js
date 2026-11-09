@@ -267,10 +267,8 @@
       if (setting === "subtitle-text") {
         subtitle.text = value.slice(0, 200);
         subtitle.sourceText = subtitle.text;
+        subtitle.textOriginal = subtitle.text;
         subtitle.editedByUser = true;
-        if (subtitle.bilingual) {
-          subtitle.textOriginal = String(subtitle.text).split("\n")[0] || subtitle.textOriginal;
-        }
       }
       if (setting === "subtitle-source") {
         subtitle.sourceText = value.slice(0, 200);
@@ -552,6 +550,49 @@
     return hits;
   }
 
+  /* 框选后拖动其中任一字幕：框中的字幕按同一时间差整体平移，视频片段不跟着动。 */
+  function beginGroupDrag(event) {
+    var subs = state.multi.filter(function (item) { return item.kind === "subtitle"; })
+      .map(function (item) { return MT.subtitleById(item.id); }).filter(Boolean);
+    if (!subs.length) return;
+    if (subs.some(function (subtitle) { return MT.isSubtitleLocked && MT.isSubtitleLocked(subtitle.id); })) {
+      return MT.toast("AI 任务处理中，完成后可继续编辑");
+    }
+    var px = state.pixelsPerSecond;
+    var total = MT.totalDuration();
+    var before = MT.snapshot();
+    var origins = subs.map(function (subtitle) { return subtitle.start; });
+    var minDelta = -Math.min.apply(null, origins);
+    var maxDelta = Math.min.apply(null, subs.map(function (subtitle, i) { return total - subtitle.duration - origins[i]; }));
+    var startX = event.clientX;
+    var moved = false;
+    MT.stopPlayback();
+    followPointer(function (e) {
+      var dx = e.clientX - startX;
+      if (!moved && Math.abs(dx) < 4) return;
+      moved = true;
+      document.body.style.userSelect = "none";
+      var delta = clamp(dx / px, minDelta, Math.max(minDelta, maxDelta));
+      subs.forEach(function (subtitle, i) {
+        subtitle.start = MT.round1(origins[i] + delta);
+        var button = $('#timeline-canvas [data-select-subtitle="' + subtitle.id + '"]');
+        if (button) {
+          button.style.left = subtitle.start * px + "px";
+          button.classList.add("is-dragging");
+        }
+      });
+      MT.renderPlayhead();
+    }, function () {
+      if (!moved) return;
+      state.suppressClick = true;
+      setTimeout(function () { state.suppressClick = false; }, 0);
+      if (before !== MT.snapshot()) MT.saveHistory("移动框选字幕", before);
+      MT.renderTracks();
+      MT.renderPlayhead();
+      MT.toast("已整体移动 " + subs.length + " 条字幕");
+    });
+  }
+
   function selectionSummary(items) {
     var shots = items.filter(function (item) { return item.kind === "shot"; }).length;
     var subtitles = items.filter(function (item) { return item.kind === "subtitle"; }).length;
@@ -575,6 +616,9 @@
       toggleMulti(toggled);
       return;
     }
+    var groupItem = clipButton && clipButton.dataset.selectSubtitle && (state.multi || []).length > 1 &&
+      state.multi.some(function (item) { return item.kind === "subtitle" && item.id === clipButton.dataset.selectSubtitle; });
+    if (groupItem && !event.target.closest("[data-trim]")) return beginGroupDrag(event);
     if (clipButton && clipButton.matches(".mt-video-clip, .mt-subtitle-clip")) return beginClipDrag(event, clipButton);
     if (event.target.closest(".mt-clip")) return;
 

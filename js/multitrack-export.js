@@ -57,17 +57,44 @@
     if (button) button.setAttribute("aria-expanded", open ? "true" : "false");
   };
 
-  MT.exportVideo = function () {
-    closeExportMenu();
-    if (!MT.isSaved()) MT.saveNow(false);
-    MT.toast("已导出成片");
+  MT.choose = function (opts) {
+    var value = opts.value;
+    openDialog('<h3 id="mt-dialog-title">' + esc(opts.title) + "</h3><p class=\"mt-dialog-text\">" + esc(opts.body) + "</p>" +
+      '<div class="mt-dialog-choices" role="radiogroup">' + opts.options.map(function (option) {
+        return '<button type="button" role="radio" class="mt-dialog-choice' + (option.value === value ? " on" : "") + '" data-choice="' + esc(option.value) + '" aria-checked="' + (option.value === value) + '">' +
+          "<b>" + esc(option.label) + "</b>" + (option.hint ? "<small>" + esc(option.hint) + "</small>" : "") + "</button>";
+      }).join("") + "</div>" +
+      '<div class="mt-dialog-foot"><button type="button" data-dialog-close>取消</button>' +
+      '<button type="button" class="is-primary" data-confirm-ok data-autofocus>' + esc(opts.ok || "确定") + "</button></div>");
+    card.querySelectorAll("[data-choice]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        value = button.dataset.choice;
+        card.querySelectorAll("[data-choice]").forEach(function (other) {
+          other.classList.toggle("on", other === button);
+          other.setAttribute("aria-checked", other === button ? "true" : "false");
+        });
+      });
+    });
+    card.querySelector("[data-confirm-ok]").addEventListener("click", function () {
+      MT.closeDialog();
+      opts.onOk(value);
+    });
   };
 
-  MT.exportXml = function () {
+  /* 导出前确认字幕：三期覆盖为「隐藏轨不导出 + 中英择一」，这里默认直接导出。 */
+  MT.pickExportSubtitles = MT.pickExportSubtitles || function (done) { done(""); };
+
+  function runExport(label) {
     closeExportMenu();
-    if (!MT.isSaved()) MT.saveNow(false);
-    MT.toast("已导出 XML 工程包");
-  };
+    MT.pickExportSubtitles(function (note) {
+      if (!MT.isSaved()) MT.saveNow(false);
+      MT.toast("已导出" + label + (note ? " · " + note : ""));
+    });
+  }
+
+  MT.exportVideo = function () { runExport("成片"); };
+
+  MT.exportXml = function () { runExport(" XML 工程包"); };
 
   document.addEventListener("click", function (event) {
     if (!event.target.closest(".mt-export-wrap")) closeExportMenu();

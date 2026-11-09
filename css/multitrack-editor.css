@@ -238,7 +238,7 @@ body.mt-page {
   flex: none;
   display: flex;
   align-items: flex-end;
-  gap: 22px;
+  gap: 16px;
   border-bottom: 1px solid rgba(255,255,255,.07);
 }
 
@@ -249,9 +249,11 @@ body.mt-page {
 .mt-library-tabs button {
   height: 42px;
   position: relative;
+  flex: none;
   color: #8b8794;
   font-size: 13px;
   font-weight: 560;
+  white-space: nowrap;
 }
 
 .mt-library-tabs button.on {
@@ -756,6 +758,10 @@ body.mt-page {
   left: 7%;
   right: 7%;
   bottom: 11%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
   text-align: center;
   color: #fff;
   font-size: 16px;
@@ -763,6 +769,157 @@ body.mt-page {
   line-height: 1.4;
   white-space: pre-line;
   text-shadow: 0 1px 2px #000, 0 0 4px #000;
+}
+
+/* 每条显示中的字幕轨占一行，最多两行，超出省略 */
+.mt-caption-line {
+  max-width: 100%;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.mt-caption-line.is-en {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mt-translate-note {
+  margin: 0;
+  color: #a1a1aa;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.mt-sub-overview {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 10px 14px;
+  scrollbar-width: thin;
+}
+
+.mt-sub-overview-head {
+  padding: 16px 4px 10px;
+}
+
+.mt-sub-overview-head b,
+.mt-sub-overview-head small {
+  display: block;
+}
+
+.mt-sub-overview-head b {
+  font-size: 12px;
+}
+
+.mt-sub-overview-head small,
+.mt-sub-overview-empty {
+  margin-top: 2px;
+  color: #71717a;
+  font-size: 10px;
+}
+
+.mt-sub-overview-empty {
+  padding: 6px 4px;
+  line-height: 1.6;
+}
+
+.mt-sub-overview-track {
+  margin-bottom: 10px;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 10px;
+  background: rgba(255,255,255,.03);
+  overflow: hidden;
+}
+
+.mt-sub-overview-track.is-hidden {
+  opacity: .55;
+}
+
+.mt-sub-overview-track header {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
+.mt-sub-overview-track header b {
+  display: block;
+  font-size: 11px;
+}
+
+.mt-sub-overview-track header span {
+  color: #71717a;
+  font-size: 10px;
+}
+
+.mt-sub-overview-row {
+  width: 100%;
+  padding: 7px 10px;
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 6px;
+  text-align: left;
+  color: #d4d4d8;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.mt-sub-overview-row + .mt-sub-overview-row {
+  border-top: 1px solid rgba(255,255,255,.04);
+}
+
+.mt-sub-overview-row:hover {
+  background: rgba(255,255,255,.05);
+}
+
+.mt-sub-overview-row.on {
+  background: rgba(139,92,246,.16);
+}
+
+.mt-sub-overview-row time {
+  color: #71717a;
+  font-variant-numeric: tabular-nums;
+}
+
+.mt-sub-overview-row small {
+  display: block;
+  margin-top: 2px;
+  color: #71717a;
+  font-size: 10px;
+}
+
+.mt-dialog-choices {
+  margin-top: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.mt-dialog-choice {
+  padding: 10px 12px;
+  border-radius: 10px;
+  text-align: left;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.04);
+}
+
+.mt-dialog-choice.on {
+  border-color: rgba(167,139,250,.7);
+  background: rgba(139,92,246,.12);
+}
+
+.mt-dialog-choice b,
+.mt-dialog-choice small {
+  display: block;
+}
+
+.mt-dialog-choice b {
+  font-size: 12px;
+}
+
+.mt-dialog-choice small {
+  margin-top: 2px;
+  color: #a1a1aa;
+  font-size: 10px;
 }
 
 .mt-translate-modal {

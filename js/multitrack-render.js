@@ -250,7 +250,7 @@
     ["拖动片段", "磁吸开：调整顺序；磁吸关：自由移动、可留空隙；拖两端可裁剪"],
     ["S", "在播放头处分割"],
     ["空格", "播放 / 暂停"],
-    ["框选", "在时间线空白处拖出一个框，一次选中多个片段和字幕；按住 Shift 再框选会追加"]
+    ["框选", "在时间线空白处拖出一个框，一次选中多个片段和字幕；按住 Shift 再框选会追加；拖动其中一条字幕，框中的字幕整体平移"]
   ];
 
   var inspectors = {
@@ -299,19 +299,21 @@
     subtitle: function (body) {
       var subtitle = MT.selectedSubtitle();
       var owner = MT.clipById(subtitle.clipId);
-      var langNames = { en: "英语", "zh-CN": "简体中文" };
-      var translation = (subtitle.translations || []).find(function (item) { return item.language === subtitle.translateLang; });
-      var source = subtitle.sourceText || subtitle.textOriginal || String(subtitle.text || "").split("\n")[0];
+      var langNames = { en: "英文", "zh-CN": "中文" };
+      var lang = MT.subtitleLanguage ? MT.subtitleLanguage(subtitle) : "";
+      var origin = subtitle.sourceSubtitleId ? MT.subtitleById(subtitle.sourceSubtitleId) : null;
+      var track = (state.tracks && state.tracks.subtitle || []).find(function (item) { return item.id === subtitle.trackId; });
       $("#inspector-title").textContent = "字幕设置";
-      body.innerHTML = '<div class="mt-setting"><label>' + (translation ? "原文" : "字幕内容") + '</label><textarea class="mt-sub-text" data-setting="' + (translation ? "subtitle-source" : "subtitle-text") + '" rows="3">' + esc(source) + "</textarea></div>" +
-        (translation ? '<div class="mt-setting"><label>' + (langNames[subtitle.translateLang] || "译文") + '</label><textarea class="mt-sub-text" data-setting="subtitle-translation" rows="3">' + esc(translation.text) + "</textarea></div>" : "") +
+      body.innerHTML = '<div class="mt-setting"><label>' + (subtitle.fromTranslation ? "译文" : "字幕内容") + '</label><textarea class="mt-sub-text" data-setting="subtitle-text" rows="3">' + esc(subtitle.text) + "</textarea></div>" +
+        (origin ? '<div class="mt-setting"><label>对应原文</label><p class="mt-hint">' + esc(origin.text) + "</p></div>" : "") +
         '<div class="mt-setting"><b>时间</b><div class="mt-setting-row"><span>开始</span><input type="number" step="0.1" value="' + subtitle.start.toFixed(1) + '" data-setting="subtitle-start"></div>' +
         '<div class="mt-setting-row"><span>时长</span><input type="number" step="0.1" value="' + subtitle.duration.toFixed(1) + '" data-setting="subtitle-duration"></div></div>' +
         '<div class="mt-setting"><b>音频匹配</b>' +
-        '<div class="mt-setting-row"><span>来源</span><span class="mt-fixed">' + (subtitle.fromAsr ? "ASR 识别" : "手动") + "</span></div>" +
+        '<div class="mt-setting-row"><span>字幕轨</span><span class="mt-fixed">' + esc(track ? track.name : "—") + "</span></div>" +
+        '<div class="mt-setting-row"><span>语言</span><span class="mt-fixed">' + (langNames[lang] || "未识别") + "</span></div>" +
+        '<div class="mt-setting-row"><span>来源</span><span class="mt-fixed">' + (subtitle.fromTranslation ? "AI 翻译" + (subtitle.editedByUser ? " · 已人工修改" : "") : subtitle.fromAsr ? "ASR 识别" : "手动") + "</span></div>" +
         '<div class="mt-setting-row"><span>视频片段</span><span class="mt-fixed">' + esc(owner ? owner.label : "—") + "</span></div>" +
-        '<div class="mt-setting-row"><span>识别音频</span><span class="mt-fixed">' + (subtitle.fromAsr ? "视频原声" : "—") + "</span></div>" +
-        '<div class="mt-setting-row"><span>翻译</span><span class="mt-fixed">' + (subtitle.bilingual ? "双语 · " + (langNames[subtitle.translateLang] || "已翻译") : "未翻译") + "</span></div></div>" +
+        '<div class="mt-setting-row"><span>识别音频</span><span class="mt-fixed">' + (subtitle.fromAsr ? "视频原声" : "—") + "</span></div></div>" +
         '<div class="mt-setting-actions"><button type="button" data-act="duplicate">创建副本</button><button type="button" class="danger" data-act="delete-selection">删除字幕</button></div>';
     },
     audio: function (body) {

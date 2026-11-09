@@ -184,6 +184,7 @@
   };
 
   function deleteMulti() {
+    if (state.readonly) return;
     var shots = state.multi.filter(function (item) { return item.kind === "shot"; }).map(function (item) { return MT.clipById(item.id); }).filter(Boolean);
     var subtitles = state.multi.filter(function (item) { return item.kind === "subtitle"; }).map(function (item) { return MT.subtitleById(item.id); }).filter(Boolean);
     var extras = state.multi.filter(function (item) { return item.kind === "extra"; }).map(function (item) {
