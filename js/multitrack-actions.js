@@ -330,27 +330,150 @@
     MT.toast("已把 " + clip.label + " 的原声分离到「音频 2」");
   };
 
-  MT.recognizeSubtitle = function (clip) {
-    var entry = MT.entryOf(clip);
-    MT.toast("正在识别 " + clip.label + " 的台词…");
-    setTimeout(function () {
-      var busy = MT.doc.subtitles
-        .filter(function (item) { return item.start < entry.end && item.start + item.duration > entry.start; })
-        .sort(function (a, b) { return a.start - b.start; });
-      var cursor = entry.start;
-      var gap = null;
-      busy.concat([{ start: entry.end, duration: 0 }]).some(function (item) {
-        if (item.start - cursor >= 1.5) gap = { start: cursor, end: item.start };
-        cursor = Math.max(cursor, item.start + item.duration);
-        return !!gap;
+  /* ASR 台词按片段片源时间轴定义；裁剪后的片段只保留落在 srcIn～srcIn+duration 内的句子。 */
+  var ASR_BY_TITLE = {
+    "萧铭来到坟前": [{ offset: 6.6, duration: 3.2, text: "妈，对不起，今天来晚了。" }],
+    "沈妍妍下车": [],
+    "萧铭烧纸": [],
+    "豪车撞倒电动车": [],
+    "贺芷俯视": [
+      { offset: 4.0, duration: 2.8, text: "我说怎么找不到人" },
+      { offset: 7.0, duration: 2.8, text: "原来在给一个死人上坟。" }
+    ],
+    "递离婚协议": [
+      { offset: 1.5, duration: 4.0, text: "萧铭，你还要逃避到什么时候？" },
+      { offset: 6.5, duration: 3.8, text: "这份离婚协议，今天必须签。" },
+      { offset: 11.0, duration: 3.5, text: "从今天起，我们两不相欠。" }
+    ]
+  };
+
+  function parsePromptDialogue(prompt) {
+    var lines = [];
+    String(prompt || "").replace(/(?:画外音|旁白)\s*[：:]\s*([^\n]+)/g, function (_, text) {
+      lines.push(String(text).replace(/[。！？]?$/, function (mark) { return mark || "。"; }).trim());
+      return _;
+    });
+    String(prompt || "").replace(/\{c:\w+\}\s*[：:]\s*([^\n]+)/g, function (_, text) {
+      lines.push(String(text).trim());
+      return _;
+    });
+    return lines.filter(Boolean);
+  }
+
+  function asrCuesForClip(clip) {
+    var source = ASR_BY_TITLE[clip.title];
+    if (!source) {
+      source = parsePromptDialogue(clip.prompt).map(function (text, index, list) {
+        var slice = Math.max(1.6, clip.sourceDuration / Math.max(1, list.length) - 0.4);
+        return { offset: MT.round1(Math.max(0, clip.sourceDuration - (list.length - index) * slice)), duration: MT.round1(Math.min(4, slice)), text: text };
       });
-      if (!gap) return MT.toast(clip.label + " 的台词都已有字幕，没有新增");
-      MT.saveHistory("字幕识别");
-      var added = { id: MT.nextId("sub"), start: MT.round1(gap.start + 0.2), duration: MT.round1(Math.min(4, gap.end - gap.start - 0.4)), text: clip.title };
-      MT.doc.subtitles.push(added);
-      MT.select("subtitle", added.id, added.start);
-      MT.toast("已识别并添加 1 条字幕");
-    }, 900);
+    }
+    var winStart = clip.srcIn || 0;
+    var winEnd = winStart + clip.duration;
+    return source.filter(function (cue) {
+      return cue.offset + cue.duration > winStart + 0.15 && cue.offset < winEnd - 0.15;
+    }).map(function (cue) {
+      var localStart = Math.max(cue.offset, winStart) - winStart;
+      var localEnd = Math.min(cue.offset + cue.duration, winEnd) - winStart;
+      return { offset: MT.round1(localStart), duration: MT.round1(Math.max(0.8, localEnd - localStart)), text: cue.text };
+    });
+  }
+  MT.asrCuesForClip = asrCuesForClip;
+
+  /* 字幕落到对应音频：优先片段上的配音，其次分离原声，否则记为该视频片段原声。 */
+  function matchAudioForCue(clip, absStart, duration) {
+    var extras = MT.audioOfClip(clip.id).filter(function (item) {
+      if (item.generating) return false;
+      var entry = MT.entryOf(clip);
+      if (!entry) return false;
+      var start = entry.start + item.offset;
+      var end = start + Math.min(item.duration, clip.duration - item.offset);
+      return absStart < end - 0.05 && absStart + duration > start + 0.05;
+    });
+    if (extras.length) {
+      var preferred = extras.find(function (item) { return item.kind === "dub"; }) || extras[0];
+      return { kind: preferred.kind, id: preferred.id, label: preferred.label };
+    }
+    return { kind: "clip", id: clip.id, label: clip.label + " 原声" };
+  }
+
+  MT.audioLabelForSubtitle = function (subtitle) {
+    if (!subtitle) return "—";
+    if (subtitle.audioKind === "narration") return "旁白音频";
+    if (subtitle.audioKind === "dub" || subtitle.audioKind === "detached") {
+      var item = MT.doc.extraAudio.find(function (row) { return row.id === subtitle.audioId; });
+      return item ? item.label : (subtitle.audioKind === "dub" ? "配音" : "分离原声");
+    }
+    var clip = MT.clipById(subtitle.clipId);
+    return clip ? clip.label + " 原声" : (subtitle.audioLabel || "片段原声");
+  };
+
+  MT.recognizeSubtitles = function (clips) {
+    var targets = (clips && clips.length ? clips.slice() : MT.doc.clips.slice()).filter(Boolean);
+    if (!targets.length) return MT.toast("时间线上没有视频片段，无法识别字幕");
+    if (state.asrBusy) return MT.toast("字幕识别进行中，请稍候");
+    if (targets.some(function (clip) { return busyReason(clip); })) {
+      return MT.toast(busyReason(targets.find(function (clip) { return busyReason(clip); })));
+    }
+
+    state.asrBusy = true;
+    MT.renderToolbarState();
+    MT.toast("ASR 识别中：正在分析 " + targets.length + " 个视频片段的音频…");
+
+    setTimeout(function () {
+      if (MT.mock["asr-fail"]) {
+        state.asrBusy = false;
+        MT.renderToolbarState();
+        return MT.toast("ASR 识别失败，请稍后重试");
+      }
+      var before = MT.snapshot();
+      var ranges = targets.map(function (clip) { return MT.entryOf(clip); }).filter(Boolean);
+      var removed = 0;
+      ranges.forEach(function (entry) {
+        var keep = [];
+        MT.doc.subtitles.forEach(function (item) {
+          if (item.start < entry.end && item.start + item.duration > entry.start) removed += 1;
+          else keep.push(item);
+        });
+        MT.doc.subtitles = keep;
+      });
+
+      var added = [];
+      ranges.forEach(function (entry) {
+        asrCuesForClip(entry.clip).forEach(function (cue) {
+          var absStart = MT.round1(entry.start + cue.offset);
+          var audio = matchAudioForCue(entry.clip, absStart, cue.duration);
+          added.push({
+            id: MT.nextId("sub"),
+            start: absStart,
+            duration: cue.duration,
+            text: cue.text,
+            clipId: entry.clip.id,
+            audioKind: audio.kind,
+            audioId: audio.id || "",
+            audioLabel: audio.label,
+            fromAsr: true
+          });
+        });
+      });
+
+      MT.doc.subtitles = MT.doc.subtitles.concat(added).sort(function (a, b) { return a.start - b.start; });
+      MT.saveHistory("ASR 识别字幕", before);
+      state.asrBusy = false;
+      MT.refreshTimeline();
+      MT.renderToolbarState();
+      if (added.length) {
+        MT.select("subtitle", added[0].id, added[0].start);
+        MT.toast("已识别 " + added.length + " 条字幕并匹配对应音频" + (removed ? "（替换 " + removed + " 条旧字幕）" : ""));
+      } else {
+        MT.toast(removed ? "未识别到人声，已清除范围内 " + removed + " 条旧字幕" : "未识别到人声");
+      }
+    }, 1200);
+  };
+
+  MT.recognizeSubtitle = function (clip) {
+    if (!clip) return MT.toast("先在时间线上选中一个视频片段");
+    MT.recognizeSubtitles([clip]);
   };
 
   MT.reshoot = function (clip) {
@@ -457,6 +580,164 @@
   MT.toggleSelectedExtraMute = function () {
     var item = MT.doc.extraAudio.find(function (row) { return row.id === state.selected; });
     if (item && !item.generating) MT.toggleAudioMute(item);
+  };
+
+  var TRANSLATE_LANGS = {
+    en: { name: "英语", dict: {
+      "妈，对不起，今天来晚了。": "Mom, sorry I'm late today.",
+      "我说怎么找不到人": "No wonder I couldn't find anyone",
+      "原来在给一个死人上坟。": "Turns out you're here mourning a dead man.",
+      "萧铭，你还要逃避到什么时候？": "Xiao Ming, how long are you going to keep running?",
+      "这份离婚协议，今天必须签。": "This divorce agreement must be signed today.",
+      "从今天起，我们两不相欠。": "From today on, we owe each other nothing.",
+      "请输入字幕": "Enter subtitle text"
+    }},
+    ja: { name: "日语", dict: {
+      "妈，对不起，今天来晚了。": "母さん、ごめん。今日は遅れてしまった。",
+      "我说怎么找不到人": "だから誰も見つからなかったのか",
+      "原来在给一个死人上坟。": "死人に墓参りしていたなんて。",
+      "萧铭，你还要逃避到什么时候？": "蕭銘、いつまで逃げ続けるの？",
+      "这份离婚协议，今天必须签。": "この離婚協議書、今日必ずサインして。",
+      "从今天起，我们两不相欠。": "今日から、私たちは互いに何も負わない。",
+      "请输入字幕": "字幕を入力してください"
+    }},
+    ko: { name: "韩语", dict: {
+      "妈，对不起，今天来晚了。": "엄마, 미안해. 오늘 늦었어.",
+      "我说怎么找不到人": "그래서 사람을 못 찾았구나",
+      "原来在给一个死人上坟。": "죽은 사람 묘에 성묘하고 있었다니.",
+      "萧铭，你还要逃避到什么时候？": "샤오밍, 언제까지 도망칠 거야?",
+      "这份离婚协议，今天必须签。": "이 이혼 합의서, 오늘 반드시 서명해.",
+      "从今天起，我们两不相欠。": "오늘부터 우린 서로 빚진 게 없어.",
+      "请输入字幕": "자막을 입력하세요"
+    }},
+    "zh-Hant": { name: "繁体中文", dict: {
+      "妈，对不起，今天来晚了。": "媽，對不起，今天來晚了。",
+      "我说怎么找不到人": "我說怎麼找不到人",
+      "原来在给一个死人上坟。": "原來在給一個死人上墳。",
+      "萧铭，你还要逃避到什么时候？": "蕭銘，你還要逃避到什麼時候？",
+      "这份离婚协议，今天必须签。": "這份離婚協議，今天必須簽。",
+      "从今天起，我们两不相欠。": "從今天起，我們兩不相欠。",
+      "请输入字幕": "請輸入字幕"
+    }}
+  };
+
+  function originalSubtitleText(subtitle) {
+    if (subtitle.textOriginal) return subtitle.textOriginal;
+    var parts = String(subtitle.text || "").split("\n");
+    return parts[0] || "";
+  }
+
+  function translateLine(text, lang) {
+    var pack = TRANSLATE_LANGS[lang] || TRANSLATE_LANGS.en;
+    if (pack.dict[text]) return pack.dict[text];
+    var prefix = { en: "[EN] ", ja: "[JA] ", ko: "[KO] ", "zh-Hant": "" }[lang] || "";
+    return prefix + text;
+  }
+  MT.translateLine = translateLine;
+
+  function syncTranslatePanel() {
+    var rangeLabel = MT.$("#translate-range-label");
+    var langLabel = MT.$("#translate-lang-label");
+    if (rangeLabel) rangeLabel.textContent = state.translateRange === "track" ? "字幕 1（整条轨道）" : "选中的字幕";
+    if (langLabel) langLabel.textContent = (TRANSLATE_LANGS[state.translateLang] || TRANSLATE_LANGS.en).name;
+    MT.$$("#translate-range-menu [data-translate-range]").forEach(function (button) {
+      var on = button.dataset.translateRange === state.translateRange;
+      button.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    MT.$$("#translate-lang-menu [data-translate-lang]").forEach(function (button) {
+      var on = button.dataset.translateLang === state.translateLang;
+      button.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    MT.closeTranslateMenus();
+  }
+
+  MT.closeTranslateMenus = function () {
+    ["range", "lang"].forEach(function (key) {
+      var menu = MT.$("#translate-" + key + "-menu");
+      var button = MT.$("#translate-" + key + "-btn");
+      if (menu) menu.hidden = true;
+      if (button) button.setAttribute("aria-expanded", "false");
+    });
+  };
+
+  MT.closeTranslatePanel = function () {
+    var modal = MT.$("#translate-modal");
+    if (modal) modal.hidden = true;
+    MT.closeTranslateMenus();
+  };
+
+  MT.openTranslatePanel = function () {
+    if (!MT.doc.subtitles.length) return MT.toast("字幕轨上没有字幕，先添加或识别后再翻译");
+    if (state.translateBusy) return MT.toast("字幕翻译进行中，请稍候");
+    if (!state.translateRange) state.translateRange = "selected";
+    if (!state.translateLang) state.translateLang = "en";
+    if (state.translateRange === "selected" && state.selectedKind !== "subtitle") state.translateRange = "track";
+    syncTranslatePanel();
+    var modal = MT.$("#translate-modal");
+    if (modal) modal.hidden = false;
+  };
+
+  MT.toggleTranslateMenu = function (kind) {
+    var menu = MT.$("#translate-" + kind + "-menu");
+    var button = MT.$("#translate-" + kind + "-btn");
+    if (!menu || !button) return;
+    var open = menu.hidden;
+    MT.closeTranslateMenus();
+    menu.hidden = !open;
+    button.setAttribute("aria-expanded", open ? "true" : "false");
+  };
+
+  MT.setTranslateRange = function (range) {
+    state.translateRange = range === "track" ? "track" : "selected";
+    syncTranslatePanel();
+  };
+
+  MT.setTranslateLang = function (lang) {
+    if (!TRANSLATE_LANGS[lang]) return;
+    state.translateLang = lang;
+    syncTranslatePanel();
+  };
+
+  MT.confirmTranslateSubtitles = function () {
+    var targets;
+    if (state.translateRange === "selected") {
+      var selected = MT.selectedSubtitle();
+      if (!selected) return MT.toast("请先选中一条字幕，或改选「字幕 1（整条轨道）」");
+      targets = [selected];
+    } else {
+      targets = MT.doc.subtitles.slice();
+    }
+    if (!targets.length) return MT.toast("没有可翻译的字幕");
+    if (state.translateBusy) return;
+
+    var lang = state.translateLang || "en";
+    var langName = (TRANSLATE_LANGS[lang] || TRANSLATE_LANGS.en).name;
+    state.translateBusy = true;
+    MT.renderToolbarState();
+    MT.closeTranslatePanel();
+    MT.toast("正在翻译为" + langName + "…");
+
+    setTimeout(function () {
+      if (MT.mock["translate-fail"]) {
+        state.translateBusy = false;
+        MT.renderToolbarState();
+        return MT.toast("字幕翻译失败，请稍后重试");
+      }
+      MT.saveHistory("生成双语字幕");
+      targets.forEach(function (subtitle) {
+        var original = originalSubtitleText(subtitle);
+        var translated = translateLine(original, lang);
+        subtitle.textOriginal = original;
+        subtitle.text = original + "\n" + translated;
+        subtitle.bilingual = true;
+        subtitle.translateLang = lang;
+      });
+      state.translateBusy = false;
+      MT.refreshTimeline();
+      MT.renderToolbarState();
+      if (targets[0]) MT.select("subtitle", targets[0].id, targets[0].start);
+      MT.toast("已生成 " + targets.length + " 条双语字幕（中文 / " + langName + "）");
+    }, 900);
   };
 
   MT.clearSubtitles = function () {

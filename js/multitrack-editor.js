@@ -13,8 +13,6 @@
     "type-filter": "演示：筛选素材",
     settings: "演示：时间轴设置",
     fullscreen: "演示：全屏预览",
-    "recognize-subtitles": "演示：智能识别整集字幕",
-    "translate-subtitles": "演示：字幕翻译",
     "track-menu": "右键轨道上的片段可以打开编辑菜单"
   };
 
@@ -34,10 +32,17 @@
     if (action === "export-video") return MT.exportVideo();
     if (action === "export-xml") return MT.exportXml();
     if (action === "generate-audio") return MT.generateDub(picked);
+    if (action === "recognize-subtitles") return MT.recognizeSubtitles();
+    if (action === "translate-subtitles") return MT.openTranslatePanel();
+    if (action === "generate-bgm") return MT.openBgmPanel();
+    if (action === "toggle-translate-range") return MT.toggleTranslateMenu("range");
+    if (action === "toggle-translate-lang") return MT.toggleTranslateMenu("lang");
+    if (action === "confirm-translate") return MT.confirmTranslateSubtitles();
     if (action === "remove-subtitles") return MT.clearSubtitles();
     if (action === "toggle-clip-mute" && picked) return MT.toggleClipMute(picked);
     if (action === "toggle-narration-mute") return MT.toggleNarrationMute();
     if (action === "toggle-extra-mute") return MT.toggleSelectedExtraMute();
+    if (action === "toggle-bgm-mute") return MT.toggleBgmMute();
     if (action === "mute-all") return MT.toggleMute();
     if (action === "undo") return MT.undo();
     if (action === "redo") return MT.redo();
@@ -140,6 +145,15 @@
       return MT.select("subtitle", subtitle.id, subtitle.start);
     }
 
+    var bgmButton = target.closest("[data-select-bgm]");
+    if (bgmButton) return MT.select("bgm", bgmButton.dataset.selectBgm, 0);
+
+    var bgmVersion = target.closest("[data-bgm-version]");
+    if (bgmVersion) return MT.switchBgmVersion(bgmVersion.dataset.bgmVersion);
+
+    var deleteBgmVersion = target.closest("[data-delete-bgm-version]");
+    if (deleteBgmVersion) return MT.deleteBgmVersion(deleteBgmVersion.dataset.deleteBgmVersion);
+
     if (target.closest("[data-select-audio]")) return MT.select("audio", "audio1");
 
     var extra = target.closest("[data-select-extra]");
@@ -168,6 +182,18 @@
       MT.renderTracks();
       return MT.renderPlayhead();
     }
+
+    var translateRange = target.closest("[data-translate-range]");
+    if (translateRange) {
+      event.stopPropagation();
+      return MT.setTranslateRange(translateRange.dataset.translateRange);
+    }
+    var translateLang = target.closest("[data-translate-lang]");
+    if (translateLang) {
+      event.stopPropagation();
+      return MT.setTranslateLang(translateLang.dataset.translateLang);
+    }
+    if (target.id === "translate-modal") return MT.closeTranslatePanel();
 
     var actionButton = target.closest("[data-act]");
     if (actionButton && !actionButton.disabled) handleAction(actionButton.dataset.act, actionButton);
@@ -218,6 +244,12 @@
       MT.renderTracks();
       MT.renderMeter();
     }
+    if (state.selectedKind === "bgm" && setting === "bgm-volume" && MT.doc.bgm) {
+      var bgm = MT.doc.bgm.versions.find(function (item) { return item.active; });
+      if (bgm) bgm.volume = clamp(Math.round(Number(value)) || 0, 0, 200);
+      MT.renderTracks();
+      MT.renderMeter();
+    }
     if (state.selectedKind === "audio") {
       if (setting === "audio-volume") MT.doc.audio.volume = clamp(Math.round(Number(value)) || 0, 0, 200);
       if (setting === "audio-fade") MT.doc.audio.fade = clamp(Number(value) || 0, 0, 5);
@@ -226,7 +258,33 @@
     }
     var subtitle = MT.selectedSubtitle();
     if (subtitle) {
-      if (setting === "subtitle-text") subtitle.text = value.slice(0, 80);
+      if (MT.isSubtitleLocked && MT.isSubtitleLocked(subtitle.id)) {
+        event.target.value = setting === "subtitle-translation"
+          ? (((subtitle.translations || []).find(function (item) { return item.language === subtitle.translateLang; }) || {}).text || "")
+          : (subtitle.sourceText || subtitle.text);
+        return MT.toast("AI 任务处理中，完成后可继续编辑");
+      }
+      if (setting === "subtitle-text") {
+        subtitle.text = value.slice(0, 200);
+        subtitle.sourceText = subtitle.text;
+        subtitle.editedByUser = true;
+        if (subtitle.bilingual) {
+          subtitle.textOriginal = String(subtitle.text).split("\n")[0] || subtitle.textOriginal;
+        }
+      }
+      if (setting === "subtitle-source") {
+        subtitle.sourceText = value.slice(0, 200);
+        subtitle.editedByUser = true;
+        MT.updateSubtitleDisplay(subtitle);
+      }
+      if (setting === "subtitle-translation") {
+        var translation = (subtitle.translations || []).find(function (item) { return item.language === subtitle.translateLang; });
+        if (translation) {
+          translation.text = value.slice(0, 200);
+          translation.editedByUser = true;
+          MT.updateSubtitleDisplay(subtitle);
+        }
+      }
       if (setting === "subtitle-start") subtitle.start = clamp(Number(value) || 0, 0, MT.totalDuration() - 0.5);
       if (setting === "subtitle-duration") subtitle.duration = clamp(Number(value) || 0.5, 0.5, 20);
       MT.renderTracks();
@@ -279,6 +337,10 @@
     var clip = button.dataset.selectShot ? MT.clipById(button.dataset.selectShot) : null;
     var subtitle = button.dataset.selectSubtitle ? MT.subtitleById(button.dataset.selectSubtitle) : null;
     if (!clip && !subtitle) return;
+    if ((clip && MT.isClipLocked && MT.isClipLocked(clip.id)) || (subtitle && MT.isSubtitleLocked && MT.isSubtitleLocked(subtitle.id))) {
+      MT.toast("AI 任务处理中，完成后可继续编辑");
+      return;
+    }
     var before = MT.snapshot();
     var origin = clip ? { srcIn: clip.srcIn, duration: clip.duration, start: MT.entryOf(clip).start, gap: clip.gap || 0 } : { start: subtitle.start, duration: subtitle.duration };
     var free = !!clip && state.magnet === false;

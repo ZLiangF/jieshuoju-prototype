@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>多轨编辑器 · 第1集：墓地贺芷提离婚协议</title>
-  <link rel="stylesheet" href="css/common.css?v=202611051021" />
-  <link rel="stylesheet" href="css/multitrack-editor.css?v=202611051021" />
-  <link rel="stylesheet" href="css/multitrack-timeline.css?v=202611051021" />
+  <link rel="stylesheet" href="css/common.css?v=202611091102" />
+  <link rel="stylesheet" href="css/multitrack-editor.css?v=202611091636" />
+  <link rel="stylesheet" href="css/multitrack-timeline.css?v=202611091636" />
 </head>
 <body class="mt-page">
 <div class="mt-app">
@@ -133,9 +133,9 @@
           <button type="button" data-act="delete-selection" title="删除选中项（⌫）">删除</button>
           <i></i>
           <button type="button" data-act="remove-subtitles" title="清空字幕轨上的全部字幕（不擦除画面文字）">去字幕</button>
-          <button type="button" class="is-purple" data-act="generate-audio" title="根据选中片段的台词字幕生成配音">✦ 生成配音</button>
-          <button type="button" data-act="recognize-subtitles" title="智能识别字幕">识别字幕</button>
-          <button type="button" data-act="translate-subtitles">字幕翻译</button>
+          <button type="button" class="is-purple" data-act="recognize-subtitles" title="识别视频片段原声，并在新字幕轨生成字幕">✦ 识别字幕</button>
+          <button type="button" class="is-purple" data-act="translate-subtitles" title="翻译字幕并生成双语字幕">✦ 字幕翻译</button>
+          <button type="button" class="is-purple" data-act="generate-bgm" title="根据整集画面自动生成连续 BGM">✦ 生成 BGM</button>
           <button type="button" class="is-purple" data-act="add-subtitle">▣ 添加字幕</button>
         </div>
         <div class="mt-view-tools">
@@ -218,18 +218,52 @@
   </div>
 </div>
 
+<div class="mt-modal mt-translate-modal" id="translate-modal" hidden>
+  <div class="mt-translate-panel" role="dialog" aria-modal="true" aria-label="字幕翻译">
+    <label class="mt-translate-field">
+      <span>字幕范围</span>
+      <button type="button" class="mt-translate-select" id="translate-range-btn" data-act="toggle-translate-range" aria-haspopup="listbox" aria-expanded="false">
+        <em id="translate-range-label">选中的字幕</em>
+        <i aria-hidden="true"></i>
+      </button>
+      <div class="mt-translate-menu" id="translate-range-menu" role="listbox" hidden>
+        <button type="button" role="option" data-translate-range="selected" aria-selected="true">选中的字幕 <span>✓</span></button>
+        <button type="button" role="option" data-translate-range="track" aria-selected="false">当前字幕轨（整轨） <span>✓</span></button>
+      </div>
+    </label>
+    <label class="mt-translate-field">
+      <span>翻译语种</span>
+      <button type="button" class="mt-translate-select" id="translate-lang-btn" data-act="toggle-translate-lang" aria-haspopup="listbox" aria-expanded="false">
+        <em id="translate-lang-label">英语</em>
+        <i aria-hidden="true"></i>
+      </button>
+      <div class="mt-translate-menu" id="translate-lang-menu" role="listbox" hidden>
+        <button type="button" role="option" data-translate-lang="en" aria-selected="true">英语 <span>✓</span></button>
+        <button type="button" role="option" data-translate-lang="zh-CN" aria-selected="false">简体中文 <span>✓</span></button>
+      </div>
+    </label>
+    <div class="mt-ai-estimate" id="translate-estimate">
+      <span><b id="translate-count">0</b> 条字幕</span>
+      <span><b id="translate-quantity">0</b> 字符</span>
+      <strong>预计 <i>✦</i> 0</strong>
+    </div>
+    <button type="button" class="mt-translate-submit" data-act="confirm-translate">生成双语字幕</button>
+  </div>
+</div>
+
 <div class="mt-readonly-banner" id="readonly-banner" hidden>
   该项目正在其他页面编辑，当前为只读；内容以服务端最新保存为准。
 </div>
 
-<script src="js/data.js?v=202611051021"></script>
-<script src="js/multitrack-state.js?v=202611051021"></script>
-<script src="js/multitrack-render.js?v=202611051021"></script>
-<script src="js/multitrack-actions.js?v=202611051021"></script>
-<script src="js/multitrack-menu.js?v=202611051021"></script>
-<script src="js/multitrack-save.js?v=202611051021"></script>
-<script src="js/multitrack-export.js?v=202611051021"></script>
-<script src="js/multitrack-phase2.js?v=202611051021"></script>
-<script src="js/multitrack-editor.js?v=202611051021"></script>
+<script src="js/data.js?v=202611091102"></script>
+<script src="js/multitrack-state.js?v=202611091102"></script>
+<script src="js/multitrack-render.js?v=202611091404"></script>
+<script src="js/multitrack-actions.js?v=202611091404"></script>
+<script src="js/multitrack-menu.js?v=202611091404"></script>
+<script src="js/multitrack-save.js?v=202611091102"></script>
+<script src="js/multitrack-export.js?v=202611091102"></script>
+<script src="js/multitrack-phase2.js?v=202611091102"></script>
+<script src="js/multitrack-phase3.js?v=202611091636"></script>
+<script src="js/multitrack-editor.js?v=202611091636"></script>
 </body>
 </html>

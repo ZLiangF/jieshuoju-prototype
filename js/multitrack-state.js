@@ -6,7 +6,7 @@
   MT.TRANSITION_SECONDS = 0.6;
   MT.MIN_CLIP = 0.5;
   MT.REGENERATE_COST = 150;
-  /* 演示异常分支：地址栏加 ?mock=save-fail,regen-fail,dub-fail */
+  /* 演示异常分支：地址栏加 ?mock=save-fail,regen-fail,dub-fail,asr-fail,translate-fail */
   MT.mock = {};
   (new URLSearchParams(location.search).get("mock") || "").split(",").forEach(function (key) {
     if (key) MT.mock[key.trim()] = true;
@@ -143,7 +143,11 @@
     suppressClick: false,
     clipboard: null,
     history: [],
-    future: []
+    future: [],
+    asrBusy: false,
+    translateBusy: false,
+    translateRange: "selected",
+    translateLang: "en"
   };
 
   MT.totalDuration = function () {
@@ -244,6 +248,8 @@
     MT.doc = JSON.parse(text);
     MT.doc.clips.forEach(function (clip) { clip.generating = false; });
     MT.doc.extraAudio = MT.doc.extraAudio.filter(function (item) { return !item.generating; });
+    MT.state.asrBusy = false;
+    MT.state.translateBusy = false;
     var state = MT.state;
     if (state.selectedKind === "shot" && !MT.clipById(state.selected)) MT.clearSelection();
     if (state.selectedKind === "subtitle" && !MT.subtitleById(state.selected)) MT.clearSelection();

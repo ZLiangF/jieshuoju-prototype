@@ -16,42 +16,42 @@
     var entry = MT.entryOf(clip);
     var inside = state.currentTime > entry.start && state.currentTime < entry.end;
     var last = entry.index === MT.doc.clips.length - 1;
+    var aiLocked = MT.isClipLocked && MT.isClipLocked(clip.id);
     return [
       [
-        item("split", "分割", "✂", { key: "S", disabled: !(inside && MT.canSplit()) }),
-        item("copy", "复制", "⧉", { key: MOD + "C" }),
-        item("cut", "剪切", "✁", { key: MOD + "X" }),
+        item("split", "分割", "✂", { key: "S", disabled: aiLocked || !(inside && MT.canSplit()) }),
+        item("copy", "复制", "⧉", { key: MOD + "C", disabled: aiLocked }),
+        item("cut", "剪切", "✁", { key: MOD + "X", disabled: aiLocked }),
         item("paste", "粘贴", "⎘", { key: MOD + "V", disabled: !state.clipboard }),
-        item("duplicate", "创建副本", "⊕", { key: MOD + "D" }),
-        item("delete-selection", "删除", "⌫", { key: "⌫", danger: true })
+        item("duplicate", "创建副本", "⊕", { key: MOD + "D", disabled: aiLocked }),
+        item("delete-selection", "删除", "⌫", { key: "⌫", danger: true, disabled: aiLocked })
       ],
       [
-        item("recognize-clip", "字幕识别", "T", { ai: true }),
-        item("dub-clip", "生成配音", "♪", { ai: true, disabled: !!MT.busyReason(clip) }),
-        item("toggle-clip-mute", clip.muted ? "取消静音" : "静音片段", "♬", { checked: clip.muted }),
-        item("detach-audio", "音频分离", "⇣", { disabled: MT.audioOfClip(clip.id, "detached").length > 0 }),
+        item("toggle-clip-mute", clip.muted ? "取消静音" : "静音片段", "♬", { checked: clip.muted, disabled: aiLocked }),
+        item("detach-audio", "音频分离", "⇣", { disabled: aiLocked || MT.audioOfClip(clip.id, "detached").length > 0 }),
         item("separate-voice", "分离人声与背景声", "≋", { ai: true })
       ],
       [
-        item("merge", "与后一段合并", "⇥", { disabled: last }),
-        item("add-transition", "添加转场", "◇", { disabled: last }),
-        item("smart-split", "智能切割分镜", "⫼"),
-        item("reshoot", "片段重拍", "↻"),
-        item("regenerate", clip.generating ? "生成中…" : "重新生成 · " + MT.REGENERATE_COST + " 积分", "✦", { ai: true, disabled: clip.generating })
+        item("merge", "与后一段合并", "⇥", { disabled: aiLocked || last }),
+        item("add-transition", "添加转场", "◇", { disabled: aiLocked || last }),
+        item("smart-split", "智能切割分镜", "⫼", { disabled: aiLocked }),
+        item("reshoot", "片段重拍", "↻", { disabled: aiLocked }),
+        item("regenerate", clip.generating ? "生成中…" : "重新生成 · " + MT.REGENERATE_COST + " 积分", "✦", { ai: true, disabled: aiLocked || clip.generating })
       ]
     ];
   }
 
   function subtitleMenu() {
+    var locked = MT.isSubtitleLocked && MT.isSubtitleLocked(state.selected);
     return [
       [
-        item("copy", "复制", "⧉", { key: MOD + "C" }),
-        item("cut", "剪切", "✁", { key: MOD + "X" }),
+        item("copy", "复制", "⧉", { key: MOD + "C", disabled: locked }),
+        item("cut", "剪切", "✁", { key: MOD + "X", disabled: locked }),
         item("paste", "粘贴", "⎘", { key: MOD + "V", disabled: !state.clipboard }),
-        item("duplicate", "创建副本", "⊕", { key: MOD + "D" }),
-        item("delete-selection", "删除", "⌫", { key: "⌫", danger: true })
+        item("duplicate", "创建副本", "⊕", { key: MOD + "D", disabled: locked }),
+        item("delete-selection", "删除", "⌫", { key: "⌫", danger: true, disabled: locked })
       ],
-      [item("edit-subtitle", "编辑文字", "✎")]
+      [item("edit-subtitle", "编辑文字", "✎", { disabled: locked })]
     ];
   }
 
@@ -168,8 +168,6 @@
       paste: MT.paste,
       duplicate: MT.duplicate,
       "delete-selection": MT.deleteSelection,
-      "recognize-clip": function () { if (clip) MT.recognizeSubtitle(clip); },
-      "dub-clip": function () { if (clip) MT.generateDub(clip); },
       "toggle-clip-mute": function () { if (clip) MT.toggleClipMute(clip); },
       "toggle-narration-mute": function () { MT.toggleNarrationMute(); },
       "toggle-extra-mute": function () { MT.toggleSelectedExtraMute(); },
@@ -214,6 +212,14 @@
       if (event.key === "Escape") {
         event.preventDefault();
         MT.closeDialog();
+      }
+      return;
+    }
+    var translateModal = $("#translate-modal");
+    if (translateModal && !translateModal.hidden) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        MT.closeTranslatePanel();
       }
       return;
     }

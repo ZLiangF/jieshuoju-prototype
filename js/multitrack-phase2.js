@@ -90,8 +90,11 @@
     if (subLane) {
       subLane.classList.toggle("is-disabled", !firstSub.enabled);
       subLane.innerHTML = doc.subtitles.map(function (subtitle) {
-        return '<button type="button" class="mt-clip mt-subtitle-clip' + (state.selected === subtitle.id ? " on" : "") + '" data-select-subtitle="' + subtitle.id + '" style="left:' + (subtitle.start * px) + "px;width:" + Math.max(24, subtitle.duration * px) + 'px">' +
-          "<span>" + esc(subtitle.text) + '</span><i class="mt-trim left" data-trim="left" title="拖动调整开始时间"></i><i class="mt-trim right" data-trim="right" title="拖动调整时长"></i></button>';
+        var tag = subtitle.bilingual ? "双语" : (subtitle.fromAsr ? "ASR" : "");
+        var tip = subtitle.bilingual ? "双语字幕" : (subtitle.fromAsr ? "ASR · " + (MT.audioLabelForSubtitle(subtitle) || "") : subtitle.text);
+        return '<button type="button" class="mt-clip mt-subtitle-clip' + (state.selected === subtitle.id ? " on" : "") + (subtitle.fromAsr || subtitle.bilingual ? " is-asr" : "") + '" data-select-subtitle="' + subtitle.id + '" style="left:' + (subtitle.start * px) + "px;width:" + Math.max(24, subtitle.duration * px) + 'px" title="' + esc(tip) + '">' +
+          "<span>" + esc(subtitle.text) + "</span>" + (tag ? '<small class="mt-clip-tag">' + tag + "</small>" : "") +
+          '<i class="mt-trim left" data-trim="left" title="拖动调整开始时间"></i><i class="mt-trim right" data-trim="right" title="拖动调整时长"></i></button>';
       }).join("");
     }
 

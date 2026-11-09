@@ -75,8 +75,10 @@
     $("#subtitle-track").classList.toggle("is-disabled", !!state.disabledTracks.subtitle);
     $("#audio-track").classList.toggle("is-disabled", !!state.disabledTracks.audio || state.muted);
     $("#subtitle-track").innerHTML = doc.subtitles.map(function (subtitle) {
-      return '<button type="button" class="mt-clip mt-subtitle-clip' + (state.selected === subtitle.id ? " on" : "") + '" data-select-subtitle="' + subtitle.id + '" style="left:' + (subtitle.start * px) + "px;width:" + Math.max(24, subtitle.duration * px) + 'px">' +
-        "<span>" + esc(subtitle.text) + '</span><i class="mt-trim left" data-trim="left" title="拖动调整开始时间"></i><i class="mt-trim right" data-trim="right" title="拖动调整时长"></i></button>';
+      var tag = subtitle.bilingual ? "双语" : (subtitle.fromAsr ? "ASR" : "");
+      return '<button type="button" class="mt-clip mt-subtitle-clip' + (state.selected === subtitle.id ? " on" : "") + (subtitle.fromAsr || subtitle.bilingual ? " is-asr" : "") + '" data-select-subtitle="' + subtitle.id + '" style="left:' + (subtitle.start * px) + "px;width:" + Math.max(24, subtitle.duration * px) + 'px">' +
+        "<span>" + esc(subtitle.text) + "</span>" + (tag ? '<small class="mt-clip-tag">' + tag + "</small>" : "") +
+        '<i class="mt-trim left" data-trim="left" title="拖动调整开始时间"></i><i class="mt-trim right" data-trim="right" title="拖动调整时长"></i></button>';
     }).join("");
     var marks = entries.slice(0, -1).map(function (entry) {
       var type = doc.transitions[entry.clip.id];
@@ -220,6 +222,8 @@
       "add-transition": !!hasNext,
       "delete-selection": !!state.selected && state.selectedKind !== "asset" && state.selectedKind !== "audio",
       "generate-audio": !!shot && !MT.busyReason(shot),
+      "recognize-subtitles": !state.asrBusy && MT.doc.clips.length > 0,
+      "translate-subtitles": !state.translateBusy && MT.doc.subtitles.length > 0,
       "remove-subtitles": MT.doc.subtitles.length > 0,
       undo: state.history.length > 0,
       redo: state.future.length > 0
@@ -293,10 +297,20 @@
     },
     subtitle: function (body) {
       var subtitle = MT.selectedSubtitle();
+      var owner = MT.clipById(subtitle.clipId);
+      var langNames = { en: "英语", "zh-CN": "简体中文" };
+      var translation = (subtitle.translations || []).find(function (item) { return item.language === subtitle.translateLang; });
+      var source = subtitle.sourceText || subtitle.textOriginal || String(subtitle.text || "").split("\n")[0];
       $("#inspector-title").textContent = "字幕设置";
-      body.innerHTML = '<div class="mt-setting"><label>字幕内容</label><textarea class="mt-sub-text" data-setting="subtitle-text" rows="4">' + esc(subtitle.text) + "</textarea></div>" +
+      body.innerHTML = '<div class="mt-setting"><label>' + (translation ? "原文" : "字幕内容") + '</label><textarea class="mt-sub-text" data-setting="' + (translation ? "subtitle-source" : "subtitle-text") + '" rows="3">' + esc(source) + "</textarea></div>" +
+        (translation ? '<div class="mt-setting"><label>' + (langNames[subtitle.translateLang] || "译文") + '</label><textarea class="mt-sub-text" data-setting="subtitle-translation" rows="3">' + esc(translation.text) + "</textarea></div>" : "") +
         '<div class="mt-setting"><b>时间</b><div class="mt-setting-row"><span>开始</span><input type="number" step="0.1" value="' + subtitle.start.toFixed(1) + '" data-setting="subtitle-start"></div>' +
         '<div class="mt-setting-row"><span>时长</span><input type="number" step="0.1" value="' + subtitle.duration.toFixed(1) + '" data-setting="subtitle-duration"></div></div>' +
+        '<div class="mt-setting"><b>音频匹配</b>' +
+        '<div class="mt-setting-row"><span>来源</span><span class="mt-fixed">' + (subtitle.fromAsr ? "ASR 识别" : "手动") + "</span></div>" +
+        '<div class="mt-setting-row"><span>视频片段</span><span class="mt-fixed">' + esc(owner ? owner.label : "—") + "</span></div>" +
+        '<div class="mt-setting-row"><span>识别音频</span><span class="mt-fixed">' + (subtitle.fromAsr ? "视频原声" : "—") + "</span></div>" +
+        '<div class="mt-setting-row"><span>翻译</span><span class="mt-fixed">' + (subtitle.bilingual ? "双语 · " + (langNames[subtitle.translateLang] || "已翻译") : "未翻译") + "</span></div></div>" +
         '<div class="mt-setting-actions"><button type="button" data-act="duplicate">创建副本</button><button type="button" class="danger" data-act="delete-selection">删除字幕</button></div>';
     },
     audio: function (body) {
@@ -320,6 +334,24 @@
         (item.generating ? '<p class="mt-cost">配音生成中，完成后可调整音量</p>' :
           '<div class="mt-axis-group"><b>声音</b>' + axisRow("音量", "extra-volume", String(item.volume), "0", "200", "1", "%") + muteRow(item.muted, "toggle-extra-mute") + "</div>") +
         '<div class="mt-setting-actions"><button type="button" class="danger" data-act="delete-selection"' + (item.generating ? " disabled" : "") + ">删除这段音频</button></div>";
+    },
+    bgm: function (body) {
+      var bgm = MT.doc.bgm;
+      var active = bgm && bgm.versions.find(function (item) { return item.active; });
+      $("#inspector-title").textContent = "AI BGM";
+      if (!bgm || !active) {
+        body.innerHTML = '<div class="mt-inspector-empty"><span>♪</span><p>当前没有 BGM</p></div>';
+        return;
+      }
+      body.innerHTML = '<div class="mt-setting"><label>当前版本</label><div class="mt-setting-title">AI BGM · V' + (bgm.versions.indexOf(active) + 1) + '</div>' +
+        '<p class="mt-hint">整集自动生成 · 00:00–' + MT.mmss(active.duration) + ' · ' + esc(active.createdLabel || "") + '</p></div>' +
+        '<div class="mt-axis-group"><b>声音</b>' + axisRow("音量", "bgm-volume", String(active.volume), "0", "200", "1", "%") +
+        muteRow(active.muted, "toggle-bgm-mute") + "</div>" +
+        '<div class="mt-setting"><b>历史版本</b><div class="mt-bgm-versions">' + bgm.versions.map(function (version, index) {
+          return '<div class="' + (version.active ? "on" : "") + '"><button type="button" data-bgm-version="' + version.versionId + '"><span>V' + (index + 1) + (version.active ? " · 当前" : "") + '</span><small>' + esc(version.createdLabel || "") + '</small></button>' +
+            '<button type="button" class="danger" data-delete-bgm-version="' + version.versionId + '" title="删除版本">×</button></div>';
+        }).reverse().join("") + '</div></div>' +
+        '<div class="mt-setting-actions"><button type="button" class="danger" data-act="delete-selection">删除当前版本</button></div>';
     },
     asset: function (body) {
       var asset = MT.library.find(function (item) { return item.id === state.selected; }) || {};
