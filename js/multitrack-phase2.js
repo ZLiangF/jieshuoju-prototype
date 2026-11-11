@@ -611,6 +611,13 @@
     ["subtitle", "video", "audio"].some(function (type) {
       return state.tracks[type].some(function (track, index) {
         if (track.id !== id) return false;
+        if (type === "subtitle" && MT.isSubtitleLocked && MT.doc.subtitles.some(function (subtitle) {
+          return subtitle.trackId === id && MT.isSubtitleLocked(subtitle.id);
+        })) {
+          event.stopPropagation();
+          MT.toast("AI 任务处理中，完成后可继续编辑");
+          return true;
+        }
         track.enabled = !track.enabled;
         if (index === 0 && (type === "subtitle" || type === "audio")) {
           state.disabledTracks[type === "subtitle" ? "subtitle" : "audio"] = !track.enabled;

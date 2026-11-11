@@ -686,12 +686,6 @@
     }}
   };
 
-  function originalSubtitleText(subtitle) {
-    if (subtitle.textOriginal) return subtitle.textOriginal;
-    var parts = String(subtitle.text || "").split("\n");
-    return parts[0] || "";
-  }
-
   function translateLine(text, lang) {
     var pack = TRANSLATE_LANGS[lang] || TRANSLATE_LANGS.en;
     if (pack.dict[text]) return pack.dict[text];
@@ -700,24 +694,8 @@
   }
   MT.translateLine = translateLine;
 
-  function syncTranslatePanel() {
-    var rangeLabel = MT.$("#translate-range-label");
-    var langLabel = MT.$("#translate-lang-label");
-    if (rangeLabel) rangeLabel.textContent = state.translateRange === "track" ? "字幕 1（整条轨道）" : "选中的字幕";
-    if (langLabel) langLabel.textContent = (TRANSLATE_LANGS[state.translateLang] || TRANSLATE_LANGS.en).name;
-    MT.$$("#translate-range-menu [data-translate-range]").forEach(function (button) {
-      var on = button.dataset.translateRange === state.translateRange;
-      button.setAttribute("aria-selected", on ? "true" : "false");
-    });
-    MT.$$("#translate-lang-menu [data-translate-lang]").forEach(function (button) {
-      var on = button.dataset.translateLang === state.translateLang;
-      button.setAttribute("aria-selected", on ? "true" : "false");
-    });
-    MT.closeTranslateMenus();
-  }
-
   MT.closeTranslateMenus = function () {
-    ["range", "lang"].forEach(function (key) {
+    ["source", "lang"].forEach(function (key) {
       var menu = MT.$("#translate-" + key + "-menu");
       var button = MT.$("#translate-" + key + "-btn");
       if (menu) menu.hidden = true;
@@ -731,17 +709,6 @@
     MT.closeTranslateMenus();
   };
 
-  MT.openTranslatePanel = function () {
-    if (!MT.doc.subtitles.length) return MT.toast("字幕轨上没有字幕，先添加或识别后再翻译");
-    if (state.translateBusy) return MT.toast("字幕翻译进行中，请稍候");
-    if (!state.translateRange) state.translateRange = "selected";
-    if (!state.translateLang) state.translateLang = "en";
-    if (state.translateRange === "selected" && state.selectedKind !== "subtitle") state.translateRange = "track";
-    syncTranslatePanel();
-    var modal = MT.$("#translate-modal");
-    if (modal) modal.hidden = false;
-  };
-
   MT.toggleTranslateMenu = function (kind) {
     var menu = MT.$("#translate-" + kind + "-menu");
     var button = MT.$("#translate-" + kind + "-btn");
@@ -750,59 +717,6 @@
     MT.closeTranslateMenus();
     menu.hidden = !open;
     button.setAttribute("aria-expanded", open ? "true" : "false");
-  };
-
-  MT.setTranslateRange = function (range) {
-    state.translateRange = range === "track" ? "track" : "selected";
-    syncTranslatePanel();
-  };
-
-  MT.setTranslateLang = function (lang) {
-    if (!TRANSLATE_LANGS[lang]) return;
-    state.translateLang = lang;
-    syncTranslatePanel();
-  };
-
-  MT.confirmTranslateSubtitles = function () {
-    var targets;
-    if (state.translateRange === "selected") {
-      var selected = MT.selectedSubtitle();
-      if (!selected) return MT.toast("请先选中一条字幕，或改选「字幕 1（整条轨道）」");
-      targets = [selected];
-    } else {
-      targets = MT.doc.subtitles.slice();
-    }
-    if (!targets.length) return MT.toast("没有可翻译的字幕");
-    if (state.translateBusy) return;
-
-    var lang = state.translateLang || "en";
-    var langName = (TRANSLATE_LANGS[lang] || TRANSLATE_LANGS.en).name;
-    state.translateBusy = true;
-    MT.renderToolbarState();
-    MT.closeTranslatePanel();
-    MT.toast("正在翻译为" + langName + "…");
-
-    setTimeout(function () {
-      if (MT.mock["translate-fail"]) {
-        state.translateBusy = false;
-        MT.renderToolbarState();
-        return MT.toast("字幕翻译失败，请稍后重试");
-      }
-      MT.saveHistory("生成双语字幕");
-      targets.forEach(function (subtitle) {
-        var original = originalSubtitleText(subtitle);
-        var translated = translateLine(original, lang);
-        subtitle.textOriginal = original;
-        subtitle.text = original + "\n" + translated;
-        subtitle.bilingual = true;
-        subtitle.translateLang = lang;
-      });
-      state.translateBusy = false;
-      MT.refreshTimeline();
-      MT.renderToolbarState();
-      if (targets[0]) MT.select("subtitle", targets[0].id, targets[0].start);
-      MT.toast("已生成 " + targets.length + " 条双语字幕（中文 / " + langName + "）");
-    }, 900);
   };
 
   MT.clearSubtitles = function () {

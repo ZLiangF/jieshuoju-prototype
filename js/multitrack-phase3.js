@@ -1,4 +1,4 @@
-/* 多轨编辑器 · 三期：ASR 新字幕轨、结构化双语字幕、整集 AI BGM、0 积分任务确认与生成锁。 */
+/* 多轨编辑器 · 三期：独立字幕识别/翻译、结构化双语字幕、整集 AI BGM 与生成锁。 */
 (function () {
   var MT = window.MT;
   var state = MT.state;
@@ -24,6 +24,12 @@
     subtitle.sourceText = subtitle.sourceText || subtitle.textOriginal || String(subtitle.text || "").split("\n")[0];
     subtitle.sourceLanguage = subtitle.sourceLanguage || (/[\u3400-\u9fff]/.test(subtitle.sourceText) ? "zh-CN" : "en");
     subtitle.translations = subtitle.translations || [];
+    if (subtitle.bilingual && !subtitle.translation) {
+      var legacyLines = String(subtitle.text || "").split("\n");
+      subtitle.text = subtitle.sourceText || legacyLines.shift() || "";
+      subtitle.translation = legacyLines.join("\n");
+      subtitle.displayMode = "bilingual";
+    }
     if (subtitle.bilingual && subtitle.translation) subtitle.displayMode = "bilingual";
     else if (subtitle.displayMode === "bilingual") {
       subtitle.text = subtitle.sourceText;
@@ -43,12 +49,23 @@
       subtitle.sourceText = subtitle.sourceText || subtitle.textOriginal || String(subtitle.text || "").split("\n")[0];
       subtitle.sourceLanguage = subtitle.sourceLanguage || (/[\u3400-\u9fff]/.test(subtitle.sourceText) ? "zh-CN" : "en");
       subtitle.translations = subtitle.translations || [];
+      if (subtitle.bilingual && !subtitle.translation) {
+        var legacyLines = String(subtitle.text || "").split("\n");
+        subtitle.text = subtitle.sourceText || legacyLines.shift() || "";
+        subtitle.translation = legacyLines.join("\n");
+        subtitle.displayMode = "bilingual";
+      }
       if (subtitle.bilingual && subtitle.translation) subtitle.displayMode = "bilingual";
       else if (subtitle.displayMode === "bilingual") {
         subtitle.text = subtitle.sourceText;
         subtitle.bilingual = false;
         subtitle.displayMode = "single";
       }
+    });
+    state.tracks.subtitle.forEach(function (track) {
+      track.bilingual = MT.doc.subtitles.some(function (subtitle) {
+        return subtitle.trackId === track.id && subtitle.bilingual;
+      });
     });
   }
 
@@ -118,7 +135,7 @@
     if (type === "audio" && MT.doc.bgm && MT.doc.bgm.trackId === id) MT.doc.bgm = null;
   }
 
-  /* 双语 = 两条字幕轨：原文一条、译文一条，每条字幕只存一种语言。 */
+  /* 双语字幕在同一条字幕对象中保存原文与译文。 */
   MT.LANG_LABEL = { "zh-CN": "中文", en: "英文" };
   MT.subtitleDisplayText = function (subtitle) {
     return String(subtitle.text || "");
@@ -185,45 +202,6 @@
     if (caption.innerHTML !== html) caption.innerHTML = html;
   };
 
-  /* 左侧「字幕一览」：按字幕轨分组列出全部字幕，译文轨同时展示对应原文。 */
-  MT.renderSubtitleOverview = function () {
-    var box = MT.$("#subtitle-overview");
-    if (!box) return;
-    var tracks = state.tracks.subtitle || [];
-    var total = MT.doc.subtitles.length;
-    var html = '<div class="mt-sub-overview-head"><b>字幕一览</b><small>共 ' + tracks.length + " 条字幕轨 · " + total + " 条字幕</small></div>";
-    if (!tracks.length || !total) {
-      box.innerHTML = html + '<p class="mt-sub-overview-empty">还没有字幕。可以点击时间线上的「识别字幕」或「添加字幕」。</p>';
-      return;
-    }
-    html += tracks.map(function (track) {
-      var list = MT.doc.subtitles.filter(function (subtitle) { return subtitle.trackId === track.id; })
-        .sort(function (a, b) { return a.start - b.start; });
-      var lang = MT.trackLanguage(track);
-      var source = track.sourceTrackId && tracks.find(function (item) { return item.id === track.sourceTrackId; });
-      var langLabel = track.bilingual ? "双语" : (MT.LANG_LABEL[lang] || "未识别语言");
-      return '<section class="mt-sub-overview-track' + (track.enabled === false ? " is-hidden" : "") + '">' +
-        '<header><b>' + esc(track.name) + "</b><span>" + langLabel +
-        (source ? " · 译自 " + esc(source.name) : "") + " · " + (track.enabled === false ? "已隐藏" : "显示中") + " · " + list.length + " 条</span></header>" +
-        (list.length ? list.map(function (subtitle) {
-          var origin = subtitle.sourceSubtitleId && MT.subtitleById(subtitle.sourceSubtitleId);
-          var extra = subtitle.bilingual && subtitle.translation ? subtitle.translation : (origin ? origin.text : "");
-          var on = state.selected === subtitle.id || (state.multi || []).some(function (item) { return item.kind === "subtitle" && item.id === subtitle.id; });
-          return '<button type="button" class="mt-sub-overview-row' + (on ? " on" : "") + '" data-overview-sub="' + subtitle.id + '">' +
-            "<time>" + MT.mmss(subtitle.start) + "</time><span>" + esc(subtitle.text) +
-            (extra ? "<small>" + esc(extra) + "</small>" : "") + "</span></button>";
-        }).join("") : '<p class="mt-sub-overview-empty">这条轨道还没有字幕</p>') +
-        "</section>";
-    }).join("");
-    box.innerHTML = html;
-  };
-  document.addEventListener("click", function (event) {
-    var row = event.target.closest && event.target.closest("[data-overview-sub]");
-    if (!row) return;
-    var subtitle = MT.subtitleById(row.dataset.overviewSub);
-    if (subtitle) MT.select("subtitle", subtitle.id, subtitle.start);
-  });
-
   /* 实际渲染按 trackId 分发字幕，并在独立音轨展示当前 BGM 版本。 */
   var baseRenderTracks = MT.renderTracks;
   MT.renderTracks = function () {
@@ -266,7 +244,6 @@
       var button = MT.$('[data-select-shot="' + clip.id + '"]');
       if (button) button.classList.toggle("is-ai-locked", MT.isClipLocked(clip.id));
     });
-    MT.renderSubtitleOverview();
   };
 
   var baseSelect = MT.select;
@@ -294,7 +271,6 @@
   }
   function completeAsr(task) {
     if (MT.mock["asr-fail"]) return failTask(task, "识别字幕失败，请稍后重试");
-    if (task.mode === "bilingual" && MT.mock["translate-fail"]) return failTask(task, "双语字幕生成失败，请稍后重试");
     var added = [];
     var skippedClips = 0;
     task.clipIds.forEach(function (clipId) {
@@ -319,7 +295,7 @@
           language: lang,
           sourceLanguage: lang,
           translations: [],
-          displayMode: task.mode === "bilingual" ? "bilingual" : "single",
+          displayMode: "single",
           clipId: clip.id,
           sourceType: "videoOriginalAudio",
           audioKind: "clip",
@@ -329,11 +305,6 @@
           editedByUser: false,
           fromAsr: true
         };
-        if (task.mode === "bilingual") {
-          row.bilingual = true;
-          row.translateLang = otherLanguage(lang);
-          row.translation = translate(cue.text, row.translateLang);
-        }
         added.push(row);
       });
     });
@@ -352,33 +323,31 @@
     var newTrack = state.tracks.subtitle.find(function (track) { return track.id === task.trackId; });
     if (newTrack) {
       newTrack.language = MT.trackLanguage(newTrack);
-      newTrack.bilingual = task.mode === "bilingual";
+      newTrack.bilingual = false;
     }
     MT.saveHistory("ASR 识别字幕", task.before);
     state.activeSubtitleTrackId = task.trackId;
     MT.refreshTimeline();
     MT.renderToolbarState();
     MT.select("subtitle", added[0].id, added[0].start);
-    var bilingual = task.mode === "bilingual";
-    MT.toast("已在新字幕轨生成 " + added.length + " 条" + (bilingual ? "双语字幕，台词和译文在同一条字幕上" : "台词字幕") + (skippedClips ? "，" + skippedClips + " 个片段无法识别已跳过" : "") + "，原显示字幕轨已自动隐藏");
+    MT.toast("已在新字幕轨识别 " + added.length + " 条字幕" + (skippedClips ? "，" + skippedClips + " 个片段无法识别已跳过" : "") + "，原显示字幕轨已自动隐藏");
   }
 
-  function startAsr(targets, mode) {
+  function startAsr(targets) {
     var before = MT.snapshot();
-    var name = mode === "bilingual" ? uniqueTrackName("双语字幕") : "AI 字幕 " + (state.tracks.subtitle.length + 1);
+    var name = uniqueTrackName("AI 字幕");
     var track = addTrack("subtitle", name);
-    track.bilingual = mode === "bilingual";
+    track.bilingual = false;
     var task = createTask("asr", {
       clipIds: targets.map(function (clip) { return clip.id; }),
       trackId: track.id,
-      mode: mode,
       before: before
     });
     state.asrBusy = true;
     MT.closeDialog();
     MT.refreshTimeline();
     MT.renderToolbarState();
-    MT.toast(mode === "bilingual" ? "正在识别原声并翻译成双语字幕…" : "正在分析 " + targets.length + " 个视频片段的原声…");
+    MT.toast("正在分析 " + targets.length + " 个视频片段的原声…");
     setTimeout(function () { completeAsr(task); }, Math.max(0, task.dueAt - Date.now()));
   }
 
@@ -387,18 +356,13 @@
     var targets = MT.doc.clips.slice().filter(Boolean);
     if (!targets.length) return MT.toast("时间线上没有可识别的视频片段");
     if (state.tracks.subtitle.length >= MT.TRACK_LIMITS.subtitle) return MT.toast("字幕轨已达上限，请点击轨道右侧 × 删除一条后再识别");
-    if (MT.videoTaskBusy()) return lockedToast();
+    if (MT.hasActiveAiTask()) return lockedToast();
     var seconds = targets.reduce(function (sum, clip) { return sum + clip.duration; }, 0);
-    MT.choose({
+    MT.confirm({
       title: "识别字幕",
-      body: "识别范围：全部视频片段，共 " + targets.length + " 个片段，" + MT.secText(seconds) + "。自动检测原声语言（中文或英文），无法识别的片段会跳过。预计消耗 0 积分。",
-      value: "dialogue",
+      body: "识别全部视频片段的原声，共 " + targets.length + " 个片段，" + MT.secText(seconds) + "。自动检测中文或英文，只生成原语言台词；无法识别的片段会跳过。预计消耗 0 积分。",
       ok: "开始识别 · 0 积分",
-      options: [
-        { value: "dialogue", label: "台词字幕", hint: "按当前视频的原声语言识别，只生成台词" },
-        { value: "bilingual", label: "双语字幕", hint: "先识别台词，再自动翻译成另一种语言，台词和译文写在同一条字幕上" }
-      ],
-      onOk: function (mode) { startAsr(targets, mode === "bilingual" ? "bilingual" : "dialogue"); }
+      onOk: function () { startAsr(targets); }
     });
   };
   MT.recognizeSubtitle = MT.recognizeSubtitles;
@@ -415,6 +379,7 @@
     return /[\u3400-\u9fff]/.test(text) ? "zh-CN" : "en";
   }
   function translate(text, lang) {
+    if (!String(text || "").trim()) return "";
     if (lang === "en" && MT.translateLine) return MT.translateLine(text, "en");
     var zh = {
       "Mom, sorry I'm late today.": "妈，对不起，今天来晚了。",
@@ -423,29 +388,6 @@
     };
     return zh[text] || "【中文】" + text;
   }
-  function selectedSubtitles() {
-    if (state.multi && state.multi.length > 1) {
-      return state.multi.filter(function (item) { return item.kind === "subtitle"; }).map(function (item) { return MT.subtitleById(item.id); }).filter(Boolean);
-    }
-    var one = MT.selectedSubtitle();
-    return one ? [one] : [];
-  }
-  /* 一次翻译只针对一条原文字幕轨；框选跨轨时取第一条字幕所在的轨。 */
-  function rawTranslationCandidates() {
-    if (state.translateRange === "selected") {
-      var picked = selectedSubtitles();
-      if (!picked.length) return [];
-      var pickedTrack = picked[0].trackId;
-      return picked.filter(function (subtitle) { return subtitle.trackId === pickedTrack; });
-    }
-    var trackId = state.activeSubtitleTrackId || (state.tracks.subtitle[0] || {}).id;
-    return MT.doc.subtitles.filter(function (subtitle) { return subtitle.trackId === trackId; });
-  }
-  function translationTrackFor(sourceTrackId, lang) {
-    return (state.tracks.subtitle || []).find(function (track) {
-      return track.sourceTrackId === sourceTrackId && track.language === lang;
-    });
-  }
   function uniqueTrackName(base) {
     var names = (state.tracks.subtitle || []).map(function (track) { return track.name; });
     if (names.indexOf(base) < 0) return base;
@@ -453,70 +395,79 @@
     while (names.indexOf(base + " " + n) > -1) n += 1;
     return base + " " + n;
   }
-  function insertTranslationTrack(sourceTrackId, lang) {
-    var list = state.tracks.subtitle;
-    var index = list.findIndex(function (track) { return track.id === sourceTrackId; });
-    var track = {
-      id: MT.nextId("sub-track"),
-      name: uniqueTrackName((MT.LANG_LABEL[lang] || "译文") + "字幕"),
-      enabled: true,
-      language: lang,
-      sourceTrackId: sourceTrackId
-    };
-    list.splice(index < 0 ? list.length : index + 1, 0, track);
-    return track;
+
+  function subtitlesOnTrack(trackId) {
+    return MT.doc.subtitles.filter(function (subtitle) { return subtitle.trackId === trackId; })
+      .sort(function (a, b) { return a.start - b.start; });
   }
-  function filterTranslatableSubtitles(list, lang) {
-    var valid = (list || []).filter(function (subtitle) {
-      var text = sourceText(subtitle).trim();
-      return text && text !== "请输入字幕" && !isSymbolOnly(text);
+  function eligibleTranslationTracks() {
+    return (state.tracks.subtitle || []).filter(function (track) {
+      if (track.bilingual) return false;
+      return subtitlesOnTrack(track.id).some(function (subtitle) {
+        var text = sourceText(subtitle).trim();
+        return text && text !== "请输入字幕" && !isSymbolOnly(text);
+      });
     });
-    if (state.translateRange === "selected" && valid.length <= 1) {
-      return valid.filter(function (subtitle) { return detectLanguage(sourceText(subtitle)) !== lang; });
-    }
-    return valid.filter(function (subtitle) { return detectLanguage(sourceText(subtitle)) !== lang; });
   }
+  function sourceTrackLanguage(trackId) {
+    var track = (state.tracks.subtitle || []).find(function (item) { return item.id === trackId; });
+    return (track && MT.trackLanguage(track)) || detectLanguage(sourceText(subtitlesOnTrack(trackId)[0] || {}));
+  }
+  function suggestedTarget(trackId) {
+    return otherLanguage(sourceTrackLanguage(trackId));
+  }
+
   function syncTranslatePanel3() {
-    var lang = state.translateLang || "en";
-    var raw = rawTranslationCandidates();
-    var targets = filterTranslatableSubtitles(raw, lang);
-    var track = state.tracks.subtitle.find(function (item) { return item.id === state.activeSubtitleTrackId; });
-    var rangeLabel = MT.$("#translate-range-label");
+    var tracks = eligibleTranslationTracks();
+    var track = tracks.find(function (item) { return item.id === state.translateSourceTrackId; }) || tracks[0];
+    if (track) state.translateSourceTrackId = track.id;
+    var rows = track ? subtitlesOnTrack(track.id) : [];
+    var lang = state.translateLang || (track ? suggestedTarget(track.id) : "en");
+    state.translateLang = lang;
+    var sourceLabel = MT.$("#translate-source-label");
     var langLabel = MT.$("#translate-lang-label");
-    if (rangeLabel) rangeLabel.textContent = state.translateRange === "track" ? (track ? track.name : "当前字幕轨") + "（整轨）" : "选中的字幕（" + raw.length + " 条）";
-    var output = MT.$("#translate-output");
-    var sourceTrackId = raw[0] ? raw[0].trackId : (track || {}).id;
-    var existing = sourceTrackId && translationTrackFor(sourceTrackId, lang);
-    if (output) {
-      output.textContent = existing
-        ? "译文写入已有的「" + existing.name + "」轨，对应条目会被更新"
-        : "将在原字幕轨下方新建「" + (MT.LANG_LABEL[lang] || "译文") + "字幕」轨，原文轨保持不变";
+    if (sourceLabel) sourceLabel.textContent = track ? track.name + " · " + (MT.LANG_LABEL[sourceTrackLanguage(track.id)] || "单语") : "没有可翻译的单语字幕轨";
+    var sourceMenu = MT.$("#translate-source-menu");
+    if (sourceMenu) {
+      sourceMenu.innerHTML = tracks.map(function (item) {
+        var on = item.id === state.translateSourceTrackId;
+        return '<button type="button" role="option" data-translate-source="' + item.id + '" aria-selected="' + (on ? "true" : "false") + '">' +
+          esc(item.name) + " · " + subtitlesOnTrack(item.id).length + " 条<span>✓</span></button>";
+      }).join("");
     }
+    var output = MT.$("#translate-output");
+    if (output) output.textContent = track
+      ? "将新建「双语字幕」轨，保留原文和" + (MT.LANG_LABEL[lang] || "译文") + "；原轨保持不变并自动隐藏"
+      : "请先添加或识别一条单语字幕轨";
     if (langLabel) langLabel.textContent = LANGS[lang] || LANGS.en;
     var count = MT.$("#translate-count");
     var quantity = MT.$("#translate-quantity");
-    if (count) count.textContent = targets.length;
-    if (quantity) quantity.textContent = targets.reduce(function (sum, subtitle) { return sum + sourceText(subtitle).length; }, 0);
-    MT.$$("#translate-range-menu [data-translate-range]").forEach(function (button) {
-      button.setAttribute("aria-selected", button.dataset.translateRange === state.translateRange ? "true" : "false");
-    });
+    if (count) count.textContent = rows.length;
+    if (quantity) quantity.textContent = rows.reduce(function (sum, subtitle) { return sum + sourceText(subtitle).length; }, 0);
     MT.$$("#translate-lang-menu [data-translate-lang]").forEach(function (button) {
       button.setAttribute("aria-selected", button.dataset.translateLang === state.translateLang ? "true" : "false");
     });
+    var submit = MT.$('[data-act="confirm-translate"]');
+    if (submit) submit.disabled = !track || sourceTrackLanguage(track.id) === lang;
     MT.closeTranslateMenus();
   }
   MT.openTranslatePanel = function () {
-    return MT.toast("字幕翻译已并入「识别字幕」，请选择「双语字幕」");
     if (state.readonly) return MT.toast("只读模式下不可使用 AI 功能");
-    if (!MT.doc.subtitles.length) return MT.toast("当前字幕轨没有可翻译内容");
-    if (activeTask("translate")) return MT.toast("字幕翻译进行中，请稍候");
-    state.translateRange = selectedSubtitles().length ? "selected" : "track";
-    state.translateLang = LANGS[state.translateLang] ? state.translateLang : "en";
+    if (MT.hasActiveAiTask()) return lockedToast();
+    if (state.tracks.subtitle.length >= MT.TRACK_LIMITS.subtitle) return MT.toast("字幕轨已达上限，请点击轨道右侧 × 删除一条后再翻译");
+    var tracks = eligibleTranslationTracks();
+    if (!tracks.length) return MT.toast("没有可翻译的单语字幕轨");
+    var selected = MT.selectedSubtitle();
+    var preferred = selected && tracks.find(function (track) { return track.id === selected.trackId; });
+    state.translateSourceTrackId = (preferred || tracks.find(function (track) { return track.id === state.activeSubtitleTrackId; }) || tracks[0]).id;
+    state.translateLang = suggestedTarget(state.translateSourceTrackId);
     syncTranslatePanel3();
     MT.$("#translate-modal").hidden = false;
   };
-  MT.setTranslateRange = function (range) {
-    state.translateRange = range === "track" ? "track" : "selected";
+  MT.setTranslateSource = function (trackId) {
+    if (!eligibleTranslationTracks().some(function (track) { return track.id === trackId; })) return;
+    state.translateSourceTrackId = trackId;
+    state.translateLang = suggestedTarget(trackId);
     syncTranslatePanel3();
   };
   MT.setTranslateLang = function (lang) {
@@ -524,55 +475,56 @@
     state.translateLang = lang;
     syncTranslatePanel3();
   };
-  /* 译文写入独立字幕轨：每条译文和原文同起止时间，通过 sourceSubtitleId 关联原文。 */
+  /* 翻译生成新的双语轨；原文、译文和时间码保存在同一条字幕对象中。 */
   function completeTranslation(task) {
     if (MT.mock["translate-fail"]) return failTask(task, "字幕翻译失败，请稍后重试");
     var targets = task.subtitleIds.map(MT.subtitleById).filter(Boolean);
-    var track = translationTrackFor(task.sourceTrackId, task.lang);
-    if (!track) {
-      if (state.tracks.subtitle.length >= MT.TRACK_LIMITS.subtitle) return failTask(task, "字幕轨已达上限，翻译未写入");
-      track = insertTranslationTrack(task.sourceTrackId, task.lang);
-    }
-    track.enabled = true;
-    var sourceTrack = state.tracks.subtitle.find(function (item) { return item.id === task.sourceTrackId; });
-    if (sourceTrack) sourceTrack.enabled = true;
-    var written = [];
-    targets.forEach(function (subtitle) {
+    if (!targets.length) return failTask(task, "源字幕轨已不存在，翻译未写入");
+    if (state.tracks.subtitle.length >= MT.TRACK_LIMITS.subtitle) return failTask(task, "字幕轨已达上限，翻译未写入");
+    var track = addTrack("subtitle", uniqueTrackName("双语字幕"));
+    track.bilingual = true;
+    track.language = "bilingual";
+    track.sourceTrackId = task.sourceTrackId;
+    var written = targets.map(function (subtitle) {
       var original = sourceText(subtitle);
-      subtitle.language = detectLanguage(original);
-      var text = translate(original, task.lang);
-      var row = MT.doc.subtitles.find(function (item) { return item.trackId === track.id && item.sourceSubtitleId === subtitle.id; });
-      if (!row) {
-        row = { id: MT.nextId("sub"), trackId: track.id, translations: [], displayMode: "single" };
-        MT.doc.subtitles.push(row);
-      }
-      row.start = subtitle.start;
-      row.duration = subtitle.duration;
-      row.text = text;
-      row.sourceText = text;
-      row.language = task.lang;
-      row.sourceLanguage = task.lang;
-      row.sourceSubtitleId = subtitle.id;
-      row.clipId = subtitle.clipId;
-      row.sourceTaskId = task.id;
-      row.editedByUser = false;
-      row.fromTranslation = true;
-      written.push(row);
+      var sourceLang = detectLanguage(original);
+      return {
+        id: MT.nextId("sub"),
+        trackId: track.id,
+        start: subtitle.start,
+        duration: subtitle.duration,
+        text: original,
+        sourceText: original,
+        language: sourceLang,
+        sourceLanguage: sourceLang,
+        translation: isValidSubtitleText(original) ? translate(original, task.lang) : "",
+        translateLang: task.lang,
+        translations: [],
+        displayMode: "bilingual",
+        bilingual: true,
+        sourceSubtitleId: subtitle.id,
+        clipId: subtitle.clipId,
+        sourceTaskId: task.id,
+        editedByUser: false,
+        fromTranslation: true
+      };
     });
+    MT.doc.subtitles = MT.doc.subtitles.concat(written);
+    state.tracks.subtitle.forEach(function (item) { item.enabled = item.id === track.id; });
     removeTask(task);
     state.translateBusy = false;
-    MT.saveHistory("生成" + LANGS[task.lang] + "字幕轨", task.before);
+    MT.saveHistory("生成双语字幕轨", task.before);
+    state.activeSubtitleTrackId = track.id;
     MT.refreshTimeline();
     MT.renderToolbarState();
     if (written[0]) MT.select("subtitle", written[0].id, written[0].start);
-    MT.toast("已在「" + track.name + "」写入 " + written.length + " 条" + LANGS[task.lang] + "字幕" + (task.skipped ? "（跳过 " + task.skipped + " 条同语种/符号字幕）" : "") + " · 结算 0 积分");
+    MT.toast("已生成 " + written.length + " 条双语字幕，原字幕轨已自动隐藏 · 结算 0 积分");
   }
-  function startTranslation(targets, lang, skipped) {
+  function startTranslation(targets, lang) {
     var task = createTask("translate", {
       subtitleIds: targets.map(function (subtitle) { return subtitle.id; }),
       sourceTrackId: targets[0].trackId,
       lang: lang,
-      skipped: skipped || 0,
       before: MT.snapshot()
     });
     state.translateBusy = true;
@@ -583,37 +535,15 @@
     setTimeout(function () { completeTranslation(task); }, Math.max(0, task.dueAt - Date.now()));
   }
   MT.confirmTranslateSubtitles = function () {
-    var raw = rawTranslationCandidates().filter(function (subtitle) {
-      var text = sourceText(subtitle).trim();
-      return text && text !== "请输入字幕";
-    });
-    if (!raw.length) return MT.toast("当前字幕轨没有可翻译内容");
+    if (MT.hasActiveAiTask()) return lockedToast();
+    var trackId = state.translateSourceTrackId;
+    var targets = subtitlesOnTrack(trackId);
+    if (!targets.some(function (subtitle) { return isValidSubtitleText(sourceText(subtitle)); })) return MT.toast("当前字幕轨没有可翻译内容");
     var lang = state.translateLang || "en";
-    var targets = filterTranslatableSubtitles(raw, lang);
-    if (!targets.length) {
-      return MT.toast("原字幕已是目标语言，请选择其他语言");
-    }
+    if (sourceTrackLanguage(trackId) === lang) return MT.toast("目标语言不能与原字幕语言相同");
     if (targets.some(function (subtitle) { return MT.isSubtitleLocked(subtitle.id); })) return lockedToast();
-    var skipped = Math.max(0, raw.length - targets.length);
-    var existingTrack = translationTrackFor(targets[0].trackId, lang);
-    if (!existingTrack && state.tracks.subtitle.length >= MT.TRACK_LIMITS.subtitle) {
-      return MT.toast("字幕轨已达上限，请点击轨道右侧 × 删除一条后再翻译");
-    }
-    var targetIds = {};
-    targets.forEach(function (subtitle) { targetIds[subtitle.id] = true; });
-    var edited = !!existingTrack && MT.doc.subtitles.some(function (row) {
-      return row.trackId === existingTrack.id && targetIds[row.sourceSubtitleId] && row.editedByUser;
-    });
-    if (edited) {
-      MT.closeTranslatePanel();
-      return MT.confirm({
-        title: "覆盖人工译文？",
-        body: "重新翻译将替换「" + existingTrack.name + "」中人工修改过的" + LANGS[lang] + "译文。",
-        ok: "继续翻译 · 0 积分",
-        onOk: function () { startTranslation(targets, lang, skipped); }
-      });
-    }
-    startTranslation(targets, lang, skipped);
+    if (state.tracks.subtitle.length >= MT.TRACK_LIMITS.subtitle) return MT.toast("字幕轨已达上限，请点击轨道右侧 × 删除一条后再翻译");
+    startTranslation(targets, lang);
   };
 
   function completeBgm(task) {
@@ -671,7 +601,7 @@
     if (state.readonly) return MT.toast("只读模式下不可使用 AI 功能");
     if (!MT.doc.clips.length) return MT.toast("先编辑视频再生成 BGM");
     if (!MT.hasValidSubtitlesForBgm()) return MT.toast("请先生成字幕、再生成BGM");
-    if (MT.videoTaskBusy()) return lockedToast();
+    if (MT.hasActiveAiTask()) return lockedToast();
     if (!MT.doc.bgm && state.tracks.audio.length >= MT.TRACK_LIMITS.audio) return MT.toast("音频轨已达上限，请点击轨道右侧 × 删除一条后再生成");
     if (MT.doc.bgm && MT.doc.bgm.versions.length >= MT.BGM_VERSION_LIMIT) {
       return MT.toast("BGM 历史版本最多保留 " + MT.BGM_VERSION_LIMIT + " 个，请先删除旧版本后再生成");
@@ -829,8 +759,9 @@
     var asr = MT.$('[data-act="recognize-subtitles"]');
     var translateButton = MT.$('.mt-tool-group [data-act="translate-subtitles"]');
     var hasSub = MT.hasValidSubtitlesForBgm();
+    var aiBusy = MT.hasActiveAiTask();
     if (bgm) {
-      var blockedByTask = !MT.doc.clips.length || MT.videoTaskBusy();
+      var blockedByTask = !MT.doc.clips.length || aiBusy;
       var greyed = state.readonly || (!blockedByTask && !hasSub);
       bgm.disabled = blockedByTask && !state.readonly;
       bgm.classList.toggle("is-sub-required", greyed);
@@ -844,8 +775,15 @@
         bgm.title = "根据整集画面与显示中字幕轨的时间戳自动生成连续 BGM";
       }
     }
-    if (asr) asr.disabled = state.readonly || !MT.doc.clips.length || MT.videoTaskBusy() || state.tracks.subtitle.length >= MT.TRACK_LIMITS.subtitle;
-    if (translateButton && state.readonly) translateButton.disabled = true;
+    if (asr) asr.disabled = state.readonly || !MT.doc.clips.length || aiBusy || state.tracks.subtitle.length >= MT.TRACK_LIMITS.subtitle;
+    if (translateButton) {
+      translateButton.disabled = state.readonly || aiBusy || !eligibleTranslationTracks().length || state.tracks.subtitle.length >= MT.TRACK_LIMITS.subtitle;
+      if (!state.readonly) {
+        translateButton.title = state.tracks.subtitle.length >= MT.TRACK_LIMITS.subtitle
+          ? "字幕轨已达上限，请先删除一条"
+          : !eligibleTranslationTracks().length ? "请先添加或识别一条单语字幕轨" : "将已有单语字幕翻译为双语字幕";
+      }
+    }
     [asr, translateButton].forEach(function (button) {
       if (!button) return;
       if (state.readonly) button.title = READONLY_TIP;

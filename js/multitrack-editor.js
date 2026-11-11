@@ -35,9 +35,10 @@
     if (action === "recognize-subtitles") return MT.recognizeSubtitles();
     if (action === "translate-subtitles") return MT.openTranslatePanel();
     if (action === "generate-bgm") return MT.openBgmPanel();
-    if (action === "toggle-translate-range") return MT.toggleTranslateMenu("range");
+    if (action === "toggle-translate-source") return MT.toggleTranslateMenu("source");
     if (action === "toggle-translate-lang") return MT.toggleTranslateMenu("lang");
     if (action === "confirm-translate") return MT.confirmTranslateSubtitles();
+    if (action === "close-translate") return MT.closeTranslatePanel();
     if (action === "remove-subtitles") return MT.clearSubtitles();
     if (action === "toggle-clip-mute" && picked) return MT.toggleClipMute(picked);
     if (action === "toggle-narration-mute") return MT.toggleNarrationMute();
@@ -183,10 +184,10 @@
       return MT.renderPlayhead();
     }
 
-    var translateRange = target.closest("[data-translate-range]");
-    if (translateRange) {
+    var translateSource = target.closest("[data-translate-source]");
+    if (translateSource) {
       event.stopPropagation();
-      return MT.setTranslateRange(translateRange.dataset.translateRange);
+      return MT.setTranslateSource(translateSource.dataset.translateSource);
     }
     var translateLang = target.closest("[data-translate-lang]");
     if (translateLang) {
@@ -260,7 +261,7 @@
     if (subtitle) {
       if (MT.isSubtitleLocked && MT.isSubtitleLocked(subtitle.id)) {
         event.target.value = setting === "subtitle-translation"
-          ? (((subtitle.translations || []).find(function (item) { return item.language === subtitle.translateLang; }) || {}).text || "")
+          ? (subtitle.bilingual ? (subtitle.translation || "") : (((subtitle.translations || []).find(function (item) { return item.language === subtitle.translateLang; }) || {}).text || ""))
           : (subtitle.sourceText || subtitle.text);
         return MT.toast("AI 任务处理中，完成后可继续编辑");
       }

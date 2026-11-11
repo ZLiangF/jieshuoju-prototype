@@ -147,7 +147,7 @@
     future: [],
     asrBusy: false,
     translateBusy: false,
-    translateRange: "selected",
+    translateSourceTrackId: "",
     translateLang: "en"
   };
 
