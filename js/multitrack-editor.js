@@ -276,11 +276,16 @@
         MT.updateSubtitleDisplay(subtitle);
       }
       if (setting === "subtitle-translation") {
-        var translation = (subtitle.translations || []).find(function (item) { return item.language === subtitle.translateLang; });
-        if (translation) {
-          translation.text = value.slice(0, 200);
-          translation.editedByUser = true;
-          MT.updateSubtitleDisplay(subtitle);
+        if (subtitle.bilingual) {
+          subtitle.translation = value.slice(0, 200);
+          subtitle.editedByUser = true;
+        } else {
+          var translation = (subtitle.translations || []).find(function (item) { return item.language === subtitle.translateLang; });
+          if (translation) {
+            translation.text = value.slice(0, 200);
+            translation.editedByUser = true;
+            MT.updateSubtitleDisplay(subtitle);
+          }
         }
       }
       if (setting === "subtitle-start") subtitle.start = clamp(Number(value) || 0, 0, MT.totalDuration() - 0.5);

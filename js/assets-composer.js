@@ -272,18 +272,23 @@ document.getElementById("rewrite-confirm").onclick = applyRewrite;
 var MODEL_ICON_GPT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.45" stroke-linejoin="round" d="M9.6 3.9a4.1 4.1 0 0 1 6.7 2.4 4.1 4.1 0 0 1 3.4 5.9 4.1 4.1 0 0 1-3.3 6 4.1 4.1 0 0 1-6.8 1.8 4.1 4.1 0 0 1-6.6-2.6 4.1 4.1 0 0 1-3.3-5.7A4.1 4.1 0 0 1 9.6 3.9Zm-2 4.9 4.4-2.5 4.4 2.5v5L12 16.3l-4.4-2.5Z"/></svg>';
 var MODEL_ICON_BANANA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M6.4 7.2c-.9 5.9 3 11 8.6 11.3 1.9.1 3.5-.5 4.6-1.5-4.9-.2-8.6-3.9-9-9.2"/><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" d="M6.4 7.2 10.6 7.8M8.1 7.4 8.6 4.6l1.6.3"/></svg>';
 var MODEL_ICON_SEEDREAM = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" d="M12 3.5 13.9 10 20.5 12 13.9 14 12 20.5 10.1 14 3.5 12 10.1 10z"/></svg>';
+var GIMAGE_QUALITY_LEVELS = ["低画质", "标准画质", "高清画质", "超清画质", "极致画质"];
+var GIMAGE2_QUALITY_LEVELS = ["低画质", "标准画质", "高清画质"];
+var GIMAGE_RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"];
 var imageModels = [
-  { id: "gpt-25-flare", group: "G", name: "G Image 2.5 Flare", badge: "新", maxRes: "4K", tags: ["快速"], qualities: ["1K", "2K", "4K"], thinking: false, search: false, mark: MODEL_ICON_GPT },
-  { id: "gpt-25-sunburst", group: "G", name: "G Image 2.5 Sunburst", badge: "新", maxRes: "4K", tags: ["精修"], qualities: ["1K", "2K", "4K"], thinking: false, search: false, mark: MODEL_ICON_GPT },
-  { id: "gpt-2", group: "G", name: "G Image2", badge: "热门", maxRes: "4K", tags: [], qualities: ["1K", "2K", "4K"], thinking: false, search: false, mark: MODEL_ICON_GPT },
+  { id: "gimage-26-pro", group: "G", name: "G Image 2.6 Pro", badge: "新", maxRes: "4K", tags: ["精修"], qualities: GIMAGE_QUALITY_LEVELS, resolutions: ["1K", "2K", "4K"], ratios: GIMAGE_RATIOS, thinking: false, search: false, mark: MODEL_ICON_GPT },
+  { id: "gimage-26-fast", group: "G", name: "G Image 2.6 Fast", badge: "新", maxRes: "4K", tags: ["快速"], qualities: GIMAGE_QUALITY_LEVELS, resolutions: ["1K", "2K", "4K"], ratios: GIMAGE_RATIOS, thinking: false, search: false, mark: MODEL_ICON_GPT },
+  { id: "gpt-25-pro", group: "G", name: "G Image 2.5 Pro", maxRes: "4K", tags: ["精修"], qualities: GIMAGE_QUALITY_LEVELS, resolutions: ["1K", "2K", "4K"], ratios: GIMAGE_RATIOS, thinking: false, search: false, mark: MODEL_ICON_GPT },
+  { id: "gpt-25-fast", group: "G", name: "G Image 2.5 Fast", maxRes: "4K", tags: ["快速"], qualities: GIMAGE_QUALITY_LEVELS, resolutions: ["1K", "2K", "4K"], ratios: GIMAGE_RATIOS, thinking: false, search: false, mark: MODEL_ICON_GPT },
+  { id: "gpt-2", group: "G", name: "G Image2", badge: "热门", maxRes: "4K", tags: [], qualities: GIMAGE2_QUALITY_LEVELS, resolutions: ["1K", "2K", "4K"], ratios: GIMAGE_RATIOS, thinking: false, search: false, mark: MODEL_ICON_GPT },
   { id: "nano-banana-21", group: "Bimage", name: "Bimage 2.1", badge: "新", maxRes: "4K", tags: [], qualities: ["512P", "1K", "2K", "4K"], thinking: true, search: true, mark: MODEL_ICON_BANANA },
   { id: "banana-2", group: "Bimage", name: "Bimage 2", maxRes: "4K", tags: [], qualities: ["512P", "1K", "2K", "4K"], thinking: true, search: true, mark: MODEL_ICON_BANANA },
   { id: "nano-banana-2-lite", group: "Bimage", name: "Bimage 2 Lite", badge: "新", maxRes: "1K", tags: [], qualities: ["1K"], thinking: false, search: false, mark: MODEL_ICON_BANANA },
   { id: "banana-pro", group: "Bimage", name: "Bimage Pro", maxRes: "4K", tags: [], qualities: ["1K", "2K", "4K"], thinking: true, search: true, mark: MODEL_ICON_BANANA },
   { id: "seedream-5", group: "Seedream", name: "Seedream 5.0 Pro", maxRes: "2K", tags: [], qualities: ["1K", "2K"], thinking: false, search: false, mark: MODEL_ICON_SEEDREAM }
 ];
-var ratioOptions = ["auto", "1:1", "9:16", "16:9", "3:4", "4:3", "3:2", "2:3", "5:4", "4:5", "21:9"];
-var genChoice = { model: "banana-2", quality: "2K", ratio: "16:9", think: "high", search: "", type: "auto" };
+var ratioOptions = ["1:1", "9:16", "16:9", "3:4", "4:3", "3:2", "2:3", "5:4", "4:5", "21:9"];
+var genChoice = { model: "banana-2", quality: "2K", resolution: "1K", ratio: "auto", think: "high", search: "", type: "auto" };
 var genTypeAuto = { id: "auto", name: "Auto", desc: "按提示词自动选择出图方式" };
 var genTypeFree = { id: "free", name: "自由模式", desc: "完全按提示词出图，不加约束" };
 var genTypesByKind = {
@@ -330,6 +335,37 @@ function currentGenType() {
 function currentImageModel() {
   return imageModels.filter(function (item) { return item.id === genChoice.model; })[0] || imageModels[0];
 }
+function modelHasResolutions(model) {
+  return !!(model.resolutions && model.resolutions.length);
+}
+function genRatioSelectable() {
+  return genChoice.type === "free";
+}
+function modelRatioList(model) {
+  if (model.ratios && model.ratios.length) return model.ratios.slice();
+  return ratioOptions.slice();
+}
+function defaultFreeRatio(model) {
+  var ratios = modelRatioList(model);
+  if (ratios.indexOf("16:9") !== -1) return "16:9";
+  if (ratios.indexOf("9:16") !== -1) return "9:16";
+  return ratios[0] || "16:9";
+}
+function syncGenChoiceToModel(model) {
+  var type = currentGenType();
+  if (model.qualities.indexOf(genChoice.quality) === -1) {
+    genChoice.quality = model.qualities.indexOf("高清画质") !== -1 ? "高清画质"
+      : (model.qualities.indexOf("2K") !== -1 ? "2K" : model.qualities[model.qualities.length - 1]);
+  }
+  if (modelHasResolutions(model)) {
+    if (model.resolutions.indexOf(genChoice.resolution) === -1) genChoice.resolution = model.resolutions[0];
+  }
+  if (!genRatioSelectable()) {
+    genChoice.ratio = type.ratio || "auto";
+  } else if (modelRatioList(model).indexOf(genChoice.ratio) === -1) {
+    genChoice.ratio = defaultFreeRatio(model);
+  }
+}
 function ratioGlyph(ratio) {
   if (ratio === "auto") {
     return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5H6.2A1.2 1.2 0 0 0 5 6.2V9M15 5h2.8A1.2 1.2 0 0 1 19 6.2V9M9 19H6.2A1.2 1.2 0 0 1 5 17.8V15M15 19h2.8a1.2 1.2 0 0 0 1.2-1.2V15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
@@ -363,12 +399,20 @@ function closeGenPanels() {
 }
 function paintGenControls() {
   var model = currentImageModel();
-  if (model.qualities.indexOf(genChoice.quality) === -1) genChoice.quality = model.qualities[model.qualities.length - 1];
-  document.getElementById("model-mark").innerHTML = model.mark;
-  document.getElementById("model-label").textContent = model.name;
-  document.getElementById("ratio-label").textContent = (genChoice.ratio === "auto" ? "自适应" : genChoice.ratio) + " · " + genChoice.quality;
   var type = currentGenType();
   genChoice.type = type.id;
+  syncGenChoiceToModel(model);
+  var ratioSelectable = genRatioSelectable();
+  var hasRes = modelHasResolutions(model);
+  var namedQuality = model.qualities.some(function (q) { return /画质$/.test(q); });
+  document.getElementById("model-mark").innerHTML = model.mark;
+  document.getElementById("model-label").textContent = model.name;
+  var labelBits = [];
+  if (ratioSelectable) labelBits.push(genChoice.ratio);
+  else if (type.id !== "auto" && genChoice.ratio && genChoice.ratio !== "auto") labelBits.push(genChoice.ratio);
+  labelBits.push(genChoice.quality);
+  if (hasRes) labelBits.push(genChoice.resolution);
+  document.getElementById("ratio-label").textContent = labelBits.join(" · ");
   document.getElementById("type-label").textContent = type.name;
   document.querySelector(".composer-reference-row").classList.toggle("is-free", type.id === "free");
   document.getElementById("gen-look").setAttribute("aria-label", "生成" + (type.state || (editorKind === "char" ? "形象" : assetWord())));
@@ -391,14 +435,41 @@ function paintGenControls() {
       '<span class="model-meta">' + meta + "</span>" +
       '<span class="tick" aria-hidden="true">' + (item.id === model.id ? '<svg viewBox="0 0 24 24"><path d="m6 12.5 4 4 8-9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' : "") + "</span></button>";
   }).join("");
-  document.getElementById("quality-row").innerHTML = ["512P", "1K", "2K", "4K"].map(function (quality) {
-    var enabled = model.qualities.indexOf(quality) !== -1;
-    return '<button type="button" data-quality="' + quality + '"' + (quality === genChoice.quality ? ' class="on"' : '') + (enabled ? '' : ' disabled') + '>' + quality + '</button>';
-  }).join("");
-  document.getElementById("ratio-grid").innerHTML = ratioOptions.map(function (ratio) {
-    var label = ratio === "auto" ? "自适应" : ratio;
-    return '<button type="button" data-ratio="' + ratio + '"' + (ratio === genChoice.ratio ? ' class="on"' : '') + '>' + ratioGlyph(ratio) + '<span>' + label + '</span></button>';
-  }).join("");
+  var qualityRow = document.getElementById("quality-row");
+  qualityRow.classList.toggle("is-named", namedQuality);
+  if (namedQuality) {
+    qualityRow.innerHTML = model.qualities.map(function (quality) {
+      return '<button type="button" data-quality="' + quality + '"' + (quality === genChoice.quality ? ' class="on"' : "") + ">" + quality + "</button>";
+    }).join("");
+  } else {
+    qualityRow.innerHTML = ["512P", "1K", "2K", "4K"].map(function (quality) {
+      var enabled = model.qualities.indexOf(quality) !== -1;
+      return '<button type="button" data-quality="' + quality + '"' + (quality === genChoice.quality ? ' class="on"' : "") + (enabled ? "" : " disabled") + ">" + quality + "</button>";
+    }).join("");
+  }
+  var resolutionBlock = document.getElementById("resolution-block");
+  resolutionBlock.hidden = !hasRes;
+  if (hasRes) {
+    document.getElementById("resolution-row").innerHTML = model.resolutions.map(function (resolution) {
+      return '<button type="button" data-resolution="' + resolution + '"' + (resolution === genChoice.resolution ? ' class="on"' : "") + ">" + resolution + "</button>";
+    }).join("");
+  }
+  var ratioBlock = document.getElementById("ratio-block");
+  ratioBlock.hidden = !ratioSelectable;
+  document.getElementById("ratio-block-label").textContent = "选择比例";
+  var ratioGrid = document.getElementById("ratio-grid");
+  if (ratioSelectable) {
+    var ratios = modelRatioList(model);
+    ratioGrid.classList.add("no-auto");
+    ratioGrid.innerHTML = ratios.map(function (ratio) {
+      return '<button type="button" data-ratio="' + ratio + '"' + (ratio === genChoice.ratio ? ' class="on"' : "") + ">" + ratioGlyph(ratio) + "<span>" + ratio + "</span></button>";
+    }).join("");
+    ratioGrid.hidden = false;
+  } else {
+    ratioGrid.classList.remove("no-auto");
+    ratioGrid.hidden = true;
+    ratioGrid.innerHTML = "";
+  }
   document.getElementById("think-block").hidden = !model.thinking;
   document.getElementById("search-block").hidden = !model.search;
   document.querySelectorAll("[data-think]").forEach(function (button) {
@@ -440,9 +511,18 @@ document.getElementById("type-menu").onclick = function (e) {
   if (!button) return;
   genChoice.type = button.dataset.genType;
   var picked = currentGenType();
-  if (picked.ratio && picked.ratio !== genChoice.ratio) {
+  var model = currentImageModel();
+  if (picked.id === "auto") {
+    genChoice.ratio = "auto";
+    ReplicaUI.toast("已切换为 Auto，比例由模型自动决定");
+  } else if (picked.id === "free") {
+    genChoice.ratio = defaultFreeRatio(model);
+    ReplicaUI.toast("已切换为自由模式，可手动选择比例");
+  } else if (picked.ratio) {
     genChoice.ratio = picked.ratio;
-    ReplicaUI.toast("已切换为「" + picked.name + "」，比例调整为 " + picked.ratio);
+    ReplicaUI.toast("已切换为「" + picked.name + "」，比例固定为 " + picked.ratio);
+  } else {
+    genChoice.ratio = "auto";
   }
   paintGenControls();
   closeGenPanels();
@@ -456,11 +536,13 @@ document.getElementById("model-menu").onclick = function (e) {
 };
 document.getElementById("ratio-popover").onclick = function (e) {
   var quality = e.target.closest("[data-quality]");
+  var resolution = e.target.closest("[data-resolution]");
   var ratio = e.target.closest("[data-ratio]");
   var think = e.target.closest("[data-think]");
   var search = e.target.closest("[data-search]");
   if (quality && !quality.disabled) genChoice.quality = quality.dataset.quality;
-  if (ratio) genChoice.ratio = ratio.dataset.ratio;
+  if (resolution && !resolution.disabled) genChoice.resolution = resolution.dataset.resolution;
+  if (ratio && !ratio.disabled && genRatioSelectable()) genChoice.ratio = ratio.dataset.ratio;
   if (think) genChoice.think = think.dataset.think;
   if (search) genChoice.search = genChoice.search === search.dataset.search ? "" : search.dataset.search;
   paintGenControls();

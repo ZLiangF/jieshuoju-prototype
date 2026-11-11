@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>资产库 · 离婚后（15集）</title>
-  <link rel="stylesheet" href="css/common.css?v=202611091102" />
-  <link rel="stylesheet" href="css/asset-library.css?v=202611091102" />
-  <link rel="stylesheet" href="css/asset-detail.css?v=202611091102" />
+  <link rel="stylesheet" href="css/common.css?v=202611111455" />
+  <link rel="stylesheet" href="css/asset-library.css?v=202611111455" />
+  <link rel="stylesheet" href="css/asset-detail.css?v=202611111455" />
 </head>
 <body class="asset-page flow-page">
 <div class="app">
@@ -234,12 +234,16 @@
                   <span id="ratio-label">16:9 · 2K</span>
                 </button>
                 <div class="gen-popover" id="ratio-popover" hidden role="dialog" aria-label="画质与比例">
-                  <div class="gen-pop-block">
+                  <div class="gen-pop-block" id="quality-block">
                     <span>画质</span>
                     <div class="quality-row" id="quality-row"></div>
                   </div>
-                  <div class="gen-pop-block">
-                    <span>比例</span>
+                  <div class="gen-pop-block" id="resolution-block" hidden>
+                    <span>分辨率</span>
+                    <div class="resolution-row" id="resolution-row"></div>
+                  </div>
+                  <div class="gen-pop-block" id="ratio-block">
+                    <span id="ratio-block-label">比例</span>
                     <div class="ratio-grid" id="ratio-grid"></div>
                   </div>
                   <div class="gen-pop-block" id="think-block">
@@ -563,7 +567,7 @@
         </span>
       </label>
       <div class="asset-generate-field">
-        <span>分辨率</span>
+        <span id="asset-generate-quality-label">分辨率</span>
         <div class="asset-generate-quality" id="asset-generate-quality" role="radiogroup" aria-label="分辨率"></div>
       </div>
     </div>
@@ -640,15 +644,15 @@
   </div>
 </div>
 
-<script src="js/data.js?v=202611091102"></script>
-<script src="js/assets-core.js?v=202611091102"></script>
-<script src="js/assets-library.js?v=202611091102"></script>
-<script src="js/assets-dialogs.js?v=202611091102"></script>
-<script src="js/assets-detail.js?v=202611091102"></script>
-<script src="js/assets-mindmap.js?v=202611091102"></script>
-<script src="js/assets-preview.js?v=202611091102"></script>
-<script src="js/assets-composer.js?v=202611091102"></script>
-<script src="js/image-editor.js?v=202611091102"></script>
-<script src="js/assets-boot.js?v=202611091102"></script>
+<script src="js/data.js?v=202611111455"></script>
+<script src="js/assets-core.js?v=202611111455"></script>
+<script src="js/assets-library.js?v=202611111455"></script>
+<script src="js/assets-dialogs.js?v=202611111455"></script>
+<script src="js/assets-detail.js?v=202611111455"></script>
+<script src="js/assets-mindmap.js?v=202611111455"></script>
+<script src="js/assets-preview.js?v=202611111455"></script>
+<script src="js/assets-composer.js?v=202611111455"></script>
+<script src="js/image-editor.js?v=202611111455"></script>
+<script src="js/assets-boot.js?v=202611111455"></script>
 </body>
 </html>

@@ -721,20 +721,28 @@ function currentBulkGenerationModel() {
   return imageModels.filter(function (item) { return item.id === bulkGenerationChoice.model; })[0] || imageModels[0];
 }
 
+function bulkGenerationCostKeys(model) {
+  return model.resolutions && model.resolutions.length ? model.resolutions : model.qualities;
+}
+
 function paintBulkGenerationOptions() {
   var model = currentBulkGenerationModel();
-  if (model.qualities.indexOf(bulkGenerationChoice.quality) === -1) {
-    bulkGenerationChoice.quality = model.qualities.indexOf("2K") !== -1 ? "2K" : model.qualities[model.qualities.length - 1];
+  var keys = bulkGenerationCostKeys(model);
+  if (keys.indexOf(bulkGenerationChoice.quality) === -1) {
+    bulkGenerationChoice.quality = keys.indexOf("2K") !== -1 ? "2K"
+      : (keys.indexOf("高清画质") !== -1 ? "高清画质" : keys[keys.length - 1]);
   }
   var select = document.getElementById("asset-generate-model");
   select.innerHTML = imageModels.map(function (item) {
     return '<option value="' + item.id + '"' + (item.id === model.id ? " selected" : "") + ">" + item.name + "</option>";
   }).join("");
-  document.getElementById("asset-generate-quality").innerHTML = ["512P", "1K", "2K", "4K"].map(function (quality) {
-    var enabled = model.qualities.indexOf(quality) !== -1;
+  var qualityLabel = model.resolutions && model.resolutions.length ? "分辨率" : "画质";
+  document.getElementById("asset-generate-quality-label").textContent = qualityLabel;
+  document.getElementById("asset-generate-quality").setAttribute("aria-label", qualityLabel);
+  document.getElementById("asset-generate-quality").innerHTML = keys.map(function (quality) {
     var on = quality === bulkGenerationChoice.quality;
     return '<button type="button" data-bulk-quality="' + quality + '" role="radio" aria-checked="' + (on ? "true" : "false") + '"' +
-      (on ? ' class="on"' : "") + (enabled ? "" : " disabled") + ">" + quality + "</button>";
+      (on ? ' class="on"' : "") + ">" + quality + "</button>";
   }).join("");
 }
 

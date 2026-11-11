@@ -852,11 +852,14 @@
   font-size: 12px;
 }
 .gen-popover {
-  width: 348px;
+  width: 360px;
+  max-height: min(72vh, 640px);
   padding: 14px 14px 12px;
   display: flex;
   flex-direction: column;
   gap: 14px;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 .gen-pop-block[hidden] {
   display: none;
@@ -869,6 +872,7 @@
   font-weight: 500;
 }
 .quality-row,
+.resolution-row,
 .think-row,
 .search-row {
   display: grid;
@@ -877,11 +881,18 @@
 .quality-row {
   grid-template-columns: repeat(4, 1fr);
 }
+.quality-row.is-named {
+  grid-template-columns: repeat(3, 1fr);
+}
+.resolution-row {
+  grid-template-columns: repeat(3, 1fr);
+}
 .think-row,
 .search-row {
   grid-template-columns: 1fr 1fr;
 }
 .quality-row button,
+.resolution-row button,
 .think-row button,
 .search-row button,
 .ratio-grid button {
@@ -890,13 +901,19 @@
   background: #232328;
   cursor: pointer;
 }
-.quality-row button {
+.quality-row button,
+.resolution-row button {
   height: 32px;
   border-radius: 9px;
   font-size: 13px;
   font-weight: 560;
 }
-.quality-row button:disabled {
+.quality-row.is-named button {
+  font-size: 12px;
+  padding: 0 4px;
+}
+.quality-row button:disabled,
+.resolution-row button:disabled {
   opacity: .28;
   cursor: default;
 }
@@ -930,6 +947,7 @@
   box-shadow: inset 0 0 0 3px #2a2a2e, inset 0 0 0 7px #fff;
 }
 .quality-row button.on,
+.resolution-row button.on,
 .think-row button.on,
 .search-row button.on,
 .ratio-grid button.on {
@@ -941,6 +959,10 @@
   grid-template-columns: 64px repeat(5, 1fr);
   grid-template-rows: 52px 52px;
   gap: 6px;
+}
+.ratio-grid.no-auto {
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(2, 52px);
 }
 .ratio-grid button {
   min-width: 0;
@@ -1058,7 +1080,8 @@
   height: 100%;
   font-size: 12px;
 }
-.composer-options .quality-row button {
+.composer-options .quality-row button,
+.composer-options .resolution-row button {
   height: 32px;
 }
 .composer-options .think-row button,

@@ -81,7 +81,7 @@
     });
   };
 
-  /* 导出前确认字幕：三期覆盖为「隐藏轨不导出 + 中英择一」，这里默认直接导出。 */
+  /* 导出前确认字幕：三期按识别结果直接导出，这里默认直接导出。 */
   MT.pickExportSubtitles = MT.pickExportSubtitles || function (done) { done(""); };
 
   function runExport(label) {

@@ -304,14 +304,16 @@
       var origin = subtitle.sourceSubtitleId ? MT.subtitleById(subtitle.sourceSubtitleId) : null;
       var track = (state.tracks && state.tracks.subtitle || []).find(function (item) { return item.id === subtitle.trackId; });
       $("#inspector-title").textContent = "字幕设置";
-      body.innerHTML = '<div class="mt-setting"><label>' + (subtitle.fromTranslation ? "译文" : "字幕内容") + '</label><textarea class="mt-sub-text" data-setting="subtitle-text" rows="3">' + esc(subtitle.text) + "</textarea></div>" +
+      var bilingual = !!subtitle.bilingual;
+      body.innerHTML = '<div class="mt-setting"><label>' + (bilingual ? "台词" : subtitle.fromTranslation ? "译文" : "字幕内容") + '</label><textarea class="mt-sub-text" data-setting="subtitle-text" rows="3">' + esc(subtitle.text) + "</textarea></div>" +
+        (bilingual ? '<div class="mt-setting"><label>译文</label><textarea class="mt-sub-text" data-setting="subtitle-translation" rows="3">' + esc(subtitle.translation || "") + "</textarea></div>" : "") +
         (origin ? '<div class="mt-setting"><label>对应原文</label><p class="mt-hint">' + esc(origin.text) + "</p></div>" : "") +
         '<div class="mt-setting"><b>时间</b><div class="mt-setting-row"><span>开始</span><input type="number" step="0.1" value="' + subtitle.start.toFixed(1) + '" data-setting="subtitle-start"></div>' +
         '<div class="mt-setting-row"><span>时长</span><input type="number" step="0.1" value="' + subtitle.duration.toFixed(1) + '" data-setting="subtitle-duration"></div></div>' +
         '<div class="mt-setting"><b>音频匹配</b>' +
         '<div class="mt-setting-row"><span>字幕轨</span><span class="mt-fixed">' + esc(track ? track.name : "—") + "</span></div>" +
-        '<div class="mt-setting-row"><span>语言</span><span class="mt-fixed">' + (langNames[lang] || "未识别") + "</span></div>" +
-        '<div class="mt-setting-row"><span>来源</span><span class="mt-fixed">' + (subtitle.fromTranslation ? "AI 翻译" + (subtitle.editedByUser ? " · 已人工修改" : "") : subtitle.fromAsr ? "ASR 识别" : "手动") + "</span></div>" +
+        '<div class="mt-setting-row"><span>语言</span><span class="mt-fixed">' + (bilingual ? (langNames[lang] || "台词") + " + " + (langNames[subtitle.translateLang] || "译文") : (langNames[lang] || "未识别")) + "</span></div>" +
+        '<div class="mt-setting-row"><span>来源</span><span class="mt-fixed">' + (bilingual ? "识别字幕 · 双语" + (subtitle.editedByUser ? " · 已人工修改" : "") : subtitle.fromTranslation ? "AI 翻译" + (subtitle.editedByUser ? " · 已人工修改" : "") : subtitle.fromAsr ? "ASR 识别" : "手动") + "</span></div>" +
         '<div class="mt-setting-row"><span>视频片段</span><span class="mt-fixed">' + esc(owner ? owner.label : "—") + "</span></div>" +
         '<div class="mt-setting-row"><span>识别音频</span><span class="mt-fixed">' + (subtitle.fromAsr ? "视频原声" : "—") + "</span></div></div>" +
         '<div class="mt-setting-actions"><button type="button" data-act="duplicate">创建副本</button><button type="button" class="danger" data-act="delete-selection">删除字幕</button></div>';

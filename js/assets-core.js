@@ -131,8 +131,10 @@ var revealedLooks = {
   "cemetery/tomb": true
 };
 var ASSET_GENERATION_COSTS = {
-  "gpt-25-flare": { "1K": 2, "2K": 3, "4K": 5 },
-  "gpt-25-sunburst": { "1K": 3, "2K": 5, "4K": 8 },
+  "gimage-26-pro": { "1K": 3, "2K": 5, "4K": 8 },
+  "gimage-26-fast": { "1K": 2, "2K": 4, "4K": 6 },
+  "gpt-25-pro": { "1K": 3, "2K": 5, "4K": 8 },
+  "gpt-25-fast": { "1K": 2, "2K": 3, "4K": 5 },
   "gpt-2": { "1K": 2, "2K": 3, "4K": 5 },
   "nano-banana-21": { "512P": 1, "1K": 2, "2K": 3, "4K": 5 },
   "banana-2": { "512P": 1, "1K": 2, "2K": 3, "4K": 5 },
