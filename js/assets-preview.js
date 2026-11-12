@@ -247,6 +247,7 @@ function deleteHistory(id) {
 
 var VOICE_TRASH_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 4.6h9.6M6.2 4.6V3.4h3.6v1.2M4.6 4.6l.5 7.4h5.8l.5-7.4M6.8 7v3.2M9.2 7v3.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 var VOICE_REUSE_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 7.2h6.1a3.1 3.1 0 1 1 0 6.2H7.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M5.6 4.8 3.2 7.2l2.4 2.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var VOICE_DOWNLOAD_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.8v6.4M5.4 7.2 8 9.8l2.6-2.6M3.4 12.6h9.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 var voiceNewId = "";
 var voiceUploadSeq = 0;
 
@@ -295,6 +296,9 @@ function voiceItemHtml(voice) {
   var acts = "";
   if (voice.status === "failed") {
     acts += '<button type="button" class="voice-item-retry" data-voice-retry="' + voice.id + '">重试</button>';
+  }
+  if (voice.status === "ready") {
+    acts += '<button type="button" class="voice-item-act" data-voice-download="' + voice.id + '" aria-label="下载音频" data-tip="下载">' + VOICE_DOWNLOAD_ICON + "</button>";
   }
   if (voice.status !== "generating" && voice.source !== "upload" && voice.prompt) {
     acts += '<button type="button" class="voice-item-act" data-voice-reuse="' + voice.id + '" aria-label="复用参数" data-tip="复用参数">' + VOICE_REUSE_ICON + "</button>";
@@ -385,6 +389,10 @@ function paintVoiceDescriptionCount() {
   document.getElementById("voice-desc-count").textContent = document.getElementById("voice-desc").value.length + " / 400";
 }
 
+function paintVoiceUploadDescriptionCount() {
+  document.getElementById("voice-upload-desc-count").textContent = document.getElementById("voice-upload-desc").value.length + " / 120";
+}
+
 function paintVoiceUploadState(state, title, detail) {
   var box = document.getElementById("voice-upload-state");
   box.hidden = !state;
@@ -406,7 +414,7 @@ function openVoiceDialog(item, auto) {
   voiceBindChar = char;
   voiceDialogAuto = !!auto;
   document.getElementById("voice-cancel").textContent = auto ? "跳过，稍后再说" : "取消";
-  voiceBindTab = "generate";
+  voiceBindTab = "upload";
   voiceBindPick = null;
   voiceHeard = {};
   voiceNewId = "";
@@ -421,11 +429,13 @@ function openVoiceDialog(item, auto) {
     : "生成或上传一段音频，试听满意后再绑定到角色。";
   paintVoiceSwitch();
   document.getElementById("voice-desc").value = voiceDraftText(char);
+  document.getElementById("voice-upload-desc").value = char.voiceUploadNote || "";
   document.getElementById("voice-sample-text").value = D.voiceSample || "这是一段统一试听，方便对比不同音色。";
   document.getElementById("voice-gen-error").hidden = true;
   paintVoiceUploadState("");
   paintVoiceGenerateButton();
   paintVoiceDescriptionCount();
+  paintVoiceUploadDescriptionCount();
   paintVoiceReferenceNames();
   if (bound) voiceBindPick = voiceAssetById(bound.id);
   renderVoiceList();
@@ -969,11 +979,63 @@ function toggleVoicePlay(voice) {
   paintVoiceConfirm();
 }
 
+function voiceDownloadBlob(voice) {
+  var seconds = Math.max(1, Math.min(8, Math.round(voice && voice.duration ? voice.duration : 3)));
+  var sampleRate = 8000;
+  var samples = sampleRate * seconds;
+  var buffer = new ArrayBuffer(44 + samples * 2);
+  var view = new DataView(buffer);
+  function writeText(offset, text) {
+    for (var i = 0; i < text.length; i += 1) view.setUint8(offset + i, text.charCodeAt(i));
+  }
+  writeText(0, "RIFF");
+  view.setUint32(4, 36 + samples * 2, true);
+  writeText(8, "WAVE");
+  writeText(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeText(36, "data");
+  view.setUint32(40, samples * 2, true);
+  var pitch = Number(voice && voice.pitch) || 1;
+  var freq = 220 * Math.max(0.7, Math.min(1.5, pitch));
+  for (var i = 0; i < samples; i += 1) {
+    var t = i / sampleRate;
+    var envelope = Math.min(1, t * 4) * Math.max(0, 1 - t / seconds);
+    var sample = Math.sin(2 * Math.PI * freq * t) * 0.22 * envelope;
+    view.setInt16(44 + i * 2, sample * 32767, true);
+  }
+  return new Blob([buffer], { type: "audio/wav" });
+}
+
+function downloadVoice(voice) {
+  if (!voice || voice.status !== "ready") return;
+  var blob = voiceDownloadBlob(voice);
+  var url = URL.createObjectURL(blob);
+  var link = document.createElement("a");
+  var charName = voiceBindChar && voiceBindChar.name ? voiceBindChar.name + "-" : "";
+  link.href = url;
+  link.download = (charName + (voice.name || "音色")).replace(/[\\/:*?"<>|]/g, "-") + ".wav";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  ReplicaUI.toast("已开始下载「" + voice.name + "」");
+}
+
 function onVoiceListClick(e) {
   var item = e.target.closest("[data-voice-id]");
   if (!item) return;
   var voice = voiceAssetById(item.dataset.voiceId);
   if (!voice) return;
+  if (e.target.closest("[data-voice-download]")) {
+    downloadVoice(voice);
+    return;
+  }
   if (e.target.closest("[data-voice-del]")) {
     if (e.target.closest("[data-voice-del]").disabled) return;
     if (voicePlayingId === voice.id) stopVoicePreview();
@@ -1021,6 +1083,7 @@ document.getElementById("voice-list").onkeydown = function (e) {
   }
 };
 document.getElementById("voice-desc").oninput = paintVoiceDescriptionCount;
+document.getElementById("voice-upload-desc").oninput = paintVoiceUploadDescriptionCount;
 document.getElementById("voice-ref-btn").onclick = function () {
   if (voiceReferenceNames.length < 3) document.getElementById("voice-ref-input").click();
 };
@@ -1075,12 +1138,14 @@ function handleVoiceUpload(file) {
       paintVoiceUploadState("error", "检测到多人说话", "请只保留一个人的声音");
       return;
     }
+    var note = cleanText(document.getElementById("voice-upload-desc").value, 120);
+    if (note) jobChar.voiceUploadNote = note;
     var voice = {
       id: "upload-" + Date.now(),
       source: "upload",
       status: "ready",
       name: file.name.replace(/\.[^.]+$/, "").slice(0, 14) || "上传人声",
-      summary: "上传人声",
+      summary: note || "上传人声",
       time: voiceStamp(),
       duration: Math.max(10, Math.min(60, Math.round(file.size / 32000))),
       pitch: 1,

@@ -6,7 +6,7 @@
   <title>资产库 · 离婚后（15集）</title>
   <link rel="stylesheet" href="css/common.css?v=202611111455" />
   <link rel="stylesheet" href="css/asset-library.css?v=202611111455" />
-  <link rel="stylesheet" href="css/asset-detail.css?v=202611111455" />
+  <link rel="stylesheet" href="css/asset-detail.css?v=202611121024" />
 </head>
 <body class="asset-page flow-page">
 <div class="app">
@@ -349,10 +349,26 @@
     <div class="voice-body">
       <section class="voice-create" aria-label="新建音色">
         <div class="voice-seg" role="tablist" aria-label="新建方式">
-          <button type="button" class="on" data-voice-tab="generate" role="tab" aria-selected="true">AI 生成</button>
-          <button type="button" data-voice-tab="upload" role="tab" aria-selected="false">上传音频</button>
+          <button type="button" class="on" data-voice-tab="upload" role="tab" aria-selected="true">上传音频</button>
+          <button type="button" data-voice-tab="generate" role="tab" aria-selected="false">AI 生成</button>
         </div>
-        <div class="voice-pane" data-voice-pane="generate">
+        <div class="voice-pane" data-voice-pane="upload">
+          <label class="voice-custom">
+            <span>音频描述<b id="voice-upload-desc-count">0 / 120</b></span>
+            <textarea class="look-area" id="voice-upload-desc" maxlength="120" placeholder="补充这段音频的用途或音色特点，例如：沉稳男声，语速偏慢"></textarea>
+          </label>
+          <button type="button" class="voice-drop" id="voice-upload-btn">
+            <strong>点击或拖入音频</strong>
+            <small>MP3 / WAV / M4A，10–60 秒，不超过 20MB</small>
+          </button>
+          <input id="voice-upload-input" type="file" accept="audio/*,.mp3,.wav,.m4a" hidden />
+          <div class="voice-upload-state" id="voice-upload-state" hidden></div>
+          <ul class="voice-upload-tips">
+            <li>单人说话，无背景音乐和明显噪声</li>
+            <li>请确保拥有该声音的使用授权</li>
+          </ul>
+        </div>
+        <div class="voice-pane" data-voice-pane="generate" hidden>
           <p class="voice-generate-context">已参考角色形象与描述</p>
           <label class="voice-custom">
             <span>声音描述<b id="voice-desc-count">0 / 400</b></span>
@@ -370,18 +386,6 @@
           </div>
           <p class="voice-upload-msg is-error" id="voice-gen-error" hidden></p>
           <button class="btn purple voice-create-btn" id="voice-gen" type="button">生成音频</button>
-        </div>
-        <div class="voice-pane" data-voice-pane="upload" hidden>
-          <button type="button" class="voice-drop" id="voice-upload-btn">
-            <strong>点击或拖入音频</strong>
-            <small>MP3 / WAV / M4A，10–60 秒，不超过 20MB</small>
-          </button>
-          <input id="voice-upload-input" type="file" accept="audio/*,.mp3,.wav,.m4a" hidden />
-          <div class="voice-upload-state" id="voice-upload-state" hidden></div>
-          <ul class="voice-upload-tips">
-            <li>单人说话，无背景音乐和明显噪声</li>
-            <li>请确保拥有该声音的使用授权</li>
-          </ul>
         </div>
       </section>
       <section class="voice-list-wrap" aria-label="音色列表">
@@ -645,12 +649,12 @@
 </div>
 
 <script src="js/data.js?v=202611111455"></script>
-<script src="js/assets-core.js?v=202611111455"></script>
+<script src="js/assets-core.js?v=202611120956"></script>
 <script src="js/assets-library.js?v=202611111455"></script>
 <script src="js/assets-dialogs.js?v=202611111455"></script>
 <script src="js/assets-detail.js?v=202611111455"></script>
 <script src="js/assets-mindmap.js?v=202611111455"></script>
-<script src="js/assets-preview.js?v=202611111455"></script>
+<script src="js/assets-preview.js?v=202611121023"></script>
 <script src="js/assets-composer.js?v=202611111455"></script>
 <script src="js/image-editor.js?v=202611111455"></script>
 <script src="js/assets-boot.js?v=202611111455"></script>
