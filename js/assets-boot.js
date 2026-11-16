@@ -1,5 +1,7 @@
 document.addEventListener("keydown", function (e) {
   if (e.key !== "Escape") return;
+  if (document.getElementById("style-confirm").classList.contains("open")) { closeAssetStyleConfirm(); return; }
+  if (!document.getElementById("asset-style-menu").hidden) { closeAssetStyleMenu(); return; }
   if (document.getElementById("prompt-required-dialog").classList.contains("open")) { closePromptRequiredDialog(); return; }
   if (!document.getElementById("img-edit").hidden) { closeImageEditor(false); return; }
   if (document.getElementById("asset-generate-dialog").classList.contains("open")) { closeGenerationConfirm(); return; }
@@ -26,4 +28,5 @@ document.addEventListener("keydown", function (e) {
 
 paintGenControls();
 paintEpisodeFilter();
+initAssetStyle();
 render();

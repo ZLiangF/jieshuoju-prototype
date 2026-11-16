@@ -842,3 +842,86 @@ document.getElementById("gen-selected").onclick = function () {
   if (this.disabled) return;
   openGenerationConfirm("selected");
 };
+
+var pendingAssetStyle = null;
+function closeAssetStyleMenu() {
+  var menu = document.getElementById("asset-style-menu");
+  var btn = document.getElementById("asset-style-btn");
+  if (!menu || !btn) return;
+  menu.hidden = true;
+  btn.setAttribute("aria-expanded", "false");
+}
+function closeAssetStyleConfirm() {
+  pendingAssetStyle = null;
+  document.getElementById("style-confirm").classList.remove("open");
+}
+function paintAssetStyle() {
+  var current = D.currentStyle();
+  var btn = document.getElementById("asset-style-btn");
+  var label = document.getElementById("asset-style-label");
+  var swatch = document.getElementById("asset-style-swatch");
+  var menu = document.getElementById("asset-style-menu");
+  if (!btn || !label || !swatch || !menu) return;
+  D.project.style = current.name;
+  D.project.styleId = current.id;
+  label.textContent = current.name;
+  btn.title = "画面风格：" + current.name;
+  swatch.className = "asset-style-swatch sc " + current.cover;
+  menu.innerHTML = ["真人", "3D", "2D"].map(function (group) {
+    var items = D.styles.filter(function (item) { return item.map === group; });
+    if (!items.length) return "";
+    return '<div class="asset-style-group"><div class="asset-style-group-name">' + group + "</div>" +
+      items.map(function (item) {
+        var on = item.id === current.id;
+        return '<button type="button" role="option" aria-selected="' + (on ? "true" : "false") + '" class="asset-style-opt' + (on ? " on" : "") + '" data-style-id="' + item.id + '">' +
+          '<i class="asset-style-swatch sc ' + item.cover + '" aria-hidden="true"></i>' +
+          '<span class="asset-style-meta"><b>' + item.name.replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }) + "</b><small>" + item.desc.replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }) + "</small></span>" +
+          (item.badge ? '<em class="asset-style-badge">' + item.badge + "</em>" : "") +
+          (on ? '<em class="asset-style-current">当前</em>' : "") +
+          "</button>";
+      }).join("") +
+      "</div>";
+  }).join("");
+}
+function initAssetStyle() {
+  var root = document.getElementById("asset-style");
+  var btn = document.getElementById("asset-style-btn");
+  var menu = document.getElementById("asset-style-menu");
+  var mask = document.getElementById("style-confirm");
+  if (!root || !btn || !menu || !mask) return;
+  btn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    var open = menu.hidden;
+    menu.hidden = !open;
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) {
+      var picked = menu.querySelector(".on");
+      if (picked) picked.scrollIntoView({ block: "nearest" });
+    }
+  });
+  menu.addEventListener("click", function (e) {
+    var opt = e.target.closest("[data-style-id]");
+    if (!opt) return;
+    var style = D.styles.find(function (item) { return item.id === opt.dataset.styleId; });
+    closeAssetStyleMenu();
+    if (!style || style.id === D.project.styleId) return;
+    pendingAssetStyle = style;
+    mask.classList.add("open");
+    mask.querySelector("[data-style-confirm='ok']").focus();
+  });
+  mask.addEventListener("click", function (e) {
+    if (e.target === mask) { closeAssetStyleConfirm(); return; }
+    var act = e.target.closest("[data-style-confirm]");
+    if (!act) return;
+    var style = pendingAssetStyle;
+    closeAssetStyleConfirm();
+    if (act.dataset.styleConfirm !== "ok" || !style) return;
+    D.applyProjectStyle(style);
+    paintAssetStyle();
+    ReplicaUI.toast("已切换为「" + style.name + "」，之后生成的角色、场景、道具按这个风格");
+  });
+  document.addEventListener("click", function (e) {
+    if (!root.contains(e.target)) closeAssetStyleMenu();
+  });
+  paintAssetStyle();
+}

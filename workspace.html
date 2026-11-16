@@ -4,21 +4,36 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>创作 · 第1集：墓地贺芷提离婚协议</title>
-  <link rel="stylesheet" href="css/common.css?v=202611111455" />
-  <link rel="stylesheet" href="css/workspace.css?v=202611111455" />
+  <link rel="stylesheet" href="css/common.css?v=202611160928" />
+  <link rel="stylesheet" href="css/workspace.css?v=202611160928" />
 </head>
 <body class="ws-page">
 <div class="app">
   <header class="topbar">
     <div class="tb-left">
       <a class="tb-back ws-back" href="episodes.html">‹ 返回全集</a>
-      <b class="ws-title">第1集：墓地贺芷提离婚协议</b>
+      <div class="ws-ep-switch" id="ws-ep-switch">
+        <button type="button" class="ws-ep-btn" id="ws-ep-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="ws-ep-menu" title="切换集数">
+          <span id="ws-ep-label">第1集</span>
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 6.2 8 10l3.8-3.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="ws-ep-menu" id="ws-ep-menu" role="listbox" aria-label="切换集数" hidden></div>
+      </div>
+      <b class="ws-title" id="ws-title">墓地贺芷提离婚协议</b>
     </div>
     <div class="tb-right">
       <div class="credit">✦ <span id="credits"></span></div>
       <div class="ws-seg" role="tablist" aria-label="编辑视图">
         <button type="button" class="on" role="tab" aria-selected="true">中控台</button>
         <button type="button" role="tab" aria-selected="false" data-act="list">分镜列表</button>
+      </div>
+      <div class="ws-style-switch" id="ws-style-switch">
+        <button type="button" class="ws-style-btn" id="ws-style-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="ws-style-menu" title="切换画面风格">
+          <i class="ws-style-swatch sc sc-live-hd" id="ws-style-swatch" aria-hidden="true"></i>
+          <span id="ws-style-label">真人写实电影风格高清</span>
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 6.2 8 10l3.8-3.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="ws-style-menu" id="ws-style-menu" role="listbox" aria-label="切换画面风格" hidden></div>
       </div>
       <div class="ws-ratio">
         <button type="button" class="ws-ratio-btn" id="ws-ratio-btn" data-act="toggle-ratio" aria-haspopup="menu" aria-expanded="false" aria-controls="ws-ratio-menu">
@@ -37,10 +52,13 @@
   </header>
 
   <main class="ws">
-    <aside class="panel assets">
+    <aside class="panel assets" id="ws-assets">
       <div class="assets-head">
         <h3>资产库</h3>
-        <button class="icon-round" data-act="add" title="新增素材" aria-label="新增素材">+</button>
+        <div class="assets-head-actions">
+          <button class="icon-round" data-act="add" title="新增素材" aria-label="新增素材">+</button>
+          <button type="button" class="ws-assets-collapse" data-act="collapse-assets" title="收起资产库" aria-label="收起资产库" aria-expanded="true">‹</button>
+        </div>
       </div>
       <div class="search-row"><input id="asset-search" placeholder="搜索资产" /></div>
       <div class="asset-tabs">
@@ -124,6 +142,10 @@
       </div>
       <div class="tl-track" id="tl-track"></div>
     </section>
+
+    <button type="button" class="ws-resizer ws-resizer-assets" data-ws-resize="assets" role="separator" aria-orientation="vertical" aria-label="调整资产库宽度" title="拖动调整资产库宽度，双击复位"></button>
+    <button type="button" class="ws-resizer ws-resizer-player" data-ws-resize="player" role="separator" aria-orientation="vertical" aria-label="调整预览区宽度" title="拖动调整预览区宽度，双击复位"></button>
+    <button type="button" class="ws-resizer ws-resizer-timeline" data-ws-resize="timeline" role="separator" aria-orientation="horizontal" aria-label="调整时间线高度" title="拖动调整时间线高度，双击复位"></button>
   </main>
 </div>
 
@@ -134,6 +156,20 @@
       <button class="icon-round" data-act="close-list">×</button>
     </div>
     <div id="shot-list"></div>
+  </div>
+</div>
+<div class="modal-mask" id="style-confirm">
+  <div class="modal style-confirm" role="alertdialog" aria-modal="true" aria-labelledby="style-confirm-title" aria-describedby="style-confirm-desc">
+    <div class="style-confirm-head">
+      <span class="style-confirm-mark" aria-hidden="true">!</span>
+      <h3 id="style-confirm-title">确认修改吗？</h3>
+      <button type="button" class="style-confirm-x" data-style-confirm="cancel" aria-label="关闭">×</button>
+    </div>
+    <p id="style-confirm-desc">修改通用设置后，可能需要手动调整片段内引用的场景/道具/素材。</p>
+    <div class="style-confirm-acts">
+      <button type="button" class="style-confirm-cancel" data-style-confirm="cancel">取消</button>
+      <button type="button" class="style-confirm-ok" data-style-confirm="ok">确认</button>
+    </div>
   </div>
 </div>
 <div class="modal-mask" id="export-modal">
@@ -226,7 +262,7 @@
   </div>
 </div>
 <div class="toast-wrap"></div>
-<script src="js/data.js?v=202611111455"></script>
-<script src="js/workspace.js?v=202611111455"></script>
+<script src="js/data.js?v=202611160928"></script>
+<script src="js/workspace.js?v=202611160928"></script>
 </body>
 </html>

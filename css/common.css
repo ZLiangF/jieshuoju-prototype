@@ -3217,3 +3217,89 @@ body.flow-page .guide-footer .btn.primary:hover {
   color: #000;
   background: #fff;
 }
+
+/* 调整画面风格前的确认 */
+#style-confirm.modal-mask {
+  z-index: 80;
+  background: rgba(0,0,0,.55);
+}
+.style-confirm {
+  width: min(580px, calc(100vw - 48px));
+  padding: 22px 24px 20px;
+  border: 0;
+  border-radius: 12px;
+  background: #3a3a3e;
+  box-shadow: 0 24px 64px rgba(0,0,0,.45);
+}
+.style-confirm-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.style-confirm-mark {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #f5b942;
+  color: #3a3a3e;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+.style-confirm h3 {
+  flex: 1;
+  margin: 0;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 22px;
+}
+.style-confirm-x {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  color: #c8c8cc;
+  font-size: 20px;
+  line-height: 1;
+}
+.style-confirm-x:hover {
+  background: rgba(255,255,255,.08);
+  color: #fff;
+}
+.style-confirm p {
+  margin: 18px 0 0 32px;
+  color: #c8c8cc;
+  font-size: 14px;
+  line-height: 22px;
+}
+.style-confirm-acts {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 28px;
+}
+.style-confirm-cancel,
+.style-confirm-ok {
+  min-width: 76px;
+  height: 36px;
+  padding: 0 18px;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+}
+.style-confirm-cancel {
+  background: #4e4e52;
+}
+.style-confirm-cancel:hover {
+  background: #5a5a5e;
+}
+.style-confirm-ok {
+  background: #f07167;
+}
+.style-confirm-ok:hover {
+  background: #f4847b;
+}

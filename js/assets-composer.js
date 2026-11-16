@@ -285,7 +285,8 @@ var imageModels = [
   { id: "banana-2", group: "Bimage", name: "Bimage 2", maxRes: "4K", tags: [], qualities: ["512P", "1K", "2K", "4K"], thinking: true, search: true, mark: MODEL_ICON_BANANA },
   { id: "nano-banana-2-lite", group: "Bimage", name: "Bimage 2 Lite", badge: "新", maxRes: "1K", tags: [], qualities: ["1K"], thinking: false, search: false, mark: MODEL_ICON_BANANA },
   { id: "banana-pro", group: "Bimage", name: "Bimage Pro", maxRes: "4K", tags: [], qualities: ["1K", "2K", "4K"], thinking: true, search: true, mark: MODEL_ICON_BANANA },
-  { id: "seedream-5", group: "Seedream", name: "Seedream 5.0 Pro", maxRes: "2K", tags: [], qualities: ["1K", "2K"], thinking: false, search: false, mark: MODEL_ICON_SEEDREAM }
+  { id: "seedream-5", group: "Seedream", name: "Seedream 5.0 Pro", maxRes: "2K", tags: [], qualities: ["1K", "2K"], thinking: false, search: false, mark: MODEL_ICON_SEEDREAM },
+  { id: "seedream-55", group: "Seedream", name: "Seedream 5.5", badge: "新", maxRes: "2K", tags: [], qualities: ["1K", "2K"], thinking: false, search: false, mark: MODEL_ICON_SEEDREAM }
 ];
 var ratioOptions = ["1:1", "9:16", "16:9", "3:4", "4:3", "3:2", "2:3", "5:4", "4:5", "21:9"];
 var genChoice = { model: "banana-2", quality: "2K", resolution: "1K", ratio: "auto", think: "high", search: "", type: "auto" };

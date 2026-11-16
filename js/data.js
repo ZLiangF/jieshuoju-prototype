@@ -351,6 +351,28 @@ window.ReplicaData = {
   ReplicaData.props = ReplicaData.props.filter(function (item) { return (state.removed.prop || []).indexOf(item.id) === -1; });
 })();
 
+ReplicaData.currentStyle = function () {
+  return ReplicaData.styles.find(function (item) {
+    return item.id === ReplicaData.project.styleId || item.name === ReplicaData.project.style;
+  }) || ReplicaData.styles[0];
+};
+ReplicaData.applyProjectStyle = function (style) {
+  ReplicaData.project.style = style.name;
+  ReplicaData.project.styleId = style.id;
+  ReplicaData.globalPrompt = String(ReplicaData.globalPrompt || "").replace(/画面风格和类型：[^，,]+/, "画面风格和类型：" + style.name);
+  try { localStorage.setItem("jieshuoju.project.styleId", style.id); } catch (error) { /* 本地存储不可用 */ }
+};
+(function restoreProjectStyle() {
+  try {
+    var id = localStorage.getItem("jieshuoju.project.styleId");
+    var found = id && ReplicaData.styles.find(function (item) { return item.id === id; });
+    if (!found) return;
+    ReplicaData.project.style = found.name;
+    ReplicaData.project.styleId = found.id;
+    ReplicaData.globalPrompt = String(ReplicaData.globalPrompt || "").replace(/画面风格和类型：[^，,]+/, "画面风格和类型：" + found.name);
+  } catch (error) { /* 本地存储不可用 */ }
+})();
+
 window.ReplicaUI = {
   toast: function (msg) {
     var wrap = document.querySelector(".toast-wrap");

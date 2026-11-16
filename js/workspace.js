@@ -15,6 +15,7 @@
     modelOpen: false,
     resolutionOpen: false,
     ratioOpen: false,
+    assetsCollapsed: false,
     generating: null,
     upgrading: null,
     videos: {},
@@ -914,6 +915,10 @@
     }
     if (act === "export") $("#export-modal").classList.add("open");
     if (act === "close-export") $("#export-modal").classList.remove("open");
+    if (act === "collapse-assets") {
+      setAssetsCollapsed(!state.assetsCollapsed);
+      return;
+    }
     if (act === "add") ReplicaUI.toast("演示：新增素材");
     if (act === "add-shot") ReplicaUI.toast("演示：添加分镜");
     if (act === "multi") ReplicaUI.toast("演示：多选片段");
@@ -1231,6 +1236,353 @@
     renderStage();
   }, { passive: false });
 
+  function setAssetsCollapsed(on) {
+    state.assetsCollapsed = !!on;
+    document.body.classList.toggle("ws-assets-collapsed", state.assetsCollapsed);
+    var btn = $('[data-act="collapse-assets"]');
+    if (!btn) return;
+    btn.textContent = state.assetsCollapsed ? "›" : "‹";
+    btn.title = state.assetsCollapsed ? "展开资产库" : "收起资产库";
+    btn.setAttribute("aria-label", btn.title);
+    btn.setAttribute("aria-expanded", state.assetsCollapsed ? "false" : "true");
+  }
+
+  function initWorkspaceResizers() {
+    var main = $(".ws");
+    var handles = $$("[data-ws-resize]");
+    var storageKey = "jieshuoju.workspace.layout.v4";
+    var varNames = {
+      assets: "--ws-assets-width",
+      player: "--ws-player-width",
+      timeline: "--ws-timeline-height"
+    };
+    var defaults = {};
+    var layout = {};
+    var active = null;
+
+    function cssNumber(name) {
+      return parseFloat(getComputedStyle(main).getPropertyValue(varNames[name])) || 0;
+    }
+
+    Object.keys(varNames).forEach(function (name) {
+      defaults[name] = cssNumber(name);
+      layout[name] = defaults[name];
+    });
+
+    function preferredLayout() {
+      var preferred = Object.assign({}, defaults);
+      try {
+        var saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
+        Object.keys(varNames).forEach(function (name) {
+          if (Number.isFinite(saved[name])) preferred[name] = saved[name];
+        });
+      } catch (e) {}
+      return preferred;
+    }
+
+    layout = preferredLayout();
+
+    function metrics() {
+      var rect = main.getBoundingClientRect();
+      var style = getComputedStyle(main);
+      var padX = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+      var padY = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+      var gapX = parseFloat(style.columnGap) || 0;
+      var gapY = parseFloat(style.rowGap) || 0;
+      return {
+        rect: rect,
+        width: rect.width - padX - gapX * 2,
+        height: rect.height - padY - gapY
+      };
+    }
+
+    function limits(name) {
+      var space = metrics();
+      var minEditor = space.width < 980 ? 300 : 360;
+      if (name === "assets") {
+        return { min: 160, max: Math.max(160, Math.min(420, space.width - layout.player - minEditor)) };
+      }
+      if (name === "player") {
+        return { min: 180, max: Math.max(180, Math.min(420, space.width - (state.assetsCollapsed ? 44 : layout.assets) - minEditor)) };
+      }
+      return { min: 96, max: Math.max(96, Math.min(280, space.height - 230)) };
+    }
+
+    function updateHandle(name) {
+      var handle = $('[data-ws-resize="' + name + '"]');
+      var range = limits(name);
+      if (!handle) return;
+      handle.setAttribute("aria-valuemin", Math.round(range.min));
+      handle.setAttribute("aria-valuemax", Math.round(range.max));
+      handle.setAttribute("aria-valuenow", Math.round(layout[name]));
+    }
+
+    function apply(name, value, save) {
+      var range = limits(name);
+      layout[name] = clamp(value, range.min, range.max);
+      main.style.setProperty(varNames[name], Math.round(layout[name]) + "px");
+      updateHandle(name);
+      if (save) {
+        try { localStorage.setItem(storageKey, JSON.stringify(layout)); } catch (e) {}
+      }
+      if (state.view === "stage") renderStage();
+    }
+
+    function applyAll(save) {
+      apply("assets", layout.assets, false);
+      apply("player", layout.player, false);
+      apply("assets", layout.assets, false);
+      apply("timeline", layout.timeline, save);
+      handles.forEach(function (handle) { updateHandle(handle.dataset.wsResize); });
+    }
+
+    function stopResize(event) {
+      if (!active || (event && event.pointerId !== active.pointerId)) return;
+      active.handle.classList.remove("is-dragging");
+      document.body.classList.remove("ws-resizing", "ws-resizing-col", "ws-resizing-row");
+      try { active.handle.releasePointerCapture(active.pointerId); } catch (e) {}
+      try { localStorage.setItem(storageKey, JSON.stringify(layout)); } catch (e) {}
+      active = null;
+    }
+
+    handles.forEach(function (handle) {
+      var name = handle.dataset.wsResize;
+      handle.addEventListener("pointerdown", function (event) {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        var rect = main.getBoundingClientRect();
+        active = {
+          name: name,
+          handle: handle,
+          pointerId: event.pointerId,
+          rect: rect,
+          startX: event.clientX,
+          startY: event.clientY,
+          startValue: layout[name]
+        };
+        try { handle.setPointerCapture(event.pointerId); } catch (e) {}
+        handle.classList.add("is-dragging");
+        document.body.classList.add("ws-resizing", name === "timeline" ? "ws-resizing-row" : "ws-resizing-col");
+      });
+      handle.addEventListener("pointermove", function (event) {
+        if (!active || active.pointerId !== event.pointerId) return;
+        var value;
+        if (name === "assets") value = active.startValue + event.clientX - active.startX;
+        if (name === "player") value = active.startValue - (event.clientX - active.startX);
+        if (name === "timeline") value = active.startValue - (event.clientY - active.startY);
+        apply(name, value, false);
+      });
+      handle.addEventListener("pointerup", stopResize);
+      handle.addEventListener("pointercancel", stopResize);
+      handle.addEventListener("dblclick", function () {
+        apply(name, defaults[name], true);
+      });
+      handle.addEventListener("keydown", function (event) {
+        var vertical = name === "timeline";
+        var decrease = vertical ? event.key === "ArrowDown" : event.key === "ArrowLeft";
+        var increase = vertical ? event.key === "ArrowUp" : event.key === "ArrowRight";
+        if (!decrease && !increase && event.key !== "Home") return;
+        event.preventDefault();
+        if (event.key === "Home") return apply(name, defaults[name], true);
+        apply(name, layout[name] + (increase ? 12 : -12), true);
+      });
+    });
+
+    var layoutResizeFrame = 0;
+    window.addEventListener("resize", function () {
+      if (layoutResizeFrame) cancelAnimationFrame(layoutResizeFrame);
+      layoutResizeFrame = requestAnimationFrame(function () {
+        layoutResizeFrame = 0;
+        layout = preferredLayout();
+        applyAll(false);
+      });
+    });
+
+    applyAll(false);
+  }
+
+  function initEpisodeSwitcher() {
+    var root = $("#ws-ep-switch");
+    var btn = $("#ws-ep-btn");
+    var menu = $("#ws-ep-menu");
+    var label = $("#ws-ep-label");
+    var titleEl = $("#ws-title");
+    var STATUS = { ready: "可编辑", done: "已完成", parse: "解析中", running: "生成中", failed: "生成失败" };
+
+    function shortName(ep) { return String(ep && ep.title || "").replace(/^第\d+集[：:]\s*/, ""); }
+    function esc(text) { return String(text).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+    function episodeOf(no) { return D.episodes.find(function (e) { return e.no === no; }); }
+
+    function render() {
+      var ep = episodeOf(EPISODE);
+      label.textContent = "第" + EPISODE + "集";
+      titleEl.textContent = shortName(ep);
+      document.title = "创作 · " + (ep ? ep.title : "第" + EPISODE + "集");
+      menu.innerHTML = D.episodes.map(function (item) {
+        var on = item.no === EPISODE;
+        return '<button type="button" role="option" aria-selected="' + (on ? "true" : "false") + '" class="ws-ep-opt' + (on ? " on" : "") + '" data-ep-no="' + item.no + '">' +
+          '<span class="ws-ep-no">第' + item.no + '集</span>' +
+          '<span class="ws-ep-name">' + esc(shortName(item)) + '</span>' +
+          '<em class="ws-ep-status s-' + item.status + '">' + (on ? "当前" : (STATUS[item.status] || "")) + '</em>' +
+          '</button>';
+      }).join("");
+    }
+
+    function setOpen(on) {
+      menu.hidden = !on;
+      btn.setAttribute("aria-expanded", on ? "true" : "false");
+      if (on) {
+        var current = menu.querySelector(".on");
+        if (current) current.scrollIntoView({ block: "nearest" });
+      }
+    }
+
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      setOpen(menu.hidden);
+    });
+
+    menu.addEventListener("click", function (e) {
+      var opt = e.target.closest("[data-ep-no]");
+      if (!opt) return;
+      var no = Number(opt.dataset.epNo);
+      setOpen(false);
+      if (no === EPISODE) return;
+      EPISODE = no;
+      state.selected = null;
+      render();
+      renderAll();
+      ReplicaUI.toast(no === 1
+        ? "已切换到第1集"
+        : "已切换到第" + no + "集（原型仅第1集有分镜演示数据）");
+    });
+
+    document.addEventListener("click", function (e) {
+      if (!root.contains(e.target)) setOpen(false);
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && !menu.hidden) {
+        setOpen(false);
+        btn.focus();
+      }
+    });
+
+    render();
+  }
+
+  function initStyleSwitcher() {
+    var root = $("#ws-style-switch");
+    var btn = $("#ws-style-btn");
+    var menu = $("#ws-style-menu");
+    var label = $("#ws-style-label");
+    var swatch = $("#ws-style-swatch");
+    var groups = ["真人", "3D", "2D"];
+
+    function esc(text) {
+      return String(text).replace(/[&<>"]/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+      });
+    }
+    function currentStyle() {
+      return D.styles.find(function (item) {
+        return item.id === D.project.styleId || item.name === D.project.style;
+      }) || D.styles[0];
+    }
+    function render() {
+      var current = currentStyle();
+      D.project.style = current.name;
+      D.project.styleId = current.id;
+      label.textContent = current.name;
+      btn.title = "画面风格：" + current.name;
+      swatch.className = "ws-style-swatch sc " + current.cover;
+      menu.innerHTML = groups.map(function (group) {
+        var items = D.styles.filter(function (item) { return item.map === group; });
+        if (!items.length) return "";
+        return '<div class="ws-style-group"><div class="ws-style-group-name">' + group + "</div>" +
+          items.map(function (item) {
+            var on = item.id === current.id;
+            return '<button type="button" role="option" aria-selected="' + (on ? "true" : "false") + '" class="ws-style-opt' + (on ? " on" : "") + '" data-style-id="' + item.id + '">' +
+              '<i class="ws-style-swatch sc ' + item.cover + '" aria-hidden="true"></i>' +
+              '<span class="ws-style-meta"><b>' + esc(item.name) + "</b><small>" + esc(item.desc) + "</small></span>" +
+              (item.badge ? '<em class="ws-style-badge">' + esc(item.badge) + "</em>" : "") +
+              (on ? '<em class="ws-style-current">当前</em>' : "") +
+              "</button>";
+          }).join("") +
+          "</div>";
+      }).join("");
+    }
+    function setOpen(on) {
+      menu.hidden = !on;
+      btn.setAttribute("aria-expanded", on ? "true" : "false");
+      if (on) {
+        if (state.ratioOpen) {
+          state.ratioOpen = false;
+          paintVideoRatio();
+        }
+        var picked = menu.querySelector(".on");
+        if (picked) picked.scrollIntoView({ block: "nearest" });
+      }
+    }
+    var pending = null;
+    var confirmMask = $("#style-confirm");
+    function closeConfirm() {
+      pending = null;
+      confirmMask.classList.remove("open");
+    }
+    function openConfirm(style) {
+      pending = style;
+      confirmMask.classList.add("open");
+      $("[data-style-confirm='ok']", confirmMask).focus();
+    }
+    function applyStyle(style) {
+      D.applyProjectStyle(style);
+      state.promptShot = null;
+      render();
+      renderAll();
+      ReplicaUI.toast("已切换为「" + style.name + "」，之后生成按这个风格");
+    }
+
+    btn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      setOpen(menu.hidden);
+    });
+    menu.addEventListener("click", function (e) {
+      var opt = e.target.closest("[data-style-id]");
+      if (!opt) return;
+      var style = D.styles.find(function (item) { return item.id === opt.dataset.styleId; });
+      setOpen(false);
+      if (!style || style.id === D.project.styleId) return;
+      openConfirm(style);
+    });
+    confirmMask.addEventListener("click", function (e) {
+      if (e.target === confirmMask) {
+        closeConfirm();
+        return;
+      }
+      var act = e.target.closest("[data-style-confirm]");
+      if (!act) return;
+      var style = pending;
+      closeConfirm();
+      if (act.dataset.styleConfirm === "ok" && style) applyStyle(style);
+    });
+    document.addEventListener("click", function (e) {
+      if (!root.contains(e.target)) setOpen(false);
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key !== "Escape") return;
+      if (confirmMask.classList.contains("open")) {
+        closeConfirm();
+        btn.focus();
+        return;
+      }
+      if (!menu.hidden) {
+        setOpen(false);
+        btn.focus();
+      }
+    });
+    render();
+  }
+
   function setFull(on) {
     state.full = on;
     document.body.classList.toggle("ws-full", on);
@@ -1243,6 +1595,7 @@
   }
 
   document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && $("#style-confirm").classList.contains("open")) return;
     if (e.key === "Escape" && $("#asset-delete-modal").classList.contains("open")) {
       closeAssetDelete();
       return;
@@ -1313,5 +1666,8 @@
     renderPeoplePicker();
     $("#sv-person-search").focus();
   };
+  initWorkspaceResizers();
+  initEpisodeSwitcher();
+  initStyleSwitcher();
   renderAll();
 })();

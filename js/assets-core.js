@@ -140,7 +140,8 @@ var ASSET_GENERATION_COSTS = {
   "banana-2": { "512P": 1, "1K": 2, "2K": 3, "4K": 5 },
   "nano-banana-2-lite": { "1K": 1 },
   "banana-pro": { "1K": 3, "2K": 5, "4K": 8 },
-  "seedream-5": { "1K": 3, "2K": 5 }
+  "seedream-5": { "1K": 3, "2K": 5 },
+  "seedream-55": { "1K": 3, "2K": 5 }
 };
 var pendingGenerationMode = "";
 var bulkGenerationChoice = { model: "banana-2", quality: "2K" };
