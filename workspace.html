@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>创作 · 第1集：墓地贺芷提离婚协议</title>
-  <link rel="stylesheet" href="css/common.css?v=202611171434" />
-  <link rel="stylesheet" href="css/workspace.css?v=202611171434" />
+  <link rel="stylesheet" href="css/common.css?v=202611172202" />
+  <link rel="stylesheet" href="css/workspace.css?v=202611172202" />
 </head>
 <body class="ws-page">
 <div class="app">
@@ -88,10 +88,10 @@
             <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.35"/><path d="m10.5 10.5 3 3" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg>
           </button>
           <div class="ws-lib-view" role="group" aria-label="视图切换">
-            <button type="button" class="ws-lib-icon on" data-view="list" aria-label="列表" title="列表" aria-pressed="true">
+            <button type="button" class="ws-lib-icon" data-view="list" aria-label="列表" title="列表" aria-pressed="false">
               <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M3 8h10M3 11.5h10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
             </button>
-            <button type="button" class="ws-lib-icon" data-view="grid" aria-label="平铺" title="平铺" aria-pressed="false">
+            <button type="button" class="ws-lib-icon on" data-view="grid" aria-label="平铺" title="平铺" aria-pressed="true">
               <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="2.5" width="4.5" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="2.5" width="4.5" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="2.5" y="9" width="4.5" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="9" y="9" width="4.5" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
             </button>
           </div>
@@ -100,17 +100,24 @@
       <div class="ws-lib-search" id="ws-lib-search" hidden>
         <input id="asset-search" type="search" placeholder="搜索角色、场景、道具、素材" aria-label="搜索资产" />
       </div>
-      <div class="asset-scroll" id="asset-scroll" data-view="list"></div>
+      <div class="asset-scroll" id="asset-scroll" data-view="grid"></div>
     </aside>
 
     <section class="panel editor">
       <div class="shot-head">
         <div class="left">
+          <button type="button" class="ws-assets-expand" data-act="collapse-assets" title="展开资产库" aria-label="展开资产库" hidden>
+            <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="2.5" width="12" height="11" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6.2 2.5v11" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>
+          </button>
           <b id="shot-title">片段 1</b>
           <span class="ws-shot-hint">片段时长请限制在4–15s，输入“@”可快速调整镜头时长、引用角色、场景、素材</span>
         </div>
         <div class="ws-head-tools">
           <span class="ws-saved"><i></i>已保存</span>
+          <button type="button" class="ws-script-preview-btn" data-act="open-script-preview">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2.5h7.2L13 5.3v8.2H3zM10.2 2.5v2.8H13M5.3 8h5.4M5.3 10.5h4.2" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            剧本预览
+          </button>
           <button class="ws-icon" data-act="history" title="生成历史" aria-label="生成历史">
             <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v3.2l2 1.3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
           </button>
@@ -140,7 +147,7 @@
           <label class="mini" title="生成时长（秒）"><input id="dur" value="10" aria-label="生成时长（秒）" /> s</label>
         </div>
         <div class="ws-foot-actions">
-          <button type="button" class="ws-switch on" id="match-switch" role="switch" aria-checked="true" data-act="match"><i></i>匹配资产</button>
+          <button type="button" class="ws-switch" id="match-switch" role="switch" aria-checked="false" data-act="match"><i></i>匹配资产</button>
           <button class="mini" data-act="rewrite">AI改写</button>
           <button class="gen-btn" id="gen-btn" data-act="generate">生成视频 <span id="gen-cost">150</span></button>
           <button class="ws-icon" data-act="timer" title="定时生成" aria-label="定时生成">
@@ -156,19 +163,37 @@
 
     <section class="panel player">
       <div class="stage" id="stage">暂无视频</div>
+      <div class="ws-video-overlay-tools" role="toolbar" aria-label="视频工具">
+        <button type="button" data-act="player-tool" title="擦除字幕" aria-label="擦除字幕">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.2" y="3.2" width="11.6" height="8.2" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M4.3 6.2h3.4M4.3 8.5h5.8M2.5 13.5 13.5 2.5" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>
+        </button>
+        <button type="button" data-act="player-tool" title="超清" aria-label="超清">
+          <svg viewBox="0 0 18 16" aria-hidden="true"><rect x="1.5" y="3" width="15" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.15"/><path d="M4.2 6v4M7 6v4M4.2 8H7M10 6h1.4c1.4 0 2.2.7 2.2 2s-.8 2-2.2 2H10z" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button type="button" data-act="player-tool" title="截取当前帧" aria-label="截取当前帧">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 2.5h-3v3M2.5 2.5l3.3 3.3M10.5 2.5h3v3M13.5 2.5l-3.3 3.3M5.5 13.5h-3v-3M2.5 13.5l3.3-3.3M10.5 13.5h3v-3M13.5 13.5l-3.3-3.3" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button type="button" data-act="player-tool" title="下载视频" aria-label="下载视频">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7M5.5 7.2 8 9.8l2.5-2.6M3 11v1.3c0 .7.5 1.2 1.2 1.2h7.6c.7 0 1.2-.5 1.2-1.2V11" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
       <div class="player-bar">
-        <span id="time-label">00:00 / 00:10</span>
-        <span class="ws-player-tools">
-          <button type="button" data-act="player-tool" title="擦除字幕">擦字幕</button>
-          <button type="button" data-act="player-tool" title="提升画质">提画质</button>
-          <button type="button" data-act="player-tool" title="截取视频帧">截帧</button>
-        </span>
+        <div class="ws-player-row">
+          <button type="button" class="ws-player-play" data-act="play" aria-label="播放预览视频">▶</button>
+          <div class="ws-scrub" id="ws-scrub" role="group" aria-label="片段进度"></div>
+          <button type="button" class="ws-seq-switch on" id="seq-switch" role="switch" aria-checked="true" data-act="seq-play" title="每个片段顺序播放" aria-label="每个片段顺序播放">
+            <i><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3.5" width="3.2" height="9" rx="0.8" fill="currentColor"/><rect x="6.4" y="3.5" width="3.2" height="9" rx="0.8" fill="currentColor"/><rect x="10.8" y="3.5" width="3.2" height="9" rx="0.8" fill="currentColor"/></svg></i>
+          </button>
+          <button type="button" class="ws-vol" data-act="volume" title="音量" aria-label="音量">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6.2h2.1L7.4 4v8L4.6 9.8H2.5V6.2zm7.2.3a2.6 2.6 0 0 1 0 3" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.2 4.6a4.4 4.4 0 0 1 0 6.8" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg>
+          </button>
+        </div>
       </div>
     </section>
 
     <section class="panel timeline">
       <div class="tl-head">
-        <span class="ws-tl-time"><button type="button" class="ws-play" data-act="play" aria-label="播放预览视频">▶</button><span id="tl-total">00:00/00:00</span></span>
+        <div class="ws-scene-tabs" id="ws-scene-tabs" aria-label="按场次筛选片段"></div>
         <div class="ws-tl-actions">
           <button class="chip" data-act="multi">多选</button>
           <a class="chip ws-tl-edit" id="edit-link" href="multitrack-editor.html">多轨编辑器</a>
@@ -214,6 +239,19 @@
       <button class="btn" data-act="close-export">取消</button>
       <button class="btn primary" data-act="close-export">合成全集</button>
     </div>
+  </div>
+</div>
+<div class="modal-mask" id="script-preview-modal">
+  <div class="modal ws-script-preview-modal" role="dialog" aria-modal="true" aria-labelledby="script-preview-title">
+    <div class="ws-script-preview-head">
+      <div>
+        <span>第 01 集</span>
+        <h3 id="script-preview-title">墓地贺芷提离婚协议</h3>
+      </div>
+      <button type="button" class="ws-icon" data-act="close-script-preview" title="关闭" aria-label="关闭剧本预览">×</button>
+    </div>
+    <div class="ws-script-preview-summary" id="script-preview-summary"></div>
+    <div class="ws-script-preview-body" id="script-preview-body"></div>
   </div>
 </div>
 <div class="modal-mask" id="asset-delete-modal">
@@ -296,7 +334,7 @@
   </div>
 </div>
 <div class="toast-wrap"></div>
-<script src="js/data.js?v=202611171434"></script>
-<script src="js/workspace.js?v=202611171434"></script>
+<script src="js/data.js?v=202611172202"></script>
+<script src="js/workspace.js?v=202611172202"></script>
 </body>
 </html>

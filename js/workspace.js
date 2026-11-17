@@ -10,7 +10,7 @@
     shotId: D.shots[0].id,
     tab: "all",
     query: "",
-    assetView: "list",
+    assetView: "grid",
     searchOpen: false,
     scopeOpen: false,
     libEpOpen: false,
@@ -30,7 +30,10 @@
     selected: null,
     peopleOpen: false,
     peopleQuery: "",
-    pendingScene: null
+    pendingScene: null,
+    seqPlay: true,
+    muted: false,
+    timelineScene: "all"
   };
   var finalResolution = "1080P";
   var finalCost = 240;
@@ -322,8 +325,9 @@
 
   function promptHtml(s) {
     var text = D.globalPrompt + "\n" + promptText(s);
-    var esc = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    return esc.replace(/\{([csptm]):([^}]*)\}/g, function (all, kind, val) {
+    function renderTokens(line) {
+      var esc = line.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      return esc.replace(/\{([csptm]):([^}]*)\}/g, function (all, kind, val) {
       if (kind === "t") return '<span class="pchip pc-time" contenteditable="false">◷ ' + val + " s</span>";
       if (kind === "m") {
         var title = val && sceneInfo(val) ? "@站位图·" + sceneInfo(val).name : "@站位图";
@@ -338,7 +342,57 @@
         label = label.replace(/-已删除$/, "") + "-已删除";
       }
       return '<span class="pchip ' + cls + '" contenteditable="false">' + CHIP_ICONS[kind] + label + "</span>";
-    }).replace(/\n/g, "<br>");
+      });
+    }
+    return text.split("\n").map(function (line) {
+      var trimmed = line.trim();
+      var cls = "prompt-line";
+      if (!trimmed) cls += " is-empty";
+      else if (/^\[全局设定\]/.test(trimmed)) cls += " is-global";
+      else if (/^##\s*/.test(trimmed)) cls += " is-scene";
+      else if (/^c\d+/i.test(trimmed)) cls += " is-shot";
+      else if (/^图中空间[:：]/.test(trimmed)) cls += " is-space";
+      return '<div class="' + cls + '">' + (trimmed ? renderTokens(line) : "<br>") + "</div>";
+    }).join("");
+  }
+
+  function promptPlainText(s) {
+    return promptText(s).replace(/\{([csptm]):([^}]*)\}/g, function (all, kind, val) {
+      if (kind === "t") return val + "s";
+      if (kind === "m") return val && sceneInfo(val) ? "站位图·" + sceneInfo(val).name : "站位图";
+      var asset = kind === "c" ? charById(val) : kind === "s" ? sceneRef(val) : propById(val);
+      return asset ? (kind === "c" ? charLabel(asset) : asset.name) : val;
+    });
+  }
+
+  function openScriptPreview() {
+    var total = D.shots.reduce(function (sum, item) { return sum + item.duration; }, 0);
+    var sceneCount = D.shots.reduce(function (list, item) {
+      if (list.indexOf(item.scene) < 0) list.push(item.scene);
+      return list;
+    }, []).length;
+    $("#script-preview-summary").innerHTML =
+      '<span><b>' + sceneCount + '</b> 场</span><span><b>' + D.shots.length + '</b> 个片段</span><span><b>' + mmss(total) + '</b> 预计时长</span>';
+    $("#script-preview-body").innerHTML = D.shots.map(function (item) {
+      var text = promptPlainText(item);
+      var lines = text.split("\n");
+      var detail = lines.filter(function (line) { return line.trim() && !/^##/.test(line.trim()); }).join("\n");
+      return '<article class="ws-script-card">' +
+        '<div class="ws-script-card-meta"><span>片段 ' + item.no + '</span><em>' + item.duration + 's</em></div>' +
+        '<h4>' + item.title + '</h4>' +
+        '<p class="ws-script-scene">' + item.scene + '</p>' +
+        '<p class="ws-script-copy">' + detail.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") + '</p>' +
+      '</article>';
+    }).join("");
+    $("#script-preview-modal").classList.add("open");
+    setTimeout(function () {
+      var close = $('[data-act="close-script-preview"]', $("#script-preview-modal"));
+      if (close) close.focus();
+    }, 0);
+  }
+
+  function closeScriptPreview() {
+    $("#script-preview-modal").classList.remove("open");
   }
 
   /* ---------- 站位数据 ---------- */
@@ -757,15 +811,65 @@
     if (state.view === "stage") renderStage();
   }
 
+  function playheadRatio() {
+    var total = 0;
+    var before = 0;
+    D.shots.forEach(function (item) {
+      if (item.id === state.shotId) before = total;
+      total += item.duration;
+    });
+    return total ? before / total : 0;
+  }
+
+  function renderScrub() {
+    var total = 0;
+    D.shots.forEach(function (s) { total += s.duration; });
+    var scrub = $("#ws-scrub");
+    if (!scrub) return;
+    if (!total) {
+      scrub.innerHTML = "";
+      return;
+    }
+    var head = Math.max(0, Math.min(1, playheadRatio())) * 100;
+    scrub.innerHTML =
+      '<div class="ws-scrub-track">' +
+        D.shots.map(function (s) {
+          var on = s.id === state.shotId ? " on" : "";
+          var ready = state.videos[s.id] ? " is-ready" : "";
+          return '<button type="button" class="ws-scrub-seg' + on + ready + '" data-shot="' + s.id + '" style="flex:' + s.duration + '" title="场次 ' + s.no + '" aria-label="场次 ' + s.no + '"' + (s.id === state.shotId ? ' aria-current="true"' : "") + "></button>";
+        }).join("") +
+      '</div>' +
+      '<span class="ws-scrub-head" style="left:' + head + '%" aria-hidden="true"></span>';
+  }
+
+  function stageClock(s, total) {
+    return state.seqPlay ? ("00:00 / " + mmss(total || s.duration)) : ("00:00 / " + mmss(s.duration));
+  }
+
   function renderPlayer() {
     var s = shot();
     var m = model();
     var video = state.videos[s.id];
-    $("#time-label").textContent = "00:00 / " + mmss(s.duration);
+    var total = 0;
+    D.shots.forEach(function (item) { total += item.duration; });
+    var clock = stageClock(s, total);
+    renderScrub();
+    var seq = $("#seq-switch");
+    if (seq) {
+      seq.classList.toggle("on", state.seqPlay);
+      seq.setAttribute("aria-checked", state.seqPlay ? "true" : "false");
+    }
+    var vol = $(".ws-vol");
+    if (vol) {
+      vol.classList.toggle("is-muted", state.muted);
+      vol.setAttribute("aria-label", state.muted ? "取消静音" : "音量");
+      vol.title = state.muted ? "取消静音" : "音量";
+    }
+    var timeHtml = '<span class="ws-stage-time" id="time-label">' + clock + "</span>";
     if (state.generating === s.id) {
-      $("#stage").innerHTML = '<div class="ws-frame"><div class="stage-loading"><div class="spin"></div><div style="margin-top:8px">' + (m.draft ? "480P 样片生成中" : "片段生成中") + "</div></div></div>";
+      $("#stage").innerHTML = '<div class="ws-frame"><div class="stage-loading"><div class="spin"></div><div style="margin-top:8px">' + (m.draft ? "480P 样片生成中" : "片段生成中") + "</div></div>" + timeHtml + "</div>";
     } else if (state.upgrading === s.id) {
-      $("#stage").innerHTML = '<div class="ws-frame"><div class="stage-loading"><div class="spin"></div><div style="margin-top:8px">正在基于样片生成 ' + finalResolution + " 正片</div></div></div>";
+      $("#stage").innerHTML = '<div class="ws-frame"><div class="stage-loading"><div class="spin"></div><div style="margin-top:8px">正在基于样片生成 ' + finalResolution + " 正片</div></div>" + timeHtml + "</div>";
     } else if (video) {
       var frame = sceneInfo((s.scenes || [])[0]) ? sceneInfo(s.scenes[0]).image : "media/scenes/cemetery.png";
       var badges = '<span class="stage-badges">' +
@@ -774,21 +878,75 @@
       $("#stage").innerHTML = '<div class="ws-frame"><img decoding="async" class="video-frame" src="' + frame + '" alt="片段视频">' +
         (video.kind === "draft"
           ? '<button class="upgrade-trigger" data-act="upgrade">✦ 生成 1080P 正片</button><span class="draft-watermark">Seedance 2.5 · 样片 480P</span>'
-          : "") + badges + "</div>";
+          : "") + badges + timeHtml + "</div>";
     } else {
-      $("#stage").innerHTML = '<div class="ws-frame">暂无视频</div>';
+      $("#stage").innerHTML = '<div class="ws-frame"><span class="ws-stage-empty">暂无视频</span>' + timeHtml + "</div>";
     }
   }
 
+  function beginSceneRename(button) {
+    var oldName = decodeURIComponent(button.dataset.sceneFilter || "");
+    if (!oldName) return;
+    var wrap = button.closest(".ws-scene-tab-wrap");
+    if (!wrap) return;
+    var input = document.createElement("input");
+    input.className = "ws-scene-rename";
+    input.value = oldName;
+    input.setAttribute("aria-label", "修改场次名");
+    wrap.innerHTML = "";
+    wrap.appendChild(input);
+    var done = false;
+    function finish(save) {
+      if (done) return;
+      done = true;
+      var next = input.value.trim();
+      if (save && next && next !== oldName) {
+        D.shots.forEach(function (item) {
+          if (item.scene === oldName) item.scene = next;
+        });
+        if (state.timelineScene === oldName) state.timelineScene = next;
+        ReplicaUI.toast("场次名已修改");
+      }
+      renderTimeline();
+    }
+    input.addEventListener("keydown", function (event) {
+      if (event.key === "Enter") { event.preventDefault(); finish(true); }
+      if (event.key === "Escape") { event.preventDefault(); finish(false); }
+    });
+    input.addEventListener("blur", function () { finish(true); });
+    input.focus();
+    input.select();
+  }
+
   function renderTimeline() {
-    var total = 0;
-    D.shots.forEach(function (s) { total += s.duration; });
-    $("#tl-total").textContent = "00:00/" + mmss(total);
-    $("#tl-track").innerHTML = '<button type="button" class="ws-tl-add" data-act="add-shot" title="在开头添加分镜">+</button>' + D.shots.map(function (s) {
+    var groups = [];
+    D.shots.forEach(function (item) {
+      var group = groups.find(function (entry) { return entry.name === item.scene; });
+      if (group) group.count += 1;
+      else groups.push({ name: item.scene, count: 1 });
+    });
+    if (state.timelineScene !== "all" && !groups.some(function (entry) { return entry.name === state.timelineScene; })) {
+      state.timelineScene = "all";
+    }
+    $("#ws-scene-tabs").innerHTML =
+      '<button type="button" class="ws-scene-tab' + (state.timelineScene === "all" ? " on" : "") + '" data-act="filter-scene" data-scene-filter="all">全部片段</button>' +
+      groups.map(function (group) {
+        var encoded = encodeURIComponent(group.name);
+        return '<span class="ws-scene-tab-wrap' + (state.timelineScene === group.name ? " on" : "") + '">' +
+          '<button type="button" class="ws-scene-tab" data-act="filter-scene" data-scene-filter="' + encoded + '" title="筛选该场次">' +
+            '<span>' + group.name + '</span><em>' + group.count + '</em></button>' +
+          '<button type="button" class="ws-scene-edit" data-act="edit-scene" data-scene-filter="' + encoded + '" title="修改场次名" aria-label="修改' + group.name + '场次名">✎</button></span>';
+      }).join("");
+    var visibleShots = state.timelineScene === "all"
+      ? D.shots
+      : D.shots.filter(function (item) { return item.scene === state.timelineScene; });
+    $("#tl-track").innerHTML = '<button type="button" class="ws-tl-add" data-act="add-shot" title="在开头添加分镜">+</button>' + visibleShots.map(function (s) {
       var v = state.videos[s.id];
       var label = v ? (v.kind === "draft" ? "样片" : v.resolution) : "未生成";
-      var frame = v && sceneInfo((s.scenes || [])[0]) ? '<img loading="lazy" decoding="async" src="' + sceneInfo(s.scenes[0]).image + '" alt="">' : '<span class="ws-tl-empty">◷</span>';
-      return '<button class="tcard' + (s.id === state.shotId ? " on" : "") + '" data-shot="' + s.id + '"><span class="ws-tl-frame">' + frame + '</span><span class="num">' + s.no + '</span><span class="state' + (v && v.kind === "draft" ? " draft" : "") + '">' + label + '</span><span class="dur">' + mmss(s.duration) + "</span></button>" +
+      var frame = v && sceneInfo((s.scenes || [])[0])
+        ? '<img loading="lazy" decoding="async" src="' + sceneInfo(s.scenes[0]).image + '" alt="">'
+        : '<span class="ws-tl-empty" aria-hidden="true">' + s.no + "</span>";
+      return '<button class="tcard' + (s.id === state.shotId ? " on" : "") + '" data-shot="' + s.id + '" title="场次 ' + s.no + '"><span class="ws-tl-frame">' + frame + '</span><span class="num" aria-label="场次 ' + s.no + '">' + s.no + '</span><span class="state' + (v && v.kind === "draft" ? " draft" : "") + '">' + label + '</span><span class="dur">' + mmss(s.duration) + "</span></button>" +
         '<button type="button" class="ws-tl-add" data-act="add-shot" title="添加分镜">+</button>';
     }).join("");
     $("#shot-list").innerHTML = D.shots.map(function (s) {
@@ -886,6 +1044,7 @@
       return;
     }
     if (e.target.id === "asset-delete-modal") { closeAssetDelete(); return; }
+    if (e.target.id === "script-preview-modal") { closeScriptPreview(); return; }
     if (!t) return;
     if (t.dataset.stageOpen) { openStage(t.dataset.stageOpen, false); return; }
     if (t.dataset.stagePerson) { addStagePerson(t.dataset.stagePerson); return; }
@@ -936,6 +1095,19 @@
       return;
     }
     var act = t.getAttribute("data-act");
+    if (act === "open-script-preview") { openScriptPreview(); return; }
+    if (act === "close-script-preview") { closeScriptPreview(); return; }
+    if (act === "edit-scene") {
+      beginSceneRename(t);
+      return;
+    }
+    if (act === "filter-scene") {
+      state.timelineScene = t.dataset.sceneFilter === "all" ? "all" : decodeURIComponent(t.dataset.sceneFilter);
+      var first = D.shots.find(function (item) { return state.timelineScene === "all" || item.scene === state.timelineScene; });
+      if (first && state.timelineScene !== "all" && shot().scene !== state.timelineScene) state.shotId = first.id;
+      renderAll();
+      return;
+    }
     if (act === "delete-asset") {
       openAssetDelete({ id: t.dataset.assetId, kind: t.dataset.assetKind, name: t.dataset.assetName });
       return;
@@ -1008,7 +1180,22 @@
     if (act === "add") ReplicaUI.toast("演示：新增素材");
     if (act === "add-shot") ReplicaUI.toast("演示：添加分镜");
     if (act === "multi") ReplicaUI.toast("演示：多选片段");
-    if (act === "play") ReplicaUI.toast("演示：播放全集预览");
+    if (act === "play") {
+      ReplicaUI.toast(state.seqPlay ? "演示：按场次顺序播放全部片段" : "演示：仅播放当前场次");
+      return;
+    }
+    if (act === "seq-play") {
+      state.seqPlay = !state.seqPlay;
+      renderPlayer();
+      ReplicaUI.toast(state.seqPlay ? "已开启：每个片段顺序播放" : "已关闭：仅播放当前片段");
+      return;
+    }
+    if (act === "volume") {
+      state.muted = !state.muted;
+      renderPlayer();
+      ReplicaUI.toast(state.muted ? "已静音" : "已取消静音");
+      return;
+    }
     if (act === "history") ReplicaUI.toast("演示：查看生成历史");
     if (act === "player-tool") ReplicaUI.toast("演示：" + t.title);
     if (act === "match") {
@@ -1325,12 +1512,14 @@
   function setAssetsCollapsed(on) {
     state.assetsCollapsed = !!on;
     document.body.classList.toggle("ws-assets-collapsed", state.assetsCollapsed);
-    var btn = $('[data-act="collapse-assets"]');
-    if (!btn) return;
-    btn.textContent = state.assetsCollapsed ? "›" : "‹";
-    btn.title = state.assetsCollapsed ? "展开资产库" : "收起资产库";
-    btn.setAttribute("aria-label", btn.title);
-    btn.setAttribute("aria-expanded", state.assetsCollapsed ? "false" : "true");
+    var btn = $(".ws-assets-collapse");
+    if (btn) {
+      btn.title = state.assetsCollapsed ? "展开资产库" : "收起资产库";
+      btn.setAttribute("aria-label", btn.title);
+      btn.setAttribute("aria-expanded", state.assetsCollapsed ? "false" : "true");
+    }
+    var expand = $(".ws-assets-expand");
+    if (expand) expand.hidden = !state.assetsCollapsed;
   }
 
   function initWorkspaceResizers() {
@@ -1389,7 +1578,7 @@
         return { min: 160, max: Math.max(160, Math.min(420, space.width - layout.player - minEditor)) };
       }
       if (name === "player") {
-        return { min: 180, max: Math.max(180, Math.min(420, space.width - (state.assetsCollapsed ? 44 : layout.assets) - minEditor)) };
+        return { min: 180, max: Math.max(180, Math.min(420, space.width - (state.assetsCollapsed ? 0 : layout.assets) - minEditor)) };
       }
       return { min: 96, max: Math.max(96, Math.min(280, space.height - 230)) };
     }
