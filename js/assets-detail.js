@@ -151,12 +151,6 @@ function lookStatusHtml(look) {
   return '<p class="look-card-status">' + costume + state + "</p>";
 }
 
-function lookParent(looks, look) {
-  if (!look || !look.parentId) return null;
-  for (var i = 0; i < looks.length; i++) if (looks[i].id === look.parentId) return looks[i];
-  return null;
-}
-
 function isChildOf(look, parent, primary) {
   if (!parent || look === parent) return false;
   if (look.parentId) return look.parentId === parent.id;

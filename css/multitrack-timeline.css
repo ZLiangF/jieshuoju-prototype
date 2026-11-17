@@ -544,7 +544,6 @@
   opacity: 0;
 }
 
-.mt-video-track:hover .mt-transition-mark,
 .mt-transition-mark.has,
 .mt-transition-mark.on {
   opacity: 1;

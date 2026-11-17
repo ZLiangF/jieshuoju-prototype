@@ -618,18 +618,6 @@ select.search {
 .cat {
   margin-bottom: 14px;
 }
-.cat-h {
-  color: var(--muted);
-  font-size: 11px;
-  margin-bottom: 8px;
-  display: flex;
-  justify-content: space-between;
-}
-.grid-2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
 .acard {
   overflow: hidden;
   border: 1px solid transparent;

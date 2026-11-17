@@ -1231,22 +1231,6 @@ body.ws-page .player-bar {
 .ws-seq-switch:not(.on) {
   color: #a1a1aa;
 }
-.ws-player-tools {
-  display: flex;
-  gap: 2px;
-}
-.ws-player-tools button {
-  height: 24px;
-  padding: 0 7px;
-  border-radius: 12px;
-  color: #a1a1aa;
-  font-size: 11px;
-  white-space: nowrap;
-}
-.ws-player-tools button:hover {
-  color: #fff;
-  background: rgba(255,255,255,.08);
-}
 body.ws-page .tl-head {
   height: 40px;
   padding: 0 16px;
@@ -1273,19 +1257,6 @@ body.ws-page .tl-head {
 .ws-tl-edit:hover {
   background: rgba(255,255,255,.16);
   color: #fff;
-}
-.ws-tl-scenes {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #d4d4d8;
-  font-size: 12.5px;
-  font-variant-numeric: tabular-nums;
-}
-.ws-tl-scenes em {
-  font-style: normal;
-  font-weight: 600;
-  color: #f4f4f5;
 }
 body.ws-page .tl-track {
   gap: 6px;
@@ -2132,10 +2103,6 @@ body.ws-full .ws-icon[data-act="full"] {
   .ws-saved {
     display: none;
   }
-  .ws-player-tools button {
-    padding: 0 5px;
-    font-size: 11px;
-  }
 }
 .shot-voices {
   display: flex;
@@ -2186,7 +2153,6 @@ body.ws-full .ws-icon[data-act="full"] {
   line-height: 20px;
 }
 .shot-voice a { text-decoration: none; }
-
 
 /* ===== 对齐参考中控台：基座色板、圆角、密度 ===== */
 body.ws-page .topbar {
@@ -2856,9 +2822,6 @@ body.ws-page .tl-head {
   height: 30px;
   padding: 0 12px;
   border-bottom: 1px solid rgba(255,255,255,.04);
-}
-body.ws-page .ws-tl-scenes em {
-  font-size: 12px;
 }
 body.ws-page .tl-track {
   gap: 3px;

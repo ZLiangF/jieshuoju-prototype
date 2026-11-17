@@ -366,12 +366,6 @@ function renderVoicePanes() {
   paintVoiceConfirm();
 }
 
-function selectVoiceCandidate(voice) {
-  voiceBindPick = voice;
-  renderVoiceList();
-  paintVoiceConfirm();
-}
-
 function paintVoiceGenerateButton() {
   var button = document.getElementById("voice-gen");
   button.disabled = voiceGenerating;

@@ -71,10 +71,6 @@ function voiceSourceLabel(source) {
   return source === "upload" ? "上传" : source === "generated" ? "按描述生成" : "";
 }
 
-function voiceById(id) {
-  return (D.voices || []).filter(function (voice) { return voice.id === id; })[0] || null;
-}
-
 function voiceDraftText(char) {
   if (!char) return "";
   if (char.voiceUploadNote) return char.voiceUploadNote;
