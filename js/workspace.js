@@ -1578,7 +1578,7 @@
         return { min: 160, max: Math.max(160, Math.min(420, space.width - layout.player - minEditor)) };
       }
       if (name === "player") {
-        return { min: 180, max: Math.max(180, Math.min(420, space.width - (state.assetsCollapsed ? 0 : layout.assets) - minEditor)) };
+        return { min: 180, max: Math.max(180, Math.min(space.width / 2, space.width - (state.assetsCollapsed ? 0 : layout.assets) - minEditor)) };
       }
       return { min: 96, max: Math.max(96, Math.min(280, space.height - 230)) };
     }
