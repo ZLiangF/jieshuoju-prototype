@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>影视 · 首页</title>
+  <link rel="stylesheet" href="css/film-home.css?v=202611160928">
+</head>
+<body>
+  <div class="trial">
+    <b>🎟️　体验版限时试用</b>
+    <span>专属特权即将失效，<em>16.8 元</em>享 7 天会员特权，<strong>仅限本次！</strong></span>
+    <span class="count">仅剩 <i>02</i> 天 <i>05</i>:<i>05</i>:<i id="seconds">45</i></span>
+    <button>立即开通　➜</button>
+    <button class="trial-close" aria-label="关闭">×</button>
+  </div>
+
+  <header class="topbar">
+    <div class="top-actions">
+      <button>🎁 领免费积分</button>
+      <button>▣ 加入官方群</button>
+      <button>♨ 商务合作</button>
+      <span class="divider"></span>
+      <button class="points">✦　19000</button>
+      <button class="vip">♛ 升级会员</button>
+      <button>▱ 使用手册</button>
+      <button class="notice" aria-label="通知">♧<i></i></button>
+      <button class="user">♙</button>
+    </div>
+  </header>
+
+  <aside class="sidebar">
+    <div class="brand"><img src="media/film-home/logo.png" alt="跳跃视界"><button>◧</button></div>
+    <nav>
+      <a href="#" class="nav-home"><i>⌂</i>首页</a>
+      <p>创作</p>
+      <a class="active" href="film-home.html"><i>▰</i>影视</a>
+      <a href="#"><i>▣</i>短视频</a>
+      <a href="#"><i>▥</i>转绘</a>
+      <a href="#"><i>⌘</i>画布</a>
+      <a href="#"><i>▱</i>剧本</a>
+      <p>我的</p>
+      <a href="assets.html"><i>□</i>资产</a>
+      <a href="#"><i>◇</i>空间</a>
+      <a href="#"><i>♙</i>团队</a>
+      <p>发现</p>
+      <a href="#"><i>♢</i>跳跃学院</a>
+      <a href="#"><i>♜</i>官方赛事 <b>● 进行中</b></a>
+      <a href="#"><i>⊕</i>短剧出海</a>
+    </nav>
+    <button class="training"><small>直播　　NEW</small><span>▣　AIGC 训练营</span><em>从入门到变现</em></button>
+  </aside>
+
+  <main id="homePage">
+    <section class="create">
+      <div class="mode-tabs">
+        <button class="on">▣ 影视</button>
+        <button>▧ 视频转绘</button>
+      </div>
+      <h1>输入剧本，AI 自动逐集制作，一键交付整部剧</h1>
+      <div class="upload-box" id="dropZone">
+        <div class="kind-pics">
+          <button class="kind short">
+            <span class="kind-icon">▣</span>
+            <span><b>短剧</b><small>竖屏连载，逐集成片</small></span>
+          </button>
+          <button class="kind explain">
+            <span class="kind-icon">▤✧</span>
+            <span><b>解说剧</b><small>剧本一键，AI 转视频</small></span>
+          </button>
+        </div>
+        <p>拖拽剧本到这里，或选择上传方式</p>
+        <small>支持 txt / pdf / doc / docx 格式，剧本字数不超过 30 万字</small>
+        <div class="upload-actions">
+          <button class="primary" id="uploadBtn">↥　上传剧本</button>
+          <button id="pasteBtn">▧　粘贴文本</button>
+        </div>
+        <input id="fileInput" type="file" accept=".txt,.pdf,.doc,.docx" hidden>
+      </div>
+    </section>
+
+    <section class="projects">
+      <div class="section-head">
+        <h2>我的项目</h2>
+        <div><button id="searchToggle" aria-label="搜索项目">⌕</button><span></span><button>全部</button></div>
+      </div>
+      <input class="project-search" id="projectSearch" type="search" placeholder="搜索项目名称">
+      <div class="project-list" id="projectList">
+        <button class="project-card" data-name="资产未生成 玄幻逆袭系列">
+          <span class="cover blank">✦</span>
+          <b><em>短剧</em> 资产未生成</b>
+          <small>♙ 麦芽团队　|　玄幻逆袭系列</small>
+          <small>▤ 8 集　|　2026-10-14 21:36</small>
+        </button>
+        <button class="project-card" data-name="一键流 都市甜宠 第二季">
+          <span class="cover"><img src="media/film-home/project.jpg" alt=""></span>
+          <b><em>短剧</em> 一键流</b>
+          <small>♙ 青柠短剧工作室　|　都市甜宠 · 第二季</small>
+          <small>▤ 24 集　|　2026-10-12 16:08</small>
+        </button>
+        <button class="project-card" data-name="手动 年代爽剧合集">
+          <span class="cover"><img src="media/film-home/project.jpg" alt=""></span>
+          <b><em>短剧</em> 手动</b>
+          <small>♙ 星河影业　|　年代爽剧合集</small>
+          <small>▤ 36 集　|　2026-10-09 11:42</small>
+        </button>
+        <button class="project-card" data-name="神豪逆袭计划">
+          <span class="cover"><img src="media/film-home/project.jpg" alt=""></span>
+          <b><em>解说剧</em> 神豪逆袭计划</b>
+          <small>♙ 麦芽团队　|　末世题材</small>
+          <small>▤ 60 集　|　2026-09-28 19:15</small>
+        </button>
+      </div>
+    </section>
+
+    <section class="hits">
+      <h2>爆款AI剧</h2>
+      <div class="filters" id="filters">
+        <button class="on" data-filter="all">全部</button>
+        <button data-filter="cn">国内精选</button>
+        <button data-filter="os">国外精选</button>
+        <button data-filter="rise">逆袭爽剧</button>
+        <button data-filter="city">都市豪门</button>
+        <button data-filter="love">虐恋情仇</button>
+        <button data-filter="ancient">古装古风</button>
+        <button data-filter="rebirth">重生复仇</button>
+      </div>
+      <div class="hit-grid" id="hitGrid">
+        <article data-cat="cn city love"><div><img src="media/film-home/wall-flash.jpg" alt=""><i>播放破 2 亿</i></div><small>AI 短剧 · 甜宠</small><b>闪婚老公是首富</b></article>
+        <article data-cat="cn rise"><div><img src="media/film-home/wall-1985.jpg" alt=""><i>年代爆款</i></div><small>AI 短剧 · 年代</small><b>重回 1985</b></article>
+        <article data-cat="cn love"><div><img src="media/film-home/wall-dumpling.jpg" alt=""><i>温情高分</i></div><small>AI 短剧 · 温情</small><b>外婆的饺子</b></article>
+        <article data-cat="os rise"><div><img src="media/film-home/wall-coast.jpg" alt=""><i>解说爆款</i></div><small>解说剧 · 动作</small><b>海岸公路追逐</b></article>
+        <article data-cat="cn ancient rebirth"><div><img src="media/film-home/wall-palace.jpg" alt=""><i>古装热播</i></div><small>AI 短剧 · 古装</small><b>锦绣长安</b></article>
+        <article data-cat="cn city love"><div><img src="media/film-home/wall-cafe.jpg" alt=""><i>甜虐新作</i></div><small>AI 短剧 · 都市恋爱</small><b>初恋咖啡馆</b></article>
+        <article data-cat="cn ancient rise"><div><img src="media/film-home/wall-sword.jpg" alt=""><i>武侠高分</i></div><small>AI 短剧 · 武侠</small><b>少年游</b></article>
+        <article data-cat="cn"><div><img src="media/film-home/wall-school.jpg" alt=""><i>青春热播</i></div><small>AI 短剧 · 青春</small><b>那年盛夏</b></article>
+        <article data-cat="cn city"><div><img src="media/film-home/wall-baby.jpg" alt=""><i>本周新晋</i></div><small>AI 短剧 · 萌宝</small><b>萌宝找爹地</b></article>
+        <article data-cat="cn rise"><div><img src="media/film-home/wall-tea.jpg" alt=""><i>乡村振兴</i></div><small>AI 短剧 · 乡村</small><b>回村当茶农</b></article>
+        <article data-cat="cn city rise"><div><img src="media/film-home/wall-cafe.jpg" alt=""><i>职场热播</i></div><small>AI 短剧 · 职场</small><b>她的逆袭之路</b></article>
+        <article data-cat="cn city rebirth"><div><img src="media/film-home/wall-heiress.jpg" alt=""><i>豪门新作</i></div><small>AI 短剧 · 豪门</small><b>真千金回来了</b></article>
+        <article data-cat="cn"><div><img src="media/film-home/wall-doctor.jpg" alt=""><i>口碑佳作</i></div><small>AI 短剧 · 医疗</small><b>医者仁心</b></article>
+      </div>
+    </section>
+  </main>
+
+  <main class="setup-main" id="setupPage" hidden>
+    <section class="setup-wrap">
+      <div class="setup-heading">
+        <button id="setupBack">← 返回</button>
+        <h1>影视剧<span>创作</span></h1>
+        <p>影视剧人专用模式，一键集成式创剧</p>
+      </div>
+      <div class="upload-success">
+        <span class="file-symbol">▤</span>
+        <span><b>上传成功</b><small id="setupFileName">剧本文件已完成解析</small></span>
+        <button title="重新上传">↥</button>
+        <button title="删除">♙</button>
+      </div>
+      <section class="setup-panel">
+        <div class="type-switch">
+          <button class="on" data-setup-kind="short">短剧</button>
+          <button data-setup-kind="explain">解说剧</button>
+        </div>
+        <div class="setup-columns">
+          <div class="setup-basic">
+            <label>文件名称<input id="setupName" value="未命名影视项目"></label>
+            <label>选择项目<select id="setupProject"><option value="">请选择项目</option><option>麦芽团队</option><option>青柠短剧工作室</option><option>星河影业</option></select></label>
+            <div class="setup-row">
+              <label>分类<select><option>国内</option><option>海外</option></select></label>
+              <label>风格库
+                <select id="setupStyle"></select>
+                <button class="style-trigger" id="styleTrigger" type="button"><span id="styleTriggerName">请选择风格</span><i>⌄</i></button>
+              </label>
+            </div>
+            <div class="setup-row">
+              <label>视频比例<select id="setupRatio"></select></label>
+              <label>场景比例<select><option>16:9</option><option>9:16</option><option>1:1</option></select></label>
+            </div>
+            <div class="setup-row">
+              <label>生成质量<select><option>2K</option><option>1080P</option><option>4K</option></select></label>
+              <label>视频分辨率<select><option>480P</option><option>720P</option><option>1080P</option></select></label>
+            </div>
+          </div>
+          <div class="setup-auto">
+            <div class="one-click">
+              <div class="one-title">
+                <span class="magic-icon">▧✦</span>
+                <span><b>一键成片</b><small>从剧本到视频，自动完成剪辑生成、配音、字幕与音轨。</small></span>
+                <button class="switch on" id="oneClickSwitch" role="switch" aria-checked="true"><i></i></button>
+              </div>
+              <div class="flow-steps"><span>1 上传剧本</span><b>›</b><span>2 确认资产</span><b>›</b><span>3 一键成片</span></div>
+            </div>
+            <div class="resolution-head"><b>选择成片档位</b><span>当前：标准档</span></div>
+            <div class="resolution-grid" id="resolutionGrid">
+              <button data-tier="economy"><b>经济档</b><small>优先出片，适合批量制作。</small><em>3 积分/秒</em></button>
+              <button class="on" data-tier="standard"><i>推荐</i><b>标准档</b><small>模型品质与成本，适合日常制作。</small><em>4.5 积分/秒</em></button>
+              <button data-tier="premium"><b>精品档</b><small>质量与节奏，适合精品制作。</small><em>6 积分/秒</em></button>
+              <button data-tier="luxury"><b>豪华档</b><small>极致画质与细节，适合高规格成片。</small><em>13 积分/秒</em></button>
+            </div>
+            <div class="advanced"><b>后期设置</b><label><input type="radio" name="post" checked> 标准后期</label><label><input type="radio" name="post"> 不作后期</label><span>自动添加 BGM 和字幕</span></div>
+          </div>
+        </div>
+        <div class="comment-style-library" id="commentStyleLibrary" hidden>
+          <div class="library-title"><b>风格库</b><button id="styleLibraryClose" aria-label="关闭">×</button></div>
+          <div class="style-type-tabs" id="styleTypeTabs">
+            <button class="on" data-style-type="short">短剧</button>
+            <button data-style-type="comic">漫剧</button>
+            <button data-style-type="mine">我的自定义风格</button>
+          </div>
+          <div class="comment-style-grid" id="commentStyleGrid"></div>
+        </div>
+        <div class="setup-foot">
+          <span>40分钟成片约消耗 <b id="costText">4800</b> 积分</span>
+          <button class="start-create" id="setupConfirm">立即创作　✦ 20</button>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <button class="vimo" id="vimo"><span>啵呜~</span><img src="media/film-home/fox.webp" alt="和 Vimo 聊聊"></button>
+  <div class="toast" id="toast"></div>
+  <dialog id="pasteDialog">
+    <button class="dialog-close" aria-label="关闭">×</button>
+    <h3>粘贴剧本文本</h3>
+    <textarea placeholder="在这里粘贴剧本内容…"></textarea>
+    <button class="primary dialog-confirm">确认使用</button>
+  </dialog>
+  <dialog id="customStyleDialog" class="custom-style-dialog">
+    <button class="custom-dialog-close dialog-close" aria-label="关闭">×</button>
+    <h3>自定义风格</h3>
+    <label>风格名称
+      <span class="counted-field">
+        <input id="customStyleName" maxlength="20" placeholder="给你的画风起个名字，如：大唐盛世、唯美仙侠...">
+        <i><b id="customNameCount">0</b>/20</i>
+      </span>
+    </label>
+    <label>提示词描述
+      <span class="counted-field prompt-field">
+        <textarea id="customStylePrompt" maxlength="500" placeholder="你想看到怎样的画面？可以描述服装材质、光影或色调，如：虚幻5渲染、丝绸质感、电影级逆光..."></textarea>
+        <i><b id="customPromptCount">0</b>/500</i>
+      </span>
+    </label>
+    <div class="custom-dialog-actions">
+      <button id="customStyleCancel">取消</button>
+      <button class="primary" id="customStyleSave">保存</button>
+    </div>
+  </dialog>
+  <script src="js/film-home.js?v=202611160928"></script>
+</body>
+</html>
