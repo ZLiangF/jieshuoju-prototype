@@ -1525,7 +1525,7 @@
   function initWorkspaceResizers() {
     var main = $(".ws");
     var handles = $$("[data-ws-resize]");
-    var storageKey = "jieshuoju.workspace.layout.v4";
+    var storageKey = "jieshuoju.workspace.layout.v5";
     var varNames = {
       assets: "--ws-assets-width",
       player: "--ws-player-width",
