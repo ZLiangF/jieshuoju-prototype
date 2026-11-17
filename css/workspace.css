@@ -293,8 +293,8 @@ body.ws-page.ws-assets-collapsed .assets-head {
 }
 body.ws-page.ws-assets-collapsed .assets-head h3,
 body.ws-page.ws-assets-collapsed .assets-head [data-act="add"],
-body.ws-page.ws-assets-collapsed .search-row,
-body.ws-page.ws-assets-collapsed .asset-tabs,
+body.ws-page.ws-assets-collapsed .ws-lib-toolbar,
+body.ws-page.ws-assets-collapsed .ws-lib-search,
 body.ws-page.ws-assets-collapsed .asset-scroll {
   display: none;
 }
@@ -311,89 +311,308 @@ body.ws-full .ws-resizer {
 body.ws-page.ws-assets-collapsed .ws-resizer-timeline {
   left: 76px;
 }
-body.ws-page .asset-tabs {
-  border-bottom-color: rgba(255,255,255,.08);
-}
-body.ws-page .asset-tabs button {
-  font-size: 13px;
-}
-body.ws-page .asset-tabs button.on::after {
-  background: #fff;
-}
 body.ws-page .asset-scroll {
-  padding: 12px 16px 18px;
+  padding: 4px 0 12px;
 }
-body.ws-page .cat {
-  margin-bottom: 18px;
-}
-body.ws-page .cat-h {
-  color: #f4f4f5;
-  font-size: 13px;
-  font-weight: 600;
-  justify-content: flex-start;
+
+/* —— 资产库工具栏（对齐参考稿） —— */
+.ws-lib-toolbar {
+  display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 10px;
+  min-height: 32px;
+  margin: 10px 0 4px;
+  padding: 0;
+  flex: none;
 }
-.cat-h svg {
-  width: 14px;
-  height: 14px;
+.ws-lib-filters {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+.ws-lib-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+.ws-lib-dd {
+  position: relative;
+  min-width: 0;
+}
+.ws-lib-pill {
+  height: 26px;
+  max-width: 100%;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  color: #e4e4e7;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.08);
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.ws-lib-pill:hover {
+  background: rgba(255,255,255,.1);
+  color: #fff;
+}
+.ws-lib-pill span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ws-lib-pill svg {
+  width: 12px;
+  height: 12px;
+  flex: none;
   color: #a1a1aa;
 }
-body.ws-page .grid-2 {
-  gap: 12px 10px;
+.ws-lib-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  min-width: 112px;
+  padding: 4px;
+  border-radius: 10px;
+  background: #1c1b22;
+  border: 1px solid rgba(255,255,255,.1);
+  box-shadow: 0 10px 28px rgba(0,0,0,.4);
 }
-.ws-acard {
-  position: relative;
-  display: block;
+.ws-lib-menu button {
   width: 100%;
-  background: none !important;
-  border: 0 !important;
-  box-shadow: none !important;
-  border-radius: 0;
-  overflow: visible;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 7px;
+  color: #d4d4d8;
+  text-align: left;
+  font-size: 12px;
+}
+.ws-lib-menu button:hover,
+.ws-lib-menu button[aria-checked="true"] {
+  color: #fff;
+  background: rgba(255,255,255,.08);
+}
+.ws-lib-icon {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  color: #a1a1aa;
+}
+.ws-lib-icon:hover {
+  color: #fff;
+  background: rgba(255,255,255,.08);
+}
+.ws-lib-icon.on {
+  color: #fff;
+  background: rgba(255,255,255,.12);
+}
+.ws-lib-icon svg {
+  width: 14px;
+  height: 14px;
+}
+.ws-lib-view {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 1px;
+  border-radius: 8px;
+  background: rgba(255,255,255,.04);
+}
+.ws-lib-search {
+  margin: 2px 0 8px;
+  flex: none;
+}
+.ws-lib-search input {
+  width: 100%;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.05);
+  color: #f4f4f5;
+  outline: none;
+  font-size: 12px;
+}
+.ws-lib-search input:focus {
+  border-color: rgba(167,139,250,.55);
+  box-shadow: 0 0 0 3px rgba(124,58,237,.12);
+}
+
+/* —— 文件夹分组 —— */
+.ws-folder {
+  margin-bottom: 2px;
+}
+.ws-folder-head {
+  width: 100%;
+  height: 34px;
+  padding: 0 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #e4e4e7;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 8px;
+}
+.ws-folder-head:hover {
+  background: rgba(255,255,255,.04);
+}
+.ws-folder-arrow {
+  width: 12px;
+  color: #71717a;
+  font-size: 13px;
+  line-height: 1;
+  text-align: center;
+  flex: none;
+}
+.ws-folder-ico {
+  width: 15px;
+  height: 15px;
+  color: #a1a1aa;
+  flex: none;
+}
+.ws-folder-name {
+  min-width: 0;
+}
+.ws-folder-count {
+  color: #a1a1aa;
+  font-weight: 400;
+}
+.ws-lib-body {
+  padding: 2px 0 8px;
+}
+
+/* —— 列表视图（默认） —— */
+#asset-scroll[data-view="list"] .ws-lib-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+#asset-scroll[data-view="list"] .ws-acard {
+  position: relative;
+  width: 100%;
+  min-height: 48px;
+  padding: 4px;
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border-radius: 10px;
+  background: transparent;
+  border: 0;
   text-align: left;
 }
-.ws-acard .name {
-  display: block;
+#asset-scroll[data-view="list"] .ws-acard:hover {
+  background: rgba(255,255,255,.07);
 }
-.ws-acard .thumb {
+#asset-scroll[data-view="list"] .ws-acard .thumb {
   position: relative;
-  display: block;
-  aspect-ratio: 16 / 9 !important;
-  border-radius: 12px;
+  width: 46px;
+  height: 46px;
+  aspect-ratio: auto !important;
+  border-radius: 8px;
   overflow: hidden;
-  background: #fff;
-  border: 2px solid transparent;
-  transition: border-color .15s;
+  background: #202024;
+  border: 1px solid rgba(255,255,255,.08);
 }
-.ws-acard.is-scene .thumb,
-.ws-acard.is-prop .thumb {
-  background: #18181b;
-}
-.ws-acard .thumb img {
+#asset-scroll[data-view="list"] .ws-acard .thumb img {
+  width: 100%;
+  height: 100%;
   display: block;
   object-fit: cover;
   object-position: center;
 }
-.ws-acard.is-char .thumb img {
+#asset-scroll[data-view="list"] .ws-acard.is-char .thumb {
+  background: #fff;
+}
+#asset-scroll[data-view="list"] .ws-acard.is-char .thumb img {
   object-fit: contain;
 }
-.ws-acard:hover .thumb {
+#asset-scroll[data-view="list"] .ws-acard .name {
+  min-width: 0;
+  padding: 0;
+  color: #e4e4e7;
+  font-size: 12px;
+  font-weight: 560;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* —— 平铺视图 —— */
+#asset-scroll[data-view="grid"] .ws-lib-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 8px;
+}
+#asset-scroll[data-view="grid"] .ws-acard {
+  position: relative;
+  display: block;
+  width: 100%;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+  text-align: left;
+}
+#asset-scroll[data-view="grid"] .ws-acard .thumb {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 9 !important;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #18181b;
+  border: 1px solid rgba(255,255,255,.1);
+  transition: border-color .15s;
+}
+#asset-scroll[data-view="grid"] .ws-acard.is-char .thumb {
+  background: #fff;
+}
+#asset-scroll[data-view="grid"] .ws-acard .thumb img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center;
+}
+#asset-scroll[data-view="grid"] .ws-acard.is-char .thumb img {
+  object-fit: contain;
+}
+#asset-scroll[data-view="grid"] .ws-acard:hover .thumb {
   border-color: rgba(167,139,250,.55);
 }
+#asset-scroll[data-view="grid"] .ws-acard .name {
+  display: block;
+  padding: 6px 2px 0;
+  font-size: 11.5px;
+  color: #e4e4e7;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .ws-asset-delete {
   position: absolute;
   z-index: 3;
-  top: 7px;
-  right: 7px;
-  width: 28px;
-  height: 28px;
+  top: 5px;
+  right: 5px;
+  width: 24px;
+  height: 24px;
   display: grid;
   place-items: center;
   padding: 0;
-  border: 1px solid rgba(255,255,255,.35);
-  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.3);
+  border-radius: 7px;
   color: #fff;
   background: rgba(15,23,42,.68);
   box-shadow: 0 2px 8px rgba(15,23,42,.2);
@@ -412,27 +631,23 @@ body.ws-page .grid-2 {
   background: #dc2626;
 }
 .ws-asset-delete svg {
-  width: 15px;
-  height: 15px;
+  width: 13px;
+  height: 13px;
 }
-#asset-scroll[data-tab="clip"] .ws-acard .thumb {
-  border-color: #8b5cf6;
-}
-.ws-acard .name {
-  padding: 6px 2px 0;
-  font-size: 12.5px;
-  color: #e4e4e7;
+#asset-scroll[data-tab="clip"][data-view="grid"] .ws-acard .thumb,
+#asset-scroll[data-tab="clip"][data-view="list"] .ws-acard .thumb {
+  border-color: rgba(158,76,255,.65);
 }
 .ws-placed {
   position: absolute;
-  left: 6px;
-  top: 6px;
-  height: 18px;
-  padding: 0 6px;
-  border-radius: 9px;
+  left: 4px;
+  top: 4px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 8px;
   display: inline-flex;
   align-items: center;
-  font-size: 10.5px;
+  font-size: 10px;
   color: #fff;
   background: rgba(124,58,237,.88);
 }
@@ -1885,33 +2100,20 @@ body.ws-page .assets-head .icon-round,
 body.ws-page .ws-assets-collapse {
   width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: #a1a1aa;
 }
-body.ws-page .search-row { display: none; }
-body.ws-page .asset-tabs {
-  display: grid;
-  grid-template-columns: repeat(3, auto);
-  justify-content: space-between;
-  height: auto;
-  margin-top: 16px;
-  padding: 0;
-  border-bottom: 1px solid rgba(255,255,255,.14);
+body.ws-page .ws-lib-toolbar { margin: 12px 0 6px; }
+body.ws-page .asset-scroll { padding: 4px 0 0; }
+body.ws-page .ws-folder-head { height: 36px; font-size: 13px; }
+body.ws-page #asset-scroll[data-view="grid"] .ws-acard .thumb {
+  aspect-ratio: 158 / 90 !important;
+  border-radius: 8px;
 }
-body.ws-page .asset-tabs button {
-  flex: none;
-  height: auto;
-  padding: 0 0 10px;
-  font-size: 14px;
-  line-height: 20px;
-  color: #a1a1aa;
+body.ws-page #asset-scroll[data-view="grid"] .ws-acard .name {
+  padding: 8px 0 0;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  color: #f4f4f5;
 }
-body.ws-page .asset-tabs button.on { color: #fff; font-weight: 500; }
-body.ws-page .asset-tabs button.on::after { left: 0; right: 0; height: 2px; border-radius: 999px; background: #fff; }
-body.ws-page .asset-scroll { padding: 16px 0 0; }
-body.ws-page .cat { margin-bottom: 24px; }
-body.ws-page .cat-h { margin-bottom: 12px; font-size: 12px; font-weight: 500; line-height: 16px; }
-body.ws-page .grid-2 { gap: 12px; }
-body.ws-page .ws-acard .thumb { aspect-ratio: 158 / 90 !important; border-width: 1px; border-radius: 12px; }
-#asset-scroll[data-tab="clip"] .ws-acard .thumb { border-color: #9e4cff; }
-body.ws-page .ws-acard .name { padding: 8px 0 0; font-size: 12px; font-weight: 500; line-height: 16px; color: #f4f4f5; }
 
 body.ws-page .shot-head { height: 32px; min-height: 32px; margin: 0; padding: 0; }
 body.ws-page #shot-title { font-size: 16px; font-weight: 500; line-height: 22px; }

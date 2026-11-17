@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>分集视频 · 离婚后（15集）</title>
-  <link rel="stylesheet" href="css/common.css?v=202611160928" />
-  <link rel="stylesheet" href="css/episodes.css?v=202611160928" />
+  <link rel="stylesheet" href="css/common.css?v=202611171434" />
+  <link rel="stylesheet" href="css/episodes.css?v=202611171434" />
 </head>
 <body class="flow-page">
 <div class="app">
@@ -14,6 +14,14 @@
       <a class="tb-back" href="index.html" aria-label="返回">‹</a>
       <strong class="flow-title">离婚后（15集）</strong>
       <span class="flow-badge">短剧</span>
+      <div class="asset-style" id="asset-style">
+        <button type="button" class="asset-style-btn" id="asset-style-btn" aria-haspopup="listbox" aria-expanded="false" aria-controls="asset-style-menu" title="调整画面风格">
+          <i class="asset-style-swatch sc sc-live-hd" id="asset-style-swatch" aria-hidden="true"></i>
+          <span id="asset-style-label">真人写实电影风格高清</span>
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 6.2 8 10l3.8-3.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="asset-style-menu" id="asset-style-menu" role="listbox" aria-label="调整画面风格" hidden></div>
+      </div>
     </div>
     <nav class="tb-center steps" aria-label="一键成片步骤">
       <a class="step is-done" href="outline.html">
@@ -149,7 +157,22 @@
   </div>
 </div>
 
-<script src="js/data.js?v=202611160928"></script>
-<script src="js/episodes.js?v=202611160928"></script>
+<div class="modal-mask" id="style-confirm">
+  <div class="modal style-confirm" role="alertdialog" aria-modal="true" aria-labelledby="style-confirm-title" aria-describedby="style-confirm-desc">
+    <div class="style-confirm-head">
+      <span class="style-confirm-mark" aria-hidden="true">!</span>
+      <h3 id="style-confirm-title">确认修改吗？</h3>
+      <button type="button" class="style-confirm-x" data-style-confirm="cancel" aria-label="关闭">×</button>
+    </div>
+    <p id="style-confirm-desc">可能需手动核对片段里引用的场景 / 道具 / 素材。</p>
+    <div class="style-confirm-acts">
+      <button type="button" class="style-confirm-cancel" data-style-confirm="cancel">取消</button>
+      <button type="button" class="style-confirm-ok" data-style-confirm="ok">确认</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/data.js?v=202611171434"></script>
+<script src="js/episodes.js?v=202611171434"></script>
 </body>
 </html>
