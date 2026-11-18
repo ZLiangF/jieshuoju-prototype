@@ -2745,6 +2745,13 @@ body.ws-page #shot-scene {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: text;
+}
+body.ws-page #shot-scene:hover {
+  color: #e4e4e7;
+}
+body.ws-page .ws-seg-scene .ws-inline-edit {
+  opacity: 0.8;
 }
 body.ws-page .ws-inline-edit {
   width: 18px;
@@ -2777,8 +2784,149 @@ body.ws-page .ws-inline-rename {
   background: rgba(0,0,0,.35);
   font-size: 12px;
 }
+body.ws-page .ws-inline-rename.is-scene {
+  width: 220px;
+  max-width: 360px;
+}
 body.ws-page .ws-shot-hint {
   display: none;
+}
+body.ws-page .ws-ref-bar {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+body.ws-page .ws-ref-row {
+  position: relative;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  overflow: visible;
+}
+body.ws-page .ws-ref-row::-webkit-scrollbar { display: none; }
+body.ws-page .ws-ref-item {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #111114;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.1);
+}
+body.ws-page .ws-ref-item img,
+body.ws-page .ws-replace-option img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+body.ws-page .ws-ref-swap {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: rgba(8,8,12,.62);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: .04em;
+  opacity: 0;
+  transition: opacity .15s ease;
+}
+body.ws-page .ws-ref-item:hover .ws-ref-swap,
+body.ws-page .ws-ref-item.is-open .ws-ref-swap {
+  opacity: 1;
+}
+body.ws-page .ws-ref-empty,
+body.ws-page .ws-ref-hint {
+  color: #71717a;
+  font-size: 11px;
+  line-height: 16px;
+}
+body.ws-page .ws-ref-hint {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body.ws-page .ws-replace-pop {
+  position: absolute;
+  z-index: 30;
+  top: 48px;
+  width: 286px;
+  max-height: 340px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #17171c;
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 18px 48px rgba(0,0,0,.48);
+}
+body.ws-page .ws-replace-search {
+  height: 42px;
+  margin: 8px;
+  padding: 0 10px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #71717a;
+  background: rgba(255,255,255,.05);
+}
+body.ws-page .ws-replace-search svg { width: 14px; height: 14px; flex: none; }
+body.ws-page .ws-replace-search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  color: #f4f4f5;
+  background: transparent;
+  font-size: 12px;
+}
+body.ws-page .ws-replace-list {
+  min-height: 0;
+  padding: 0 6px 8px;
+  overflow: auto;
+}
+body.ws-page .ws-replace-list b,
+body.ws-page .ws-replace-list em {
+  display: block;
+  padding: 4px 8px 6px;
+  color: #71717a;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 500;
+}
+body.ws-page .ws-replace-option {
+  width: 100%;
+  min-height: 40px;
+  padding: 5px 8px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #e4e4e7;
+  text-align: left;
+}
+body.ws-page .ws-replace-option img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex: none;
+}
+body.ws-page .ws-replace-option span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+body.ws-page .ws-replace-option:hover,
+body.ws-page .ws-replace-option.is-current {
+  background: rgba(255,255,255,.07);
 }
 body.ws-page .ws-saved {
   color: #6ee7b7;
@@ -2899,7 +3047,7 @@ body.ws-page .timeline {
   background: #17171d;
 }
 body.ws-page .tl-head {
-  height: 30px;
+  height: 36px;
   padding: 0 12px;
   border-bottom: 1px solid rgba(255,255,255,.04);
 }
@@ -2946,7 +3094,7 @@ body.ws-page .ws-seg-tabs {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -2960,48 +3108,94 @@ body.ws-page .ws-tl-actions {
 body.ws-page .ws-seg-tab {
   flex: none;
   height: 26px;
-  min-width: 42px;
-  padding: 0 12px;
-  border-radius: 8px;
+  max-width: 156px;
+  padding: 0 3px 0 8px;
+  gap: 1px;
+  border-radius: 6px;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  color: #92929c;
+  color: #9a9aa4;
   font-size: 12px;
-  font-weight: 560;
-  letter-spacing: 0.02em;
+  font-weight: 500;
   white-space: nowrap;
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.06);
+  background: rgba(255,255,255,.045);
+  border: 1px solid rgba(255,255,255,.05);
   transition: background .15s ease, border-color .15s ease, color .15s ease;
 }
 body.ws-page .ws-seg-tab:hover {
   color: #e4e4e7;
-  background: rgba(255,255,255,.07);
+  background: rgba(255,255,255,.08);
 }
 body.ws-page .ws-seg-tab.on {
+  max-width: 196px;
   color: #fff;
-  background: #3f3f48;
-  border-color: rgba(255,255,255,.14);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
+  background: #45454f;
+  border-color: rgba(255,255,255,.16);
 }
-body.ws-page .ws-seg-tab.is-ready:not(.on)::after {
-  content: "";
-  width: 5px;
-  height: 5px;
-  margin-left: 6px;
-  border-radius: 50%;
-  background: #a78bfa;
+body.ws-page .ws-seg-tab-main {
+  min-width: 0;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+}
+body.ws-page .ws-seg-tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body.ws-page .ws-seg-tab-edit {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  color: #7d7d88;
+}
+body.ws-page .ws-seg-tab-edit svg {
+  width: 11px;
+  height: 11px;
+}
+body.ws-page .ws-seg-tab.on .ws-seg-tab-edit {
+  color: #d6d6de;
+}
+body.ws-page .ws-seg-tab-edit:hover {
+  color: #fff;
+  background: rgba(255,255,255,.1);
+}
+body.ws-page .ws-seg-tab.is-editing {
+  max-width: none;
+  padding: 0 8px;
+  background: #45454f;
+  border-color: rgba(167,139,250,.7);
+}
+body.ws-page .ws-seg-tab .ws-inline-rename.is-tab {
+  width: 168px;
+  min-width: 112px;
+  max-width: 240px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 12px;
 }
 body.ws-page .ws-seg-add {
-  min-width: 28px;
+  width: 26px;
+  max-width: 26px;
+  min-width: 26px;
   padding: 0;
+  justify-content: center;
   color: #71717a;
   font-size: 16px;
   font-weight: 500;
 }
 body.ws-page .tcard {
   position: relative;
+}
+body.ws-page .ws-tl-new ~ .state {
+  top: 26px;
 }
 body.ws-page .ws-tl-new {
   position: absolute;
@@ -3326,31 +3520,3 @@ body.ws-page .prompt-line .pchip {
   }
 }
 
-/* ===== 预览区占满右侧整列，竖屏视频更大 ===== */
-@media (min-width: 1181px) {
-  body.ws-page .ws {
-    --ws-player-width: 420px;
-  }
-}
-body.ws-page .player {
-  grid-column: 3;
-  grid-row: 1 / 3;
-}
-body.ws-page .timeline {
-  grid-column: 2;
-  grid-row: 2;
-}
-body.ws-page.ws-assets-collapsed .player {
-  grid-column: 2;
-  grid-row: 1 / 3;
-}
-body.ws-page.ws-assets-collapsed .timeline {
-  grid-column: 1;
-  grid-row: 2;
-}
-body.ws-page .ws-resizer-player {
-  bottom: 6px;
-}
-body.ws-page .ws-resizer-timeline {
-  right: calc(12px + var(--ws-player-width));
-}

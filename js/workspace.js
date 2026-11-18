@@ -35,7 +35,9 @@
     muted: false,
     versions: {},
     versionId: null,
-    playerExpanded: false
+    playerExpanded: false,
+    replaceTarget: null,
+    replaceQuery: ""
   };
   var finalResolution = "1080P";
   var finalCost = 240;
@@ -97,7 +99,7 @@
           label: "S" + (i < 10 ? "0" : "") + i,
           kind: i === 1 ? "final" : "draft",
           resolution: i === 1 ? "720P" : "480P",
-          model: "seedance-2.0",
+          model: i === 1 ? "seedance-2.0" : "seedance-2.5-draft",
           station: false,
           image: frame,
           duration: s.duration,
@@ -108,7 +110,7 @@
       state.videos[s.id] = {
         kind: versionsOf(s.id)[0].kind,
         resolution: versionsOf(s.id)[0].resolution,
-        model: "seedance-2.0",
+        model: versionsOf(s.id)[0].model,
         station: false
       };
     });
@@ -446,7 +448,7 @@
       return '<article class="ws-script-card">' +
         '<div class="ws-script-card-meta"><span>片段 ' + item.no + '</span><em>' + item.duration + 's</em></div>' +
         '<h4>' + item.title + '</h4>' +
-        '<p class="ws-script-scene">' + item.scene + '</p>' +
+        '<p class="ws-script-scene">' + escAttr(sceneLabel(item)) + '</p>' +
         '<p class="ws-script-copy">' + detail.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") + '</p>' +
       '</article>';
     }).join("");
@@ -865,6 +867,21 @@
     return s.segName || ("片段 " + s.no);
   }
 
+  function escAttr(text) {
+    return String(text == null ? "" : text).replace(/[&<>"]/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+    });
+  }
+
+  function sceneLabel(s) {
+    var name = (s.scene || "").trim();
+    var code = segCode(s);
+    if (!name) return code;
+    if (name === code || name.indexOf(code + " ") === 0) return name;
+    var rest = name.replace(/^\d+-\d+\s*/, "");
+    return rest ? code + " " + rest : name;
+  }
+
   function paintSegHead(s) {
     var titleWrap = $("#shot-title-wrap");
     var sceneWrap = $("#shot-scene-wrap");
@@ -876,15 +893,134 @@
     }
     if (sceneWrap && !sceneWrap.querySelector("input")) {
       sceneWrap.innerHTML =
-        '<span id="shot-scene"></span>' +
-        '<button type="button" class="ws-inline-edit" data-act="edit-shot-scene" title="修改场次" aria-label="修改场次">✎</button>';
-      $("#shot-scene").textContent = s.scene || segCode(s);
+        '<span id="shot-scene" data-act="edit-shot-scene" title="点击修改场次名称"></span>' +
+        '<button type="button" class="ws-inline-edit" data-act="edit-shot-scene" title="修改场次名称" aria-label="修改场次名称">✎</button>';
+      $("#shot-scene").textContent = sceneLabel(s);
+    }
+  }
+
+  function citedAssets(s) {
+    var seen = {};
+    return (s.refs || []).map(function (id) {
+      var kind = refKind(id);
+      if (!kind || seen[kind + ":" + id]) return null;
+      seen[kind + ":" + id] = true;
+      if (kind === "char") {
+        var character = charById(id);
+        return character ? { id: id, kind: kind, name: charLabel(character), image: outfitImage(character) } : null;
+      }
+      if (kind === "scene") {
+        var scene = sceneRef(id);
+        return scene ? { id: id, kind: kind, name: scene.name, image: scene.image } : null;
+      }
+      var prop = propById(id);
+      return prop ? { id: id, kind: kind, name: prop.name, image: prop.image } : null;
+    }).filter(Boolean);
+  }
+
+  function replacementCatalog(kind) {
+    var query = (state.replaceQuery || "").trim().toLowerCase();
+    var items = [];
+    if (kind === "char") {
+      items = D.characters.map(function (item) {
+        return { id: item.id, kind: "char", name: charLabel(item), image: outfitImage(item), group: "角色" };
+      });
+    } else if (kind === "scene") {
+      D.scenes.forEach(function (scene) {
+        sceneCards(scene).forEach(function (card) {
+          items.push({ id: card.key, kind: "scene", name: card.name, image: card.image, group: "场景" });
+        });
+      });
+    } else {
+      items = D.props.map(function (item) {
+        return { id: item.id, kind: "prop", name: item.name, image: item.image, group: "道具" };
+      });
+    }
+    return items.filter(function (item) {
+      return !query || item.name.toLowerCase().indexOf(query) > -1;
+    });
+  }
+
+  function replaceShotAsset(oldId, newId, kind) {
+    var s = shot();
+    if (!s || !oldId || !newId || oldId === newId) {
+      state.replaceTarget = null;
+      renderRefStrip();
+      return;
+    }
+    var token = kind === "char" ? "c" : kind === "scene" ? "s" : "p";
+    s.refs = (s.refs || []).map(function (id) { return id === oldId ? newId : id; }).filter(function (id, index, list) {
+      return list.indexOf(id) === index;
+    });
+    if (kind === "scene") {
+      s.scenes = (s.scenes || []).map(function (key) {
+        if (key === oldId) return newId;
+        return key.indexOf(oldId + "/") === 0 ? newId + key.slice(oldId.length) : key;
+      });
+    }
+    (s.anchors || []).forEach(function (anchor) {
+      if (anchor.asset === oldId) anchor.asset = newId;
+      if (kind === "scene" && anchor.scene && (anchor.scene === oldId || anchor.scene.indexOf(oldId + "/") === 0)) {
+        anchor.scene = anchor.scene === oldId ? newId : newId + anchor.scene.slice(oldId.length);
+      }
+    });
+    (s.offscreen || []).forEach(function (item) { if (item.asset === oldId) item.asset = newId; });
+    s.prompt = (s.prompt || "").replace(new RegExp("\\{" + token + ":" + oldId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\}", "g"), "{" + token + ":" + newId + "}");
+    state.promptShot = null;
+    state.replaceTarget = null;
+    renderAll();
+    ReplicaUI.toast("已替换片段引用资产");
+  }
+
+  function renderRefStrip() {
+    var row = $("#ws-ref-row");
+    if (!row) return;
+    var s = shot();
+    var cited = citedAssets(s);
+    var kindName = { char: "角色", scene: "场景", prop: "道具" };
+    row.innerHTML = cited.map(function (item) {
+      var open = state.replaceTarget && state.replaceTarget.id === item.id;
+      return '<div class="ws-ref-item' + (open ? " is-open" : "") + '">' +
+        '<img loading="lazy" decoding="async" src="' + item.image + '" alt="">' +
+        '<button type="button" class="ws-ref-swap" data-act="replace-ref" data-ref="' + item.id + '" data-kind="' + item.kind + '" title="替换' + kindName[item.kind] + '" aria-label="替换' + item.name + '">替换</button>' +
+        "</div>";
+    }).join("") || '<span class="ws-ref-empty">当前片段还没有引用资产</span>';
+    if (!state.replaceTarget) return;
+    var current = cited.find(function (item) { return item.id === state.replaceTarget.id; });
+    if (!current) { state.replaceTarget = null; return; }
+    var catalog = replacementCatalog(current.kind);
+    var pop = document.createElement("div");
+    pop.className = "ws-replace-pop";
+    pop.innerHTML =
+      '<label class="ws-replace-search"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="m10.4 10.4 2.6 2.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>' +
+      '<input id="ws-replace-query" type="search" placeholder="搜索' + kindName[current.kind] + '" value="' + state.replaceQuery.replace(/"/g, "&quot;") + '" aria-label="搜索可替换资产"></label>' +
+      '<div class="ws-replace-list"><b>' + kindName[current.kind] + "</b>" +
+      (catalog.length ? catalog.map(function (item) {
+        var on = item.id === current.id ? " is-current" : "";
+        return '<button type="button" class="ws-replace-option' + on + '" data-act="pick-replace" data-replace-id="' + item.id + '" data-kind="' + item.kind + '">' +
+          '<img loading="lazy" decoding="async" src="' + item.image + '" alt=""><span>' + item.name + "</span></button>";
+      }).join("") : '<em>没有匹配的资产</em>') +
+      "</div>";
+    row.appendChild(pop);
+    var anchor = row.querySelector('.ws-ref-item.is-open');
+    if (anchor) pop.style.left = Math.max(0, anchor.offsetLeft) + "px";
+    var input = $("#ws-replace-query");
+    if (input) {
+      input.addEventListener("input", function () {
+        state.replaceQuery = input.value;
+        var caret = input.selectionStart;
+        renderRefStrip();
+        var next = $("#ws-replace-query");
+        if (next) { next.focus(); next.setSelectionRange(caret, caret); }
+      });
+      input.focus();
     }
   }
 
   function renderEditor() {
     var s = shot();
     paintSegHead(s);
+    renderRefStrip();
     var promptKey = s.id + "|" + stationPrompt(s);
     if (state.promptShot !== promptKey) {
       $("#prompt").innerHTML = promptHtml(s);
@@ -901,14 +1037,19 @@
     if (state.view === "stage") renderStage();
   }
 
-  function playheadRatio() {
+  function timelineSpan() {
     var total = 0;
     var before = 0;
     D.shots.forEach(function (item) {
       if (item.id === state.shotId) before = total;
       total += item.duration;
     });
-    return total ? before / total : 0;
+    return { before: before, total: total };
+  }
+
+  function playheadRatio() {
+    var span = timelineSpan();
+    return span.total ? span.before / span.total : 0;
   }
 
   function renderScrub() {
@@ -932,17 +1073,17 @@
       '<span class="ws-scrub-head" style="left:' + head + '%" aria-hidden="true"></span>';
   }
 
-  function stageClock(s, total) {
-    return state.seqPlay ? ("00:00 / " + mmss(total || s.duration)) : ("00:00 / " + mmss(s.duration));
+  function stageClock(s) {
+    if (!state.seqPlay) return "00:00 / " + mmss(s.duration);
+    var span = timelineSpan();
+    return mmss(span.before) + " / " + mmss(span.total || s.duration);
   }
 
   function renderPlayer() {
     var s = shot();
     var m = model();
     var video = state.videos[s.id];
-    var total = 0;
-    D.shots.forEach(function (item) { total += item.duration; });
-    var clock = stageClock(s, total);
+    var clock = stageClock(s);
     renderScrub();
     var seq = $("#seq-switch");
     if (seq) {
@@ -962,12 +1103,13 @@
       $("#stage").innerHTML = '<div class="ws-frame"><div class="stage-loading"><div class="spin"></div><div style="margin-top:8px">正在基于样片生成 ' + finalResolution + " 正片</div></div>" + timeHtml + "</div>";
     } else if (video) {
       var frame = sceneInfo((s.scenes || [])[0]) ? sceneInfo(s.scenes[0]).image : "media/scenes/cemetery.png";
+      var shownModel = (D.models.find(function (x) { return x.id === video.model; }) || m).name;
       var badges = '<span class="stage-badges">' +
-        (video.kind === "draft" ? "" : '<span class="player-status"><i></i>' + (D.models.find(function (x) { return x.id === video.model; }) || m).name + " 正片 · " + video.resolution + "</span>") +
+        (video.kind === "draft" ? "" : '<span class="player-status"><i></i>' + shownModel + " 正片 · " + video.resolution + "</span>") +
         '<span class="station-badge' + (video.station ? " on" : "") + '">' + (video.station ? "已应用站位" : "未应用站位") + "</span></span>";
       $("#stage").innerHTML = '<div class="ws-frame"><img decoding="async" class="video-frame" src="' + frame + '" alt="片段视频">' +
         (video.kind === "draft"
-          ? '<button class="upgrade-trigger" data-act="upgrade">✦ 生成 1080P 正片</button><span class="draft-watermark">Seedance 2.5 · 样片 480P</span>'
+          ? '<button class="upgrade-trigger" data-act="upgrade">✦ 生成 1080P 正片</button><span class="draft-watermark">' + shownModel + " · 样片 " + (video.resolution || "480P") + "</span>"
           : "") + badges + timeHtml + "</div>";
     } else {
       $("#stage").innerHTML = '<div class="ws-frame"><span class="ws-stage-empty">暂无视频</span>' + timeHtml + "</div>";
@@ -977,7 +1119,7 @@
   function beginInlineEdit(wrap, value, ariaLabel, onSave) {
     if (!wrap || wrap.querySelector("input")) return;
     var input = document.createElement("input");
-    input.className = "ws-inline-rename";
+    input.className = "ws-inline-rename" + (wrap.id === "shot-scene-wrap" ? " is-scene" : wrap.classList.contains("ws-seg-tab") ? " is-tab" : "");
     input.value = value || "";
     input.setAttribute("aria-label", ariaLabel);
     wrap.innerHTML = "";
@@ -1005,6 +1147,7 @@
     if (!D.shots.some(function (item) { return item.id === shotId; })) return;
     state.shotId = shotId;
     state.promptShot = null;
+    state.replaceTarget = null;
     state.view = "prompt";
     var list = versionsOf(shotId);
     state.versionId = versionId || (list.length ? list[0].id : null);
@@ -1027,9 +1170,12 @@
     if (tabs) {
       tabs.innerHTML = D.shots.map(function (s) {
         var on = s.id === state.shotId ? " on" : "";
-        var ready = versionsOf(s.id).length ? " is-ready" : "";
-        return '<button type="button" class="ws-seg-tab' + on + ready + '" role="tab" data-act="select-seg" data-shot="' + s.id + '" aria-selected="' + (s.id === state.shotId ? "true" : "false") + '" title="' + segTitle(s) + ' · ' + (s.title || "") + '">' +
-          '<span>' + segCode(s) + "</span></button>";
+        var label = sceneLabel(s);
+        return '<div class="ws-seg-tab' + on + '" data-tab-shot="' + s.id + '">' +
+          '<button type="button" class="ws-seg-tab-main" role="tab" data-act="select-seg" data-shot="' + s.id + '" aria-selected="' + (s.id === state.shotId ? "true" : "false") + '" title="' + escAttr(label) + '">' +
+            '<span class="ws-seg-tab-name">' + escAttr(label) + "</span></button>" +
+          '<button type="button" class="ws-seg-tab-edit" data-act="edit-tab-scene" data-scene-shot="' + s.id + '" title="修改场次名称" aria-label="修改' + escAttr(label) + '">' +
+            '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.1 3.1 12.9 6.9 6.4 13.4H2.6v-3.8Z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="m8.2 4 3.8 3.8" fill="none" stroke="currentColor" stroke-width="1.2"/></svg></button></div>';
       }).join("") +
         '<button type="button" class="ws-seg-tab ws-seg-add" data-act="add-shot" title="添加片段" aria-label="添加片段">+</button>';
     }
@@ -1060,7 +1206,7 @@
       var v = state.videos[item.id];
       var label = v ? (v.kind === "draft" ? "样片 · 480P" : "正片 · " + v.resolution) : "未生成";
       return '<button type="button" class="shot-row' + (item.id === state.shotId ? " on" : "") + '" data-shot="' + item.id + '">' +
-        '<span class="shot-no">' + segCode(item) + '</span><span><b>' + (item.title || ("片段 " + item.no)) + "</b><small>" + item.scene + " · " + item.duration + "s</small></span>" +
+        '<span class="shot-no">' + segCode(item) + '</span><span><b>' + (item.title || ("片段 " + item.no)) + "</b><small>" + escAttr(sceneLabel(item)) + " · " + item.duration + "s</small></span>" +
         '<span class="shot-state' + (v && v.kind === "draft" ? " draft" : "") + '">' + label + "</span></button>";
     }).join("");
   }
@@ -1136,6 +1282,10 @@
     }
     if ((state.scopeOpen || state.libEpOpen) && !e.target.closest(".ws-lib-dd")) {
       closeLibMenus();
+    }
+    if (state.replaceTarget && !e.target.closest(".ws-ref-bar")) {
+      state.replaceTarget = null;
+      renderRefStrip();
     }
     var previewVoice = e.target.closest("[data-preview-voice]");
     if (previewVoice) {
@@ -1217,10 +1367,32 @@
       });
       return;
     }
+    if (act === "replace-ref") {
+      var same = state.replaceTarget && state.replaceTarget.id === t.dataset.ref;
+      state.replaceTarget = same ? null : { id: t.dataset.ref, kind: t.dataset.kind };
+      state.replaceQuery = "";
+      renderRefStrip();
+      return;
+    }
+    if (act === "pick-replace") {
+      replaceShotAsset(state.replaceTarget && state.replaceTarget.id, t.dataset.replaceId, t.dataset.kind);
+      return;
+    }
+    if (act === "edit-tab-scene") {
+      var sceneShot = D.shots.find(function (item) { return item.id === t.dataset.sceneShot; });
+      var sceneTab = t.closest(".ws-seg-tab");
+      if (!sceneShot || !sceneTab) return;
+      sceneTab.classList.add("is-editing");
+      beginInlineEdit(sceneTab, sceneLabel(sceneShot), "修改场次名称", function (next) {
+        sceneShot.scene = next;
+        ReplicaUI.toast("场次名称已修改");
+      });
+      return;
+    }
     if (act === "edit-shot-scene") {
-      beginInlineEdit($("#shot-scene-wrap"), shot().scene || segCode(shot()), "修改场次", function (next) {
+      beginInlineEdit($("#shot-scene-wrap"), sceneLabel(shot()), "修改场次名称", function (next) {
         shot().scene = next;
-        ReplicaUI.toast("场次已修改");
+        ReplicaUI.toast("场次名称已修改");
       });
       return;
     }
