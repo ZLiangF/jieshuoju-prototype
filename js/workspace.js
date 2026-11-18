@@ -33,7 +33,9 @@
     pendingScene: null,
     seqPlay: true,
     muted: false,
-    timelineScene: "all"
+    versions: {},
+    versionId: null,
+    playerExpanded: false
   };
   var finalResolution = "1080P";
   var finalCost = 240;
@@ -48,6 +50,70 @@
   function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function shot() { return D.shots.find(function (x) { return x.id === state.shotId; }); }
+  function segCode(s) { return "1-" + s.no; }
+  function versionsOf(shotId) {
+    if (!state.versions[shotId]) state.versions[shotId] = [];
+    return state.versions[shotId];
+  }
+  function activeVersion(s) {
+    var list = versionsOf(s.id);
+    if (!list.length) return null;
+    if (state.versionId) {
+      var hit = list.find(function (item) { return item.id === state.versionId; });
+      if (hit) return hit;
+    }
+    return list[0];
+  }
+  function pushVersion(shotId, video) {
+    var s = D.shots.find(function (item) { return item.id === shotId; });
+    var list = versionsOf(shotId);
+    list.forEach(function (item) { item.isNew = false; });
+    var frame = s && sceneInfo((s.scenes || [])[0]) ? sceneInfo(s.scenes[0]).image : "media/scenes/cemetery.png";
+    var entry = {
+      id: "v-" + shotId + "-" + Date.now(),
+      label: "S" + (list.length + 1 < 10 ? "0" : "") + (list.length + 1),
+      kind: video.kind,
+      resolution: video.resolution,
+      model: video.model,
+      station: video.station,
+      image: frame,
+      duration: s ? s.duration : 10,
+      isNew: true,
+      createdAt: Date.now()
+    };
+    list.unshift(entry);
+    state.videos[shotId] = video;
+    state.versionId = entry.id;
+    return entry;
+  }
+  function seedDemoVersions() {
+    D.shots.slice(0, 3).forEach(function (s, index) {
+      if (versionsOf(s.id).length) return;
+      var frame = sceneInfo((s.scenes || [])[0]) ? sceneInfo(s.scenes[0]).image : "media/scenes/cemetery.png";
+      var count = index === 0 ? 3 : 2;
+      for (var i = count; i >= 1; i--) {
+        versionsOf(s.id).push({
+          id: "v-" + s.id + "-demo-" + i,
+          label: "S" + (i < 10 ? "0" : "") + i,
+          kind: i === 1 ? "final" : "draft",
+          resolution: i === 1 ? "720P" : "480P",
+          model: "seedance-2.0",
+          station: false,
+          image: frame,
+          duration: s.duration,
+          isNew: index === 0 && i === count,
+          createdAt: Date.now() - i * 60000
+        });
+      }
+      state.videos[s.id] = {
+        kind: versionsOf(s.id)[0].kind,
+        resolution: versionsOf(s.id)[0].resolution,
+        model: "seedance-2.0",
+        station: false
+      };
+    });
+    if (!state.versionId && versionsOf(state.shotId).length) state.versionId = versionsOf(state.shotId)[0].id;
+  }
   function model() { return D.models.find(function (x) { return x.id === state.selectedModel; }); }
   function charById(id) { return D.characters.find(function (a) { return a.id === id; }); }
   function sceneById(id) { return D.scenes.find(function (a) { return a.id === id; }); }
@@ -795,14 +861,38 @@
     }).join("") + '<em>' + (missing.some(function (c) { return !c.voiceBind; }) ? "配音前需要先绑定，这里不能临时另选" : missing.length ? "音色已关闭，配音前先到资产库开启" : "旁白和对白默认用角色已绑定的音色") + "</em>";
   }
 
+  function segTitle(s) {
+    return s.segName || ("片段 " + s.no);
+  }
+
+  function paintSegHead(s) {
+    var titleWrap = $("#shot-title-wrap");
+    var sceneWrap = $("#shot-scene-wrap");
+    if (titleWrap && !titleWrap.querySelector("input")) {
+      titleWrap.innerHTML =
+        '<b id="shot-title"></b>' +
+        '<button type="button" class="ws-inline-edit" data-act="edit-shot-title" title="修改片段名" aria-label="修改片段名">✎</button>';
+      $("#shot-title").textContent = segTitle(s);
+    }
+    if (sceneWrap && !sceneWrap.querySelector("input")) {
+      sceneWrap.innerHTML =
+        '<span id="shot-scene"></span>' +
+        '<button type="button" class="ws-inline-edit" data-act="edit-shot-scene" title="修改场次" aria-label="修改场次">✎</button>';
+      $("#shot-scene").textContent = s.scene || segCode(s);
+    }
+  }
+
   function renderEditor() {
     var s = shot();
-    $("#shot-title").textContent = "片段 " + s.no;
+    paintSegHead(s);
     var promptKey = s.id + "|" + stationPrompt(s);
     if (state.promptShot !== promptKey) {
       $("#prompt").innerHTML = promptHtml(s);
       if (state.promptShot === null || state.promptShot.split("|")[0] !== s.id) $("#dur").value = s.duration;
       state.promptShot = promptKey;
+      if (!versionsOf(s.id).some(function (item) { return item.id === state.versionId; })) {
+        state.versionId = versionsOf(s.id).length ? versionsOf(s.id)[0].id : null;
+      }
     }
     $("#stage-modal").classList.toggle("open", state.view === "stage");
     renderShotVoices();
@@ -884,15 +974,12 @@
     }
   }
 
-  function beginSceneRename(button) {
-    var oldName = decodeURIComponent(button.dataset.sceneFilter || "");
-    if (!oldName) return;
-    var wrap = button.closest(".ws-scene-tab-wrap");
-    if (!wrap) return;
+  function beginInlineEdit(wrap, value, ariaLabel, onSave) {
+    if (!wrap || wrap.querySelector("input")) return;
     var input = document.createElement("input");
-    input.className = "ws-scene-rename";
-    input.value = oldName;
-    input.setAttribute("aria-label", "修改场次名");
+    input.className = "ws-inline-rename";
+    input.value = value || "";
+    input.setAttribute("aria-label", ariaLabel);
     wrap.innerHTML = "";
     wrap.appendChild(input);
     var done = false;
@@ -900,13 +987,9 @@
       if (done) return;
       done = true;
       var next = input.value.trim();
-      if (save && next && next !== oldName) {
-        D.shots.forEach(function (item) {
-          if (item.scene === oldName) item.scene = next;
-        });
-        if (state.timelineScene === oldName) state.timelineScene = next;
-        ReplicaUI.toast("场次名已修改");
-      }
+      if (save && next && next !== value) onSave(next);
+      wrap.innerHTML = "";
+      renderEditor();
       renderTimeline();
     }
     input.addEventListener("keydown", function (event) {
@@ -918,42 +1001,66 @@
     input.select();
   }
 
-  function renderTimeline() {
-    var groups = [];
-    D.shots.forEach(function (item) {
-      var group = groups.find(function (entry) { return entry.name === item.scene; });
-      if (group) group.count += 1;
-      else groups.push({ name: item.scene, count: 1 });
-    });
-    if (state.timelineScene !== "all" && !groups.some(function (entry) { return entry.name === state.timelineScene; })) {
-      state.timelineScene = "all";
+  function selectSegment(shotId, versionId) {
+    if (!D.shots.some(function (item) { return item.id === shotId; })) return;
+    state.shotId = shotId;
+    state.promptShot = null;
+    state.view = "prompt";
+    var list = versionsOf(shotId);
+    state.versionId = versionId || (list.length ? list[0].id : null);
+    if (state.versionId) {
+      var ver = list.find(function (item) { return item.id === state.versionId; });
+      if (ver) {
+        state.videos[shotId] = {
+          kind: ver.kind,
+          resolution: ver.resolution,
+          model: ver.model,
+          station: ver.station
+        };
+      }
     }
-    $("#ws-scene-tabs").innerHTML =
-      '<button type="button" class="ws-scene-tab' + (state.timelineScene === "all" ? " on" : "") + '" data-act="filter-scene" data-scene-filter="all">全部片段</button>' +
-      groups.map(function (group) {
-        var encoded = encodeURIComponent(group.name);
-        return '<span class="ws-scene-tab-wrap' + (state.timelineScene === group.name ? " on" : "") + '">' +
-          '<button type="button" class="ws-scene-tab" data-act="filter-scene" data-scene-filter="' + encoded + '" title="筛选该场次">' +
-            '<span>' + group.name + '</span><em>' + group.count + '</em></button>' +
-          '<button type="button" class="ws-scene-edit" data-act="edit-scene" data-scene-filter="' + encoded + '" title="修改场次名" aria-label="修改' + group.name + '场次名">✎</button></span>';
-      }).join("");
-    var visibleShots = state.timelineScene === "all"
-      ? D.shots
-      : D.shots.filter(function (item) { return item.scene === state.timelineScene; });
-    $("#tl-track").innerHTML = '<button type="button" class="ws-tl-add" data-act="add-shot" title="在开头添加分镜">+</button>' + visibleShots.map(function (s) {
-      var v = state.videos[s.id];
-      var label = v ? (v.kind === "draft" ? "样片" : v.resolution) : "未生成";
-      var frame = v && sceneInfo((s.scenes || [])[0])
-        ? '<img loading="lazy" decoding="async" src="' + sceneInfo(s.scenes[0]).image + '" alt="">'
-        : '<span class="ws-tl-empty" aria-hidden="true">' + s.no + "</span>";
-      return '<button class="tcard' + (s.id === state.shotId ? " on" : "") + '" data-shot="' + s.id + '" title="场次 ' + s.no + '"><span class="ws-tl-frame">' + frame + '</span><span class="num" aria-label="场次 ' + s.no + '">' + s.no + '</span><span class="state' + (v && v.kind === "draft" ? " draft" : "") + '">' + label + '</span><span class="dur">' + mmss(s.duration) + "</span></button>" +
-        '<button type="button" class="ws-tl-add" data-act="add-shot" title="添加分镜">+</button>';
-    }).join("");
-    $("#shot-list").innerHTML = D.shots.map(function (s) {
-      var v = state.videos[s.id];
+    renderAll();
+  }
+
+  function renderTimeline() {
+    var tabs = $("#ws-seg-tabs");
+    if (tabs) {
+      tabs.innerHTML = D.shots.map(function (s) {
+        var on = s.id === state.shotId ? " on" : "";
+        var ready = versionsOf(s.id).length ? " is-ready" : "";
+        return '<button type="button" class="ws-seg-tab' + on + ready + '" role="tab" data-act="select-seg" data-shot="' + s.id + '" aria-selected="' + (s.id === state.shotId ? "true" : "false") + '" title="' + segTitle(s) + ' · ' + (s.title || "") + '">' +
+          '<span>' + segCode(s) + "</span></button>";
+      }).join("") +
+        '<button type="button" class="ws-seg-tab ws-seg-add" data-act="add-shot" title="添加片段" aria-label="添加片段">+</button>';
+    }
+
+    var s = shot();
+    var list = versionsOf(s.id);
+    var cards = list.length
+      ? list.map(function (ver) {
+          var on = ver.id === state.versionId ? " on" : "";
+          var label = ver.kind === "draft" ? "样片" : ver.resolution;
+          return '<button type="button" class="tcard' + on + '" data-act="select-version" data-version="' + ver.id + '" title="' + ver.label + '">' +
+            '<span class="ws-tl-frame"><img loading="lazy" decoding="async" src="' + ver.image + '" alt=""></span>' +
+            (ver.isNew ? '<span class="ws-tl-new">NEW</span>' : "") +
+            '<span class="num">' + ver.label + "</span>" +
+            '<span class="state' + (ver.kind === "draft" ? " draft" : "") + '">' + label + "</span>" +
+            '<span class="dur">' + mmss(ver.duration || s.duration) + "</span></button>";
+        }).join("")
+      : '<button type="button" class="tcard on is-empty" data-shot="' + s.id + '" title="尚未生成">' +
+          '<span class="ws-tl-frame"><span class="ws-tl-empty" aria-hidden="true">' + segCode(s) + "</span></span>" +
+          '<span class="num">' + segCode(s) + "</span>" +
+          '<span class="state">未生成</span>' +
+          '<span class="dur">' + mmss(s.duration) + "</span></button>";
+
+    $("#tl-track").innerHTML = cards +
+      '<button type="button" class="ws-tl-add" data-act="add-shot" title="添加片段">+</button>';
+
+    $("#shot-list").innerHTML = D.shots.map(function (item) {
+      var v = state.videos[item.id];
       var label = v ? (v.kind === "draft" ? "样片 · 480P" : "正片 · " + v.resolution) : "未生成";
-      return '<button type="button" class="shot-row' + (s.id === state.shotId ? " on" : "") + '" data-shot="' + s.id + '">' +
-        '<span class="shot-no">' + s.no + '</span><span><b>' + s.title + "</b><small>" + s.scene + " · " + s.duration + "s</small></span>" +
+      return '<button type="button" class="shot-row' + (item.id === state.shotId ? " on" : "") + '" data-shot="' + item.id + '">' +
+        '<span class="shot-no">' + segCode(item) + '</span><span><b>' + (item.title || ("片段 " + item.no)) + "</b><small>" + item.scene + " · " + item.duration + "s</small></span>" +
         '<span class="shot-state' + (v && v.kind === "draft" ? " draft" : "") + '">' + label + "</span></button>";
     }).join("");
   }
@@ -1057,10 +1164,8 @@
     if (t.dataset.select) { state.selected = t.dataset.select; renderStage(); return; }
     if (t.dataset.sv) { stageAction(t.dataset.sv, t); return; }
     if (t.dataset.shot) {
-      state.shotId = t.dataset.shot;
-      state.selected = null;
       $("#list-drawer").classList.remove("open");
-      renderAll();
+      selectSegment(t.dataset.shot);
       return;
     }
     if (t.dataset.view) {
@@ -1097,15 +1202,26 @@
     var act = t.getAttribute("data-act");
     if (act === "open-script-preview") { openScriptPreview(); return; }
     if (act === "close-script-preview") { closeScriptPreview(); return; }
-    if (act === "edit-scene") {
-      beginSceneRename(t);
+    if (act === "select-seg") {
+      selectSegment(t.dataset.shot);
       return;
     }
-    if (act === "filter-scene") {
-      state.timelineScene = t.dataset.sceneFilter === "all" ? "all" : decodeURIComponent(t.dataset.sceneFilter);
-      var first = D.shots.find(function (item) { return state.timelineScene === "all" || item.scene === state.timelineScene; });
-      if (first && state.timelineScene !== "all" && shot().scene !== state.timelineScene) state.shotId = first.id;
-      renderAll();
+    if (act === "select-version") {
+      selectSegment(state.shotId, t.dataset.version);
+      return;
+    }
+    if (act === "edit-shot-title") {
+      beginInlineEdit($("#shot-title-wrap"), segTitle(shot()), "修改片段名", function (next) {
+        shot().segName = next;
+        ReplicaUI.toast("片段名已修改");
+      });
+      return;
+    }
+    if (act === "edit-shot-scene") {
+      beginInlineEdit($("#shot-scene-wrap"), shot().scene || segCode(shot()), "修改场次", function (next) {
+        shot().scene = next;
+        ReplicaUI.toast("场次已修改");
+      });
       return;
     }
     if (act === "delete-asset") {
@@ -1178,7 +1294,7 @@
       return;
     }
     if (act === "add") ReplicaUI.toast("演示：新增素材");
-    if (act === "add-shot") ReplicaUI.toast("演示：添加分镜");
+    if (act === "add-shot") ReplicaUI.toast("演示：添加片段模块");
     if (act === "multi") ReplicaUI.toast("演示：多选片段");
     if (act === "play") {
       ReplicaUI.toast(state.seqPlay ? "演示：按场次顺序播放全部片段" : "演示：仅播放当前场次");
@@ -1188,6 +1304,10 @@
       state.seqPlay = !state.seqPlay;
       renderPlayer();
       ReplicaUI.toast(state.seqPlay ? "已开启：每个片段顺序播放" : "已关闭：仅播放当前片段");
+      return;
+    }
+    if (act === "player-expand") {
+      setPlayerExpanded(!state.playerExpanded);
       return;
     }
     if (act === "volume") {
@@ -1252,7 +1372,7 @@
       renderAll();
       ReplicaUI.toast("Step 2 已提交 · " + finalResolution + " 正片独立计费");
       setTimeout(function () {
-        state.videos[upgradingShot] = { kind: "final", resolution: finalResolution, model: "seedance-2.5", station: keepStation };
+        pushVersion(upgradingShot, { kind: "final", resolution: finalResolution, model: "seedance-2.5", station: keepStation });
         state.upgrading = null;
         renderAll();
         ReplicaUI.toast("正片生成完成 · " + finalResolution);
@@ -1274,12 +1394,12 @@
       renderAll();
       if (!(st2.apply && !useStation)) ReplicaUI.toast(generatingModel.draft ? "Step 1 已提交 · 480P 样片独立计费" : "已提交生成 · " + generatingModel.cost + " 积分");
       setTimeout(function () {
-        state.videos[generatingShot] = {
+        pushVersion(generatingShot, {
           kind: generatingModel.draft ? "draft" : "final",
           resolution: generatingResolution,
           model: generatingModel.id,
           station: useStation
-        };
+        });
         state.generating = null;
         renderAll();
         ReplicaUI.toast(generatingModel.draft ? "480P 样片生成完成，可继续生成正片" : "片段生成完成");
@@ -1578,7 +1698,15 @@
         return { min: 160, max: Math.max(160, Math.min(420, space.width - layout.player - minEditor)) };
       }
       if (name === "player") {
-        return { min: 180, max: Math.max(180, Math.min(space.width / 2, space.width - (state.assetsCollapsed ? 0 : layout.assets) - minEditor)) };
+        var halfScreen = space.rect.width * 0.5;
+        var playerEditorFloor = space.width < 1100 ? 220 : 300;
+        return {
+          min: 180,
+          max: Math.max(180, Math.min(
+            halfScreen,
+            space.width - (state.assetsCollapsed ? 0 : layout.assets) - playerEditorFloor
+          ))
+        };
       }
       return { min: 96, max: Math.max(96, Math.min(280, space.height - 230)) };
     }
@@ -1859,6 +1987,7 @@
   }
 
   function setFull(on) {
+    if (on && state.playerExpanded) setPlayerExpanded(false);
     state.full = on;
     document.body.classList.toggle("ws-full", on);
     var btn = $('.ws-icon[data-act="full"]');
@@ -1867,6 +1996,18 @@
     btn.setAttribute("aria-label", btn.title);
     btn.setAttribute("aria-pressed", on ? "true" : "false");
     renderEditor();
+  }
+
+  function setPlayerExpanded(on) {
+    state.playerExpanded = !!on;
+    document.body.classList.toggle("ws-player-expanded", state.playerExpanded);
+    var btn = $('[data-act="player-expand"]');
+    if (btn) {
+      btn.innerHTML = state.playerExpanded ? ICON_COLLAPSE : ICON_EXPAND;
+      btn.title = state.playerExpanded ? "收起视频预览（Esc）" : "放大视频预览";
+      btn.setAttribute("aria-label", btn.title);
+      btn.setAttribute("aria-pressed", state.playerExpanded ? "true" : "false");
+    }
   }
 
   document.addEventListener("keydown", function (e) {
@@ -1881,6 +2022,7 @@
       openStage(hotKey.dataset.stageOpen, false);
       return;
     }
+    if (e.key === "Escape" && state.playerExpanded && !document.querySelector(".modal-mask.open")) { setPlayerExpanded(false); return; }
     if (e.key === "Escape" && state.full && !selectedMark() && !document.querySelector(".modal-mask.open")) { setFull(false); return; }
     if (state.view !== "stage") return;
     if (e.key === "Escape" && state.peopleOpen) {
@@ -1944,5 +2086,6 @@
   initWorkspaceResizers();
   initEpisodeSwitcher();
   initStyleSwitcher();
+  seedDemoVersions();
   renderAll();
 })();

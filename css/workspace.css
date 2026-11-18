@@ -2082,6 +2082,38 @@ body.ws-full .ws-icon[data-act="full"] {
   color: #fff;
   background: rgba(255,255,255,.12);
 }
+body.ws-page.ws-player-expanded .ws .player {
+  display: flex;
+  grid-column: 3;
+  grid-row: 1 / 3;
+  border-radius: 8px;
+}
+body.ws-page.ws-player-expanded .ws .timeline {
+  display: flex;
+  grid-column: 2;
+  grid-row: 2;
+}
+body.ws-page.ws-player-expanded .ws-resizer-player {
+  bottom: 8px;
+}
+body.ws-page.ws-player-expanded .ws-resizer-timeline {
+  right: calc(16px + var(--ws-player-width));
+}
+body.ws-page.ws-assets-collapsed.ws-player-expanded .ws .player {
+  grid-column: 2;
+  grid-row: 1 / 3;
+}
+body.ws-page.ws-assets-collapsed.ws-player-expanded .ws .timeline {
+  grid-column: 1;
+  grid-row: 2;
+}
+body.ws-page.ws-assets-collapsed.ws-player-expanded .ws-resizer-timeline {
+  left: 6px;
+}
+body.ws-page.ws-player-expanded [data-act="player-expand"] {
+  color: #fff;
+  background: rgba(167,139,250,.24);
+}
 .sv-modal p {
   margin: 8px 0 16px;
   color: #a1a1aa;
@@ -2689,16 +2721,64 @@ body.ws-page .shot-head {
   height: 28px;
   min-height: 28px;
 }
+body.ws-page .shot-head .left {
+  gap: 8px;
+}
+body.ws-page .ws-seg-title,
+body.ws-page .ws-seg-scene {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: min(36vw, 320px);
+}
 body.ws-page #shot-title {
   font-size: 14px;
   font-weight: 600;
-}
-body.ws-page .ws-shot-hint {
-  max-width: min(48vw, 560px);
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+body.ws-page #shot-scene {
+  color: #a1a1aa;
+  font-size: 12px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body.ws-page .ws-inline-edit {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  color: #71717a;
   font-size: 10px;
+  opacity: 0;
+  transition: opacity .15s ease, background .15s ease, color .15s ease;
+}
+body.ws-page .ws-seg-title:hover .ws-inline-edit,
+body.ws-page .ws-seg-scene:hover .ws-inline-edit,
+body.ws-page .ws-seg-title:focus-within .ws-inline-edit,
+body.ws-page .ws-seg-scene:focus-within .ws-inline-edit {
+  opacity: 1;
+}
+body.ws-page .ws-inline-edit:hover {
+  color: #fff;
+  background: rgba(255,255,255,.08);
+}
+body.ws-page .ws-inline-rename {
+  min-width: 120px;
+  max-width: 240px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid rgba(167,139,250,.55);
+  border-radius: 6px;
+  outline: 0;
+  color: #fff;
+  background: rgba(0,0,0,.35);
+  font-size: 12px;
+}
+body.ws-page .ws-shot-hint {
+  display: none;
 }
 body.ws-page .ws-saved {
   color: #6ee7b7;
@@ -2861,107 +2941,86 @@ body.ws-page .ws-tl-actions .chip {
   font-size: 11px;
   background: rgba(255,255,255,.06);
 }
-body.ws-page .ws-scene-tabs {
+body.ws-page .ws-seg-tabs {
   min-width: 0;
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   overflow-x: auto;
   scrollbar-width: none;
 }
-body.ws-page .ws-scene-tabs::-webkit-scrollbar {
+body.ws-page .ws-seg-tabs::-webkit-scrollbar {
   display: none;
 }
 body.ws-page .ws-tl-actions {
   flex: none;
   margin-left: 10px;
 }
-body.ws-page .ws-scene-tab-wrap {
-  position: relative;
+body.ws-page .ws-seg-tab {
   flex: none;
-  height: 25px;
+  height: 26px;
+  min-width: 42px;
+  padding: 0 12px;
+  border-radius: 8px;
   display: inline-flex;
   align-items: center;
-  border-radius: 999px;
+  justify-content: center;
   color: #92929c;
-  background: rgba(255,255,255,.025);
-  border: 1px solid rgba(255,255,255,.065);
+  font-size: 12px;
+  font-weight: 560;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.06);
   transition: background .15s ease, border-color .15s ease, color .15s ease;
 }
-body.ws-page .ws-scene-tab {
-  flex: none;
-  height: 25px;
-  padding: 0 10px;
-  border-radius: 999px;
+body.ws-page .ws-seg-tab:hover {
+  color: #e4e4e7;
+  background: rgba(255,255,255,.07);
+}
+body.ws-page .ws-seg-tab.on {
+  color: #fff;
+  background: #3f3f48;
+  border-color: rgba(255,255,255,.14);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
+}
+body.ws-page .ws-seg-tab.is-ready:not(.on)::after {
+  content: "";
+  width: 5px;
+  height: 5px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: #a78bfa;
+}
+body.ws-page .ws-seg-add {
+  min-width: 28px;
+  padding: 0;
+  color: #71717a;
+  font-size: 16px;
+  font-weight: 500;
+}
+body.ws-page .tcard {
+  position: relative;
+}
+body.ws-page .ws-tl-new {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 4px;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  color: #92929c;
-  font-size: 11px;
-  white-space: nowrap;
-}
-body.ws-page .ws-scene-tabs > .ws-scene-tab {
-  background: rgba(255,255,255,.06);
-  border: 1px solid rgba(255,255,255,.07);
-}
-body.ws-page .ws-scene-tab.on,
-body.ws-page .ws-scene-tabs > .ws-scene-tab.on,
-body.ws-page .ws-scene-tab-wrap.on {
-  color: #f4f4f5;
-  background: #34343d;
-  border-color: rgba(255,255,255,.1);
-}
-body.ws-page .ws-scene-tab-wrap:hover {
-  color: #d4d4d8;
-  background: rgba(255,255,255,.055);
-  border-color: rgba(255,255,255,.11);
-}
-body.ws-page .ws-scene-tab-wrap.on .ws-scene-tab {
-  color: #f4f4f5;
-}
-body.ws-page .ws-scene-tab em {
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: 8px;
-  display: inline-grid;
-  place-items: center;
-  color: #b8b8c1;
-  background: rgba(255,255,255,.07);
+  color: #fff;
+  background: #7c3aed;
   font-size: 9px;
-  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
-body.ws-page .ws-scene-edit {
-  width: 0;
-  height: 23px;
-  padding: 0;
-  overflow: hidden;
-  border-radius: 50%;
-  color: #a1a1aa;
-  font-size: 10px;
-  opacity: 0;
-  transition: width .15s ease, opacity .15s ease, background .15s ease;
-}
-body.ws-page .ws-scene-tab-wrap:hover .ws-scene-edit,
-body.ws-page .ws-scene-tab-wrap:focus-within .ws-scene-edit {
-  width: 24px;
-  margin-right: 1px;
-  opacity: 1;
-}
-body.ws-page .ws-scene-edit:hover {
-  color: #fff;
-  background: rgba(255,255,255,.09);
-}
-body.ws-page .ws-scene-rename {
-  width: 178px;
-  height: 23px;
-  padding: 0 9px;
-  border: 0;
-  outline: 0;
-  color: #fff;
-  background: transparent;
-  font-size: 11px;
+body.ws-page .tcard.is-empty .ws-tl-frame {
+  background: #1a1a1f;
 }
 
 @media (max-width: 1180px) {
