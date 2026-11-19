@@ -763,6 +763,11 @@ select.search {
   border-color: var(--line);
   color: #c8c6cf;
 }
+.model-tag.is-new {
+  color: #34d399;
+  background: rgba(52,211,153,.15);
+  border-color: rgba(52,211,153,.35);
+}
 .resolution-menu button {
   width: 100%;
   height: 32px;
@@ -2761,6 +2766,11 @@ select:focus-visible {
   color: #ddcaff;
   background: rgba(145,77,255,.18);
   border-color: rgba(178,132,255,.32);
+}
+.model-tag.is-new {
+  color: #34d399;
+  background: rgba(52,211,153,.15);
+  border-color: rgba(52,211,153,.35);
 }
 .draft-hint {
   border-top-color: rgba(157,103,255,.2);

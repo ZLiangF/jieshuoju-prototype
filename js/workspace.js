@@ -32,13 +32,22 @@
     peopleQuery: "",
     pendingScene: null,
     seqPlay: true,
+    matchAssets: false,
     muted: false,
+    volume: 80,
+    volumeBeforeMute: 80,
     versions: {},
     versionId: null,
     playerExpanded: false,
+    playerFullscreen: false,
     replaceTarget: null,
     replaceQuery: ""
   };
+  var ICON_VOL_ON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6.2h2.1L7.4 4v8L4.6 9.8H2.5V6.2zm7.2.3a2.6 2.6 0 0 1 0 3" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.2 4.6a4.4 4.4 0 0 1 0 6.8" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round"/></svg>';
+  var ICON_VOL_LOW = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6.2h2.1L7.4 4v8L4.6 9.8H2.5V6.2zm7.2.3a2.6 2.6 0 0 1 0 3" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var ICON_VOL_OFF = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6.2h2.1L7.4 4v8L4.6 9.8H2.5V6.2zM9.8 6.2 13.5 9.9M13.5 6.2 9.8 9.9" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var ICON_FS_ENTER = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 5.5V2.5h3M13.5 5.5V2.5h-3M2.5 10.5v3h3M13.5 10.5v3h-3" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var ICON_FS_EXIT = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 2.5v3h-3M10.5 2.5v3h3M5.5 13.5v-3h-3M10.5 13.5v-3h3" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   var finalResolution = "1080P";
   var finalCost = 240;
   var stages = {};
@@ -812,22 +821,36 @@
     var s = shot();
     var m = model();
     var st = stageOf(s);
+    if (m.flash && state.resolution === "1080P") {
+      state.resolution = "720P";
+    }
     $("#model-menu").innerHTML = D.models.map(function (x) {
-      var tag = x.tag ? '<span class="model-tag' + (x.draft ? "" : " normal") + '">' + x.tag + "</span>" : "";
-      var sub = x.draft ? "480P 低成本预览 · 可升级正片" : "正式视频生成";
+      var tagClass = x.tag === "新" ? " is-new" : (x.draft ? "" : " normal");
+      var tag = x.tag ? '<span class="model-tag' + tagClass + '">' + x.tag + "</span>" : "";
+      var sub = x.sub || (x.draft ? "480P 低成本预览 · 可升级正片" : "正式视频生成");
       return '<button class="model-option' + (x.id === state.selectedModel ? " on" : "") + '" type="button" data-model="' + x.id + '">' +
         '<span><span class="model-title">' + x.name + tag + "</span><small>" + sub + "</small></span>" +
         '<span class="cost">' + x.cost + " 积分</span></button>";
     }).join("");
     $("#model-menu").classList.toggle("open", state.modelOpen);
     $("#resolution-menu").classList.toggle("open", state.resolutionOpen);
-    $("#model-name").innerHTML = m.name + (m.draft ? ' <span class="draft-tag">样片</span>' : "");
+    $("#model-name").innerHTML = m.name + (m.draft ? ' <span class="draft-tag">样片</span>' : (m.tag === "新" ? ' <span class="model-tag is-new">' + m.tag + "</span>" : ""));
     $("#resolution-name").textContent = state.resolution;
     $$("#resolution-menu button").forEach(function (b) {
-      b.disabled = !!m.draft && b.dataset.resolution !== "480P";
-      b.classList.toggle("on", b.dataset.resolution === state.resolution);
+      var r = b.dataset.resolution;
+      if (m.flash) {
+        b.style.display = r === "1080P" ? "none" : "";
+        b.disabled = r === "1080P";
+      } else if (m.draft) {
+        b.style.display = "";
+        b.disabled = r !== "480P";
+      } else {
+        b.style.display = "";
+        b.disabled = false;
+      }
+      b.classList.toggle("on", r === state.resolution);
     });
-    $("#resolution-btn").title = m.draft ? "样片模式固定生成 480P" : "选择生成分辨率";
+    $("#resolution-btn").title = m.draft ? "样片模式固定生成 480P" : (m.flash ? "Flash 支持 480P / 720P" : "选择生成分辨率");
     $("#draft-hint").classList.toggle("show", !!m.draft);
     $("#gen-btn").innerHTML = state.generating === s.id
       ? "生成中…"
@@ -840,6 +863,12 @@
     sw.disabled = state.generating === s.id || state.upgrading === s.id;
     sw.title = sw.disabled ? "生成中，暂不可切换" : st.apply ? "生成视频时使用站位信息" : "生成视频时不使用站位信息，已有站位会保留";
 
+    var match = $("#match-switch");
+    if (match) {
+      match.classList.toggle("on", !!state.matchAssets);
+      match.setAttribute("aria-checked", state.matchAssets ? "true" : "false");
+      match.title = state.matchAssets ? "已开启：生成时匹配资产" : "已关闭：生成时不自动匹配资产";
+    }
   }
 
   function renderShotVoices() {
@@ -1090,12 +1119,7 @@
       seq.classList.toggle("on", state.seqPlay);
       seq.setAttribute("aria-checked", state.seqPlay ? "true" : "false");
     }
-    var vol = $(".ws-vol");
-    if (vol) {
-      vol.classList.toggle("is-muted", state.muted);
-      vol.setAttribute("aria-label", state.muted ? "取消静音" : "音量");
-      vol.title = state.muted ? "取消静音" : "音量";
-    }
+    paintVolumeControls();
     var timeHtml = '<span class="ws-stage-time" id="time-label">' + clock + "</span>";
     if (state.generating === s.id) {
       $("#stage").innerHTML = '<div class="ws-frame"><div class="stage-loading"><div class="spin"></div><div style="margin-top:8px">' + (m.draft ? "480P 样片生成中" : "片段生成中") + "</div></div>" + timeHtml + "</div>";
@@ -1338,7 +1362,14 @@
     }
     if (t.dataset.model) {
       state.selectedModel = t.dataset.model;
-      state.resolution = model().draft ? "480P" : "720P";
+      var curM = model();
+      if (curM.draft) {
+        state.resolution = "480P";
+      } else if (curM.flash) {
+        if (state.resolution === "1080P" || !state.resolution) state.resolution = "720P";
+      } else {
+        if (!state.resolution) state.resolution = "720P";
+      }
       state.modelOpen = false;
       renderToolbar();
       return;
@@ -1479,21 +1510,33 @@
       return;
     }
     if (act === "player-expand") {
+      if (state.playerFullscreen) setPlayerFullscreen(false);
       setPlayerExpanded(!state.playerExpanded);
       return;
     }
-    if (act === "volume") {
-      state.muted = !state.muted;
-      renderPlayer();
-      ReplicaUI.toast(state.muted ? "已静音" : "已取消静音");
+    if (act === "player-fullscreen") {
+      setPlayerFullscreen(!state.playerFullscreen);
+      return;
+    }
+    if (act === "volume-toggle") {
+      if (state.muted || state.volume === 0) {
+        state.muted = false;
+        state.volume = state.volumeBeforeMute || 80;
+      } else {
+        state.volumeBeforeMute = state.volume || 80;
+        state.muted = true;
+      }
+      paintVolumeControls();
+      ReplicaUI.toast(state.muted || state.volume === 0 ? "已静音" : "音量 " + state.volume + "%");
       return;
     }
     if (act === "history") ReplicaUI.toast("演示：查看生成历史");
     if (act === "player-tool") ReplicaUI.toast("演示：" + t.title);
     if (act === "match") {
-      var on = !t.classList.contains("on");
-      t.classList.toggle("on", on);
-      t.setAttribute("aria-checked", on ? "true" : "false");
+      state.matchAssets = !state.matchAssets;
+      renderToolbar();
+      ReplicaUI.toast(state.matchAssets ? "已开启匹配资产" : "已关闭匹配资产");
+      return;
     }
     if (act === "close-stage") { closeStage(); return; }
     if (act === "toggle-stage-people") {
@@ -1553,6 +1596,14 @@
     if (act === "generate") {
       var generatingShot = state.shotId;
       var generatingModel = model();
+      var durEl = $("#dur");
+      var durVal = durEl ? parseFloat(durEl.value) : 10;
+      var maxDur = generatingModel.maxDuration || 30;
+      if (isNaN(durVal) || durVal < 4 || durVal > maxDur) {
+        ReplicaUI.toast("生成时长需在 4–" + maxDur + " 秒之间");
+        if (durEl) durEl.focus();
+        return;
+      }
       var unboundVoices = (shot().refs || []).map(charById).filter(function (c) { return c && (!c.voiceBind || c.voiceOn === false); });
       if (unboundVoices.length) ReplicaUI.toast(unboundVoices.map(function (c) { return c.name; }).join("、") + "没有可用的音色。旁白和对白需要先绑定或开启，本次只生成画面");
       if (D.credits < generatingModel.cost) { ReplicaUI.toast("积分不足，本次生成需要 " + generatingModel.cost + " 积分"); return; }
@@ -1804,14 +1855,12 @@
   function setAssetsCollapsed(on) {
     state.assetsCollapsed = !!on;
     document.body.classList.toggle("ws-assets-collapsed", state.assetsCollapsed);
-    var btn = $(".ws-assets-collapse");
+    var btn = $("#ws-assets-float") || $(".ws-assets-float");
     if (btn) {
       btn.title = state.assetsCollapsed ? "展开资产库" : "收起资产库";
       btn.setAttribute("aria-label", btn.title);
       btn.setAttribute("aria-expanded", state.assetsCollapsed ? "false" : "true");
     }
-    var expand = $(".ws-assets-expand");
-    if (expand) expand.hidden = !state.assetsCollapsed;
   }
 
   function initWorkspaceResizers() {
@@ -2158,8 +2207,39 @@
     render();
   }
 
+  function effectiveVolume() {
+    return state.muted ? 0 : state.volume;
+  }
+
+  function paintVolumeControls() {
+    var vol = $(".ws-vol");
+    var range = $("#ws-vol-range");
+    var value = $("#ws-vol-value");
+    var level = effectiveVolume();
+    if (vol) {
+      vol.classList.toggle("is-muted", level === 0);
+      vol.innerHTML = level === 0 ? ICON_VOL_OFF : level < 40 ? ICON_VOL_LOW : ICON_VOL_ON;
+      vol.title = level === 0 ? "取消静音" : "静音";
+      vol.setAttribute("aria-label", vol.title);
+    }
+    if (range && document.activeElement !== range) range.value = String(state.muted ? 0 : state.volume);
+    if (value) value.textContent = String(state.muted ? 0 : state.volume);
+    document.body.style.setProperty("--ws-volume", String(level / 100));
+  }
+
+  function setVolume(next) {
+    var value = clamp(Math.round(Number(next) || 0), 0, 100);
+    state.volume = value;
+    state.muted = value === 0;
+    if (value > 0) state.volumeBeforeMute = value;
+    paintVolumeControls();
+  }
+
   function setFull(on) {
-    if (on && state.playerExpanded) setPlayerExpanded(false);
+    if (on) {
+      if (state.playerExpanded) setPlayerExpanded(false);
+      if (state.playerFullscreen) setPlayerFullscreen(false);
+    }
     state.full = on;
     document.body.classList.toggle("ws-full", on);
     var btn = $('.ws-icon[data-act="full"]');
@@ -2172,15 +2252,34 @@
 
   function setPlayerExpanded(on) {
     state.playerExpanded = !!on;
+    if (on && state.playerFullscreen) setPlayerFullscreen(false);
     document.body.classList.toggle("ws-player-expanded", state.playerExpanded);
     var btn = $('[data-act="player-expand"]');
     if (btn) {
       btn.innerHTML = state.playerExpanded ? ICON_COLLAPSE : ICON_EXPAND;
-      btn.title = state.playerExpanded ? "收起视频预览（Esc）" : "放大视频预览";
+      btn.title = state.playerExpanded ? "收起向下放大" : "向下放大预览";
       btn.setAttribute("aria-label", btn.title);
       btn.setAttribute("aria-pressed", state.playerExpanded ? "true" : "false");
     }
   }
+
+  function setPlayerFullscreen(on) {
+    state.playerFullscreen = !!on;
+    if (on && state.full) setFull(false);
+    if (on && state.playerExpanded) setPlayerExpanded(false);
+    document.body.classList.toggle("ws-player-fs", state.playerFullscreen);
+    var btn = $('[data-act="player-fullscreen"]');
+    if (btn) {
+      btn.innerHTML = state.playerFullscreen ? ICON_FS_EXIT : ICON_FS_ENTER;
+      btn.title = state.playerFullscreen ? "退出全屏（Esc）" : "全屏播放视频";
+      btn.setAttribute("aria-label", btn.title);
+      btn.setAttribute("aria-pressed", state.playerFullscreen ? "true" : "false");
+    }
+  }
+
+  document.addEventListener("input", function (e) {
+    if (e.target && e.target.id === "ws-vol-range") setVolume(e.target.value);
+  });
 
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && $("#style-confirm").classList.contains("open")) return;
@@ -2194,7 +2293,7 @@
       openStage(hotKey.dataset.stageOpen, false);
       return;
     }
-    if (e.key === "Escape" && state.playerExpanded && !document.querySelector(".modal-mask.open")) { setPlayerExpanded(false); return; }
+    if (e.key === "Escape" && state.playerFullscreen && !document.querySelector(".modal-mask.open")) { setPlayerFullscreen(false); return; }
     if (e.key === "Escape" && state.full && !selectedMark() && !document.querySelector(".modal-mask.open")) { setFull(false); return; }
     if (state.view !== "stage") return;
     if (e.key === "Escape" && state.peopleOpen) {
@@ -2259,5 +2358,6 @@
   initEpisodeSwitcher();
   initStyleSwitcher();
   seedDemoVersions();
+  paintVolumeControls();
   renderAll();
 })();
