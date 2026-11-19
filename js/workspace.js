@@ -1857,10 +1857,146 @@
     document.body.classList.toggle("ws-assets-collapsed", state.assetsCollapsed);
     var btn = $("#ws-assets-float") || $(".ws-assets-float");
     if (btn) {
-      btn.title = state.assetsCollapsed ? "展开资产库" : "收起资产库";
-      btn.setAttribute("aria-label", btn.title);
+      var tip = state.assetsCollapsed ? "展开资产库" : "收起资产库";
+      btn.title = "拖动移动 · 点击" + tip + " · 双击复位";
+      btn.setAttribute("aria-label", tip);
       btn.setAttribute("aria-expanded", state.assetsCollapsed ? "false" : "true");
     }
+    if (typeof window.__wsPlaceAssetsFloat === "function") {
+      requestAnimationFrame(function () { window.__wsPlaceAssetsFloat(false); });
+    }
+  }
+
+  function initAssetsFloat() {
+    var btn = $("#ws-assets-float");
+    var main = $(".ws");
+    if (!btn || !main) return;
+
+    var storageKey = "jieshuoju.workspace.assetsFloat.v1";
+    var pos = null;
+    var drag = null;
+    var moved = false;
+    var suppressClick = false;
+
+    function loadPos() {
+      try {
+        var raw = JSON.parse(localStorage.getItem(storageKey) || "null");
+        if (raw && Number.isFinite(raw.x) && Number.isFinite(raw.y)) pos = { x: raw.x, y: raw.y };
+      } catch (e) { pos = null; }
+    }
+
+    function savePos() {
+      if (!pos) return;
+      try { localStorage.setItem(storageKey, JSON.stringify(pos)); } catch (e) {}
+    }
+
+    function defaultPos() {
+      if (state.assetsCollapsed) return { x: 10, y: 12 };
+      var assetsW = parseFloat(getComputedStyle(main).getPropertyValue("--ws-assets-width")) || 220;
+      return { x: 6 + assetsW - 13, y: 48 };
+    }
+
+    function clampPos(p) {
+      var bw = btn.offsetWidth || 34;
+      var bh = btn.offsetHeight || 44;
+      var maxX = Math.max(4, main.clientWidth - bw - 4);
+      var maxY = Math.max(4, main.clientHeight - bh - 4);
+      return {
+        x: clamp(p.x, 4, maxX),
+        y: clamp(p.y, 4, maxY)
+      };
+    }
+
+    function place(reset) {
+      if (reset || !pos) pos = defaultPos();
+      pos = clampPos(pos);
+      btn.style.left = Math.round(pos.x) + "px";
+      btn.style.top = Math.round(pos.y) + "px";
+      btn.classList.add("is-placed");
+    }
+
+    window.__wsPlaceAssetsFloat = place;
+
+    function onPointerDown(e) {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var rect = main.getBoundingClientRect();
+      var br = btn.getBoundingClientRect();
+      moved = false;
+      drag = {
+        pointerId: e.pointerId,
+        offsetX: e.clientX - br.left,
+        offsetY: e.clientY - br.top,
+        originX: e.clientX,
+        originY: e.clientY,
+        baseLeft: br.left - rect.left,
+        baseTop: br.top - rect.top
+      };
+      btn.classList.add("is-dragging");
+      try { btn.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+
+    function onPointerMove(e) {
+      if (!drag || e.pointerId !== drag.pointerId) return;
+      var dx = e.clientX - drag.originX;
+      var dy = e.clientY - drag.originY;
+      if (!moved && (dx * dx + dy * dy) > 16) moved = true;
+      if (!moved) return;
+      var rect = main.getBoundingClientRect();
+      pos = clampPos({
+        x: e.clientX - rect.left - drag.offsetX,
+        y: e.clientY - rect.top - drag.offsetY
+      });
+      btn.style.left = Math.round(pos.x) + "px";
+      btn.style.top = Math.round(pos.y) + "px";
+      btn.classList.add("is-placed");
+    }
+
+    function onPointerUp(e) {
+      if (!drag || e.pointerId !== drag.pointerId) return;
+      btn.classList.remove("is-dragging");
+      try { btn.releasePointerCapture(e.pointerId); } catch (err) {}
+      var wasMoved = moved;
+      drag = null;
+      if (wasMoved) {
+        savePos();
+        suppressClick = true;
+        setTimeout(function () { suppressClick = false; }, 0);
+        return;
+      }
+      setAssetsCollapsed(!state.assetsCollapsed);
+    }
+
+    btn.addEventListener("pointerdown", onPointerDown);
+    btn.addEventListener("pointermove", onPointerMove);
+    btn.addEventListener("pointerup", onPointerUp);
+    btn.addEventListener("pointercancel", onPointerUp);
+    btn.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (suppressClick || moved) return;
+    });
+    btn.addEventListener("dblclick", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      pos = null;
+      try { localStorage.removeItem(storageKey); } catch (err) {}
+      place(true);
+      if (window.ReplicaUI && ReplicaUI.toast) ReplicaUI.toast("已复位悬浮按钮位置");
+    });
+
+    var resizeFrame = 0;
+    window.addEventListener("resize", function () {
+      if (resizeFrame) cancelAnimationFrame(resizeFrame);
+      resizeFrame = requestAnimationFrame(function () {
+        resizeFrame = 0;
+        place(false);
+      });
+    });
+
+    loadPos();
+    place(false);
   }
 
   function initWorkspaceResizers() {
@@ -2355,6 +2491,7 @@
     $("#sv-person-search").focus();
   };
   initWorkspaceResizers();
+  initAssetsFloat();
   initEpisodeSwitcher();
   initStyleSwitcher();
   seedDemoVersions();

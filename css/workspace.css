@@ -258,7 +258,7 @@ body.ws-page .assets-head h3 {
   align-items: center;
   gap: 6px;
 }
-/* 资产库悬浮把手：贴左侧缝，不进片段标题行，避开拖拽热区中段 */
+/* 资产库悬浮把手：可拖动定位，点击展开/收起，不进片段标题行 */
 .ws-assets-float {
   position: absolute;
   z-index: 14;
@@ -279,8 +279,22 @@ body.ws-page .assets-head h3 {
     0 8px 20px rgba(0,0,0,.28);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  cursor: pointer;
-  transition: left .22s ease, width .18s ease, background .18s ease, color .18s ease, box-shadow .18s ease;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: width .18s ease, background .18s ease, color .18s ease, box-shadow .18s ease, padding .18s ease;
+}
+.ws-assets-float.is-placed {
+  /* left/top 由 JS 内联控制 */
+}
+.ws-assets-float.is-dragging {
+  cursor: grabbing;
+  z-index: 22;
+  transition: none;
+  box-shadow:
+    0 0 0 1px rgba(167,139,250,.45),
+    0 14px 28px rgba(0,0,0,.4);
 }
 .ws-assets-float:hover,
 .ws-assets-float:focus-visible {
@@ -292,10 +306,14 @@ body.ws-page .assets-head h3 {
     0 10px 24px rgba(0,0,0,.34);
   outline: none;
 }
+.ws-assets-float.is-dragging:hover {
+  width: 26px;
+}
 .ws-assets-float-icon {
   width: 14px;
   height: 14px;
   flex: none;
+  pointer-events: none;
 }
 .ws-assets-float-icon-expand { display: none; }
 .ws-assets-float-tip {
@@ -305,10 +323,9 @@ body.ws-page .assets-head h3 {
   font-weight: 500;
   letter-spacing: .02em;
   white-space: nowrap;
+  pointer-events: none;
 }
 body.ws-page.ws-assets-collapsed .ws-assets-float {
-  top: 12px;
-  left: 10px;
   width: 34px;
   height: 34px;
   padding: 0;
@@ -320,11 +337,18 @@ body.ws-page.ws-assets-collapsed .ws-assets-float:focus-visible {
   width: auto;
   padding: 0 10px 0 8px;
 }
+body.ws-page.ws-assets-collapsed .ws-assets-float.is-dragging:hover {
+  width: 34px;
+  padding: 0;
+}
 body.ws-page.ws-assets-collapsed .ws-assets-float-icon-collapse { display: none; }
 body.ws-page.ws-assets-collapsed .ws-assets-float-icon-expand { display: block; }
 body.ws-page.ws-assets-collapsed .ws-assets-float:hover .ws-assets-float-tip,
 body.ws-page.ws-assets-collapsed .ws-assets-float:focus-visible .ws-assets-float-tip {
   display: inline;
+}
+body.ws-page.ws-assets-collapsed .ws-assets-float.is-dragging:hover .ws-assets-float-tip {
+  display: none;
 }
 body.ws-page.ws-assets-collapsed .ws {
   grid-template-columns: minmax(0, 1fr) var(--ws-player-width);
