@@ -1666,6 +1666,37 @@
     ReplicaUI.toast("已替换片段引用资产");
   }
 
+  function removeShotAsset(assetId, kind) {
+    var s = shot();
+    if (!s || !assetId || !kind) return;
+    var current = citedAssets(s).find(function (item) { return item.id === assetId && item.kind === kind; });
+    if (!current) return;
+    var token = kind === "char" ? "c" : kind === "scene" ? "s" : "p";
+    var escapedId = assetId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    s.refs = (s.refs || []).filter(function (id) { return id !== assetId; });
+    s.prompt = (s.prompt || "").replace(new RegExp("\\{" + token + ":" + escapedId + "\\}", "g"), "");
+    if (kind === "scene") {
+      s.scenes = (s.scenes || []).filter(function (key) { return key !== assetId; });
+      if (state.activeScene[s.id] === assetId) state.activeScene[s.id] = s.scenes[0] || null;
+    }
+    s.anchors = (s.anchors || []).filter(function (anchor) {
+      return anchor.asset !== assetId && !(kind === "scene" && anchor.scene === assetId);
+    });
+    s.offscreen = (s.offscreen || []).filter(function (item) { return item.asset !== assetId; });
+    var st = stages[s.id];
+    if (st) {
+      Object.keys(st.boards).forEach(function (key) {
+        st.boards[key].marks = st.boards[key].marks.filter(function (mark) { return mark.asset !== assetId; });
+      });
+      if (kind === "scene") delete st.boards[assetId];
+    }
+    state.selected = null;
+    state.promptShot = null;
+    state.replaceTarget = null;
+    renderAll();
+    ReplicaUI.toast("已删除“" + current.name + "”，提示词引用已同步移除");
+  }
+
   function renderRefStrip() {
     var row = $("#ws-ref-row");
     if (!row) return;
@@ -1676,7 +1707,10 @@
       var open = state.replaceTarget && state.replaceTarget.id === item.id;
       return '<div class="ws-ref-item' + (open ? " is-open" : "") + '">' +
         '<img loading="lazy" decoding="async" src="' + item.image + '" alt="">' +
-        '<button type="button" class="ws-ref-swap" data-act="replace-ref" data-ref="' + item.id + '" data-kind="' + item.kind + '" title="替换' + kindName[item.kind] + '" aria-label="替换' + item.name + '">替换</button>' +
+        '<span class="ws-ref-actions">' +
+        '<button type="button" class="ws-ref-action is-replace" data-act="replace-ref" data-ref="' + item.id + '" data-kind="' + item.kind + '" title="替换' + kindName[item.kind] + '" aria-label="替换' + item.name + '">' + ICON_EDIT + "</button>" +
+        '<button type="button" class="ws-ref-action is-remove" data-act="remove-ref" data-ref="' + item.id + '" data-kind="' + item.kind + '" title="删除并同步移除提示词引用" aria-label="删除' + item.name + '并同步移除提示词引用"><span aria-hidden="true">×</span></button>' +
+        "</span>" +
         "</div>";
     }).join("") || '<span class="ws-ref-empty">当前片段还没有引用资产</span>';
     if (!state.replaceTarget) return;
@@ -2073,6 +2107,10 @@
       state.replaceTarget = same ? null : { id: t.dataset.ref, kind: t.dataset.kind };
       state.replaceQuery = "";
       renderRefStrip();
+      return;
+    }
+    if (act === "remove-ref") {
+      removeShotAsset(t.dataset.ref, t.dataset.kind);
       return;
     }
     if (act === "pick-replace") {

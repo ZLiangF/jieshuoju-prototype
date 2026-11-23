@@ -2947,7 +2947,7 @@ body.ws-page .ws-ref-item {
   height: 40px;
   flex: none;
   border-radius: 8px;
-  overflow: hidden;
+  overflow: visible;
   background: #111114;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,.1);
 }
@@ -2957,22 +2957,58 @@ body.ws-page .ws-replace-option img {
   height: 100%;
   object-fit: cover;
 }
-body.ws-page .ws-ref-swap {
+body.ws-page .ws-ref-item > img {
+  border-radius: 8px;
+}
+body.ws-page .ws-ref-actions {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
-  color: #fff;
   background: rgba(8,8,12,.62);
-  font-size: 10px;
-  font-weight: 650;
-  letter-spacing: .04em;
   opacity: 0;
   transition: opacity .15s ease;
 }
-body.ws-page .ws-ref-item:hover .ws-ref-swap,
-body.ws-page .ws-ref-item.is-open .ws-ref-swap {
+body.ws-page .ws-ref-item:hover .ws-ref-actions,
+body.ws-page .ws-ref-item:focus-within .ws-ref-actions,
+body.ws-page .ws-ref-item.is-open .ws-ref-actions {
   opacity: 1;
+}
+body.ws-page .ws-ref-action {
+  display: grid;
+  place-items: center;
+  color: #fff;
+  transition: color .15s ease, background .15s ease;
+}
+body.ws-page .ws-ref-action.is-replace {
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+}
+body.ws-page .ws-ref-action.is-remove {
+  position: absolute;
+  z-index: 1;
+  top: -5px;
+  right: -5px;
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgba(255,255,255,.42);
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  background: #3f3f46;
+  box-shadow: 0 2px 6px rgba(0,0,0,.42);
+}
+body.ws-page .ws-ref-action svg {
+  width: 12px;
+  height: 12px;
+}
+body.ws-page .ws-ref-action.is-replace:hover,
+body.ws-page .ws-ref-action.is-replace:focus-visible {
+  background: rgba(124,58,237,.22);
+}
+body.ws-page .ws-ref-action.is-remove:hover,
+body.ws-page .ws-ref-action.is-remove:focus-visible {
+  background: #dc2626;
 }
 body.ws-page .ws-ref-empty,
 body.ws-page .ws-ref-hint {
