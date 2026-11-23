@@ -130,7 +130,7 @@ function subCardHtml(row, entry) {
     : '<button type="button" class="asset-flag is-action ' + state + '" data-gen-look="' + key + "|" + look.id + '" title="生成这个子角色">' + lookStateIcon(state) + (state === "failed" ? "重新生成" : "生成") + "</button>";
   var chip = episodeChip(look.eps);
   return '<article class="char-card asset-card asset-char asset-sub is-' + state + '" data-kind="char" data-i="' + row.i + '" data-key="' + key + '" data-look="' + look.id + '"' + (multiOn ? ' title="多选按角色整体选择"' : "") + ">" +
-    '<div class="asset-card-media is-' + state + (state === "ready" ? " is-sheet" : state === "pending" ? " is-empty" : "") + '">' + visual + hdBadge(look.upscale) + flag + "</div>" +
+    '<div class="asset-card-media is-' + state + (state === "ready" ? " is-sheet" : state === "pending" ? " is-empty" : "") + '">' + visual + hdBadge(look.upscale) + lookVoiceMarkHtml(look, item, multiOn) + flag + "</div>" +
     '<div class="asset-card-info"><div class="asset-card-title"><h3 title="' + look.name + '"><span class="asset-name">' + shortName + '</span><span class="tag asset-sub-tag">子角色</span></h3>' +
     '<span class="looks" title="' + chip.title + '">' + chip.html.replace(/<[^>]+>/g, "") + "</span></div>" +
     '<p class="asset-sub-owner">' + SUB_ICON + "隶属 " + item.name + "</p>" +

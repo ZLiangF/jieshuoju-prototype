@@ -1,5 +1,8 @@
 document.addEventListener("keydown", function (e) {
   if (e.key !== "Escape") return;
+  if (document.getElementById("voice-sync-all-dialog").classList.contains("open")) { closeVoiceSyncAllDialog(); return; }
+  if (!document.getElementById("voice-sync-confirm").hidden) { closeVoiceSyncConfirm(); return; }
+  if (document.getElementById("voice-sync-dialog").classList.contains("open")) { closeVoiceSyncDialog(); return; }
   if (document.getElementById("style-confirm").classList.contains("open")) { closeAssetStyleConfirm(); return; }
   if (!document.getElementById("asset-style-menu").hidden) { closeAssetStyleMenu(); return; }
   if (document.getElementById("prompt-required-dialog").classList.contains("open")) { closePromptRequiredDialog(); return; }

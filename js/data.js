@@ -60,10 +60,10 @@ window.ReplicaData = {
       voiceBind: { id: "steady-m", name: "沉稳男声", summary: "成熟克制，语速偏慢", source: "library", pitch: 0.85, rate: 0.92 },
       looksList: [
         { id: "delivery", name: "萧铭-亮黄外卖服-白色头巾蒙面", eps: "1", image: "media/characters/xiaoming.png", prompt: "30岁中国男性，短发，亮黄外卖外套，黑裤，手持白色头巾，白底全身三视图。" },
-        { id: "home", parentId: "delivery", name: "萧铭-灰色居家T恤", eps: "1-18,20,22,24,26,28,30,32,34,36,38,41-52,55,58,61,64,67,70,73,76,80,100", image: "media/characters/gushen.png", prompt: "30岁中国男性，短发，居家灰色T恤，深蓝牛仔裤，白底全身三视图。" },
+        { id: "home", parentId: "delivery", name: "萧铭-灰色居家T恤", eps: "1-18,20,22,24,26,28,30,32,34,36,38,41-52,55,58,61,64,67,70,73,76,80,100", image: "media/characters/gushen.png", voiceBind: { id: "steady-m", name: "沉稳男声", summary: "成熟克制，语速偏慢", source: "library", pitch: 0.85, rate: 0.92 }, prompt: "30岁中国男性，短发，居家灰色T恤，深蓝牛仔裤，白底全身三视图。" },
         { id: "suit", parentId: "delivery", name: "萧铭-黑色三件套正装", eps: "15", image: "media/characters/gushen.png", sheet: "media/characters/sheets/sucheng.jpg", prompt: "30岁中国男性，黑色西装，白衬衫，白底全身三视图。" },
-        { id: "injured", parentId: "delivery", name: "萧铭-亮黄外卖服-手臂渗血受伤", eps: "9,13", image: "media/characters/xiaoming.png", voice: "虚弱低沉，呼吸急促，句尾带轻微颤抖", prompt: "30岁中国男性，外卖外套，手臂受伤，白底全身三视图。" },
-        { id: "aged", parentId: "delivery", name: "萧铭-深色便装-白发苍老", eps: "11", image: "media/characters/gushen.png", voice: "苍老沙哑，语速很慢，气声偏多", prompt: "年长中国男性，深色便装，白底全身三视图。" },
+        { id: "injured", parentId: "delivery", name: "萧铭-亮黄外卖服-手臂渗血受伤", eps: "9,13", image: "media/characters/xiaoming.png", voice: "虚弱低沉，呼吸急促，句尾带轻微颤抖", voiceBind: { id: "weak-m", name: "虚弱低沉男声", summary: "虚弱低沉，句尾带轻微颤抖", source: "generated", pitch: 0.78, rate: 0.8 }, prompt: "30岁中国男性，外卖外套，手臂受伤，白底全身三视图。" },
+        { id: "aged", parentId: "delivery", name: "萧铭-深色便装-白发苍老", eps: "11", image: "media/characters/gushen.png", voice: "苍老沙哑，语速很慢，气声偏多", voiceBind: { id: "old-m", name: "苍老沙哑男声", summary: "苍老沙哑，语速很慢", source: "generated", pitch: 0.7, rate: 0.75 }, prompt: "年长中国男性，深色便装，白底全身三视图。" },
         { id: "tie", parentId: "delivery", name: "萧铭-黑西装白衬衫-系深色领带", eps: "8,14", image: "media/characters/gushen.png", prompt: "30岁中国男性，黑西装领带，白底全身三视图。" },
         { id: "hoodie", parentId: "delivery", name: "萧铭-灰色连帽卫衣", eps: "2,3", image: "media/characters/xiaoming.png", prompt: "30岁中国男性，灰色卫衣，白底全身三视图。" },
         { id: "shirt", parentId: "delivery", name: "萧铭-白衬衫黑西裤", eps: "4", image: "media/characters/gushen.png", prompt: "30岁中国男性，白衬衫黑西裤，白底全身三视图。" },
@@ -81,8 +81,8 @@ window.ReplicaData = {
         { id: "trench", parentId: "delivery", name: "萧铭-黑色长款风衣", eps: "14", image: "media/characters/gushen.png", prompt: "30岁中国男性，黑色风衣，白底全身三视图。" },
         { id: "formal", parentId: "delivery", name: "萧铭-黑色正式套装-摊牌", eps: "15", image: "media/characters/gushen.png", prompt: "30岁中国男性，正式套装，白底全身三视图。" },
         { id: "home-hurt", parentId: "home", name: "萧铭-灰色居家T恤-手臂缠绷带渗血", eps: "9", image: "media/characters/gushen.png", voice: "虚弱低沉，呼吸急促，句尾带轻微颤抖", prompt: "30岁中国男性，居家T恤，手臂受伤，白底全身三视图。" },
-        { id: "home-drunk", parentId: "home", name: "萧铭-灰色居家T恤-醉酒踉跄", eps: "7", image: "media/characters/xiaoming.png", voice: "含糊拖长，语速不稳，尾音发飘", prompt: "30岁中国男性，居家T恤，醉酒状态，白底全身三视图。" },
-        { id: "home-old", parentId: "home", name: "萧铭-灰色居家T恤-白发年老", eps: "11", image: "media/characters/gushen.png", voice: "苍老沙哑，语速很慢，气声偏多", prompt: "年长中国男性，居家便装，白底全身三视图。" },
+        { id: "home-drunk", parentId: "home", name: "萧铭-灰色居家T恤-醉酒踉跄", eps: "7", image: "media/characters/xiaoming.png", voice: "含糊拖长，语速不稳，尾音发飘", voiceBind: { id: "drunk-m", name: "醉酒含糊男声", summary: "含糊拖长，尾音发飘", source: "generated", pitch: 0.9, rate: 0.7 }, prompt: "30岁中国男性，居家T恤，醉酒状态，白底全身三视图。" },
+        { id: "home-old", parentId: "home", name: "萧铭-灰色居家T恤-白发年老", eps: "11", image: "media/characters/gushen.png", voice: "苍老沙哑，语速很慢，气声偏多", voiceBind: { id: "old-m", name: "苍老沙哑男声", summary: "苍老沙哑，语速很慢", source: "generated", pitch: 0.7, rate: 0.75 }, prompt: "年长中国男性，居家便装，白底全身三视图。" },
         { id: "home-old-patient", parentId: "home-old", name: "萧铭-灰色居家T恤-年老病号虚弱", eps: "11", image: "media/characters/xiaoming.png", voice: "苍老沙哑，语速很慢，气声偏多", prompt: "年长中国男性，病号服，白底全身三视图。" },
         { id: "suit-party", parentId: "suit", name: "萧铭-黑色三件套正装-宴会出场", eps: "8,14", image: "media/characters/gushen.png", prompt: "30岁中国男性，黑色正装，宴会场合，白底全身三视图。" },
         { id: "suit-talk", parentId: "suit", name: "萧铭-黑色三件套正装-谈判摊牌", eps: "15", image: "media/characters/gushen.png", prompt: "30岁中国男性，黑色正装，谈判场合，白底全身三视图。" }
@@ -96,7 +96,7 @@ window.ReplicaData = {
       looksList: [
         { id: "ceo", name: "贺芷-黑色修身总裁套装", eps: "1,3,4,6,8,10,12,14", image: "media/characters/hezhi.png", prompt: "28岁中国女性，黑色西装套装，手持黑伞，白底全身三视图。" },
         { id: "home2", name: "贺芷-深色日常连衣裙", eps: "6,8,14", image: "media/characters/suwan.png", prompt: "28岁中国女性，深色连衣裙，白底全身三视图。" },
-        { id: "banquet", name: "贺芷-黑色吊带礼服-宴会", eps: "8,14", image: "media/characters/hezhi.png", sheet: "media/characters/sheets/hezhi.jpg", voice: "清冷利落，语速适中，带命令口吻", prompt: "28岁中国女性，黑色礼服，宴会场合，白底全身三视图。" },
+        { id: "banquet", name: "贺芷-黑色吊带礼服-宴会", eps: "8,14", image: "media/characters/hezhi.png", sheet: "media/characters/sheets/hezhi.jpg", voice: "清冷利落，语速适中，带命令口吻", voiceBind: { id: "gen-hezhi-banquet", name: "宴会清冷女声", summary: "清冷利落，语速适中", source: "generated", pitch: 1.1, rate: 0.95 }, prompt: "28岁中国女性，黑色礼服，宴会场合，白底全身三视图。" },
         { id: "rain", name: "贺芷-深色风衣-雨夜", eps: "9", image: "media/characters/suwan.png", prompt: "28岁中国女性，深色外套，雨夜，白底全身三视图。" }
       ]
     },

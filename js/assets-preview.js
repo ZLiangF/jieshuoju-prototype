@@ -250,6 +250,10 @@ var VOICE_REUSE_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.
 var VOICE_DOWNLOAD_ICON = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.8v6.4M5.4 7.2 8 9.8l2.6-2.6M3.4 12.6h9.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 var voiceNewId = "";
 var voiceUploadSeq = 0;
+var voiceSyncSelected = {};
+var voiceSyncQuery = "";
+var voiceSyncFilter = "all";
+var voiceSyncBusy = false;
 
 function voiceAssetsOf(char) {
   if (!char) return [];
@@ -273,8 +277,20 @@ function voiceDurationText(sec) {
   return sec ? "0:" + String(Math.round(sec)).padStart(2, "0") : "";
 }
 
+function voiceUsageCount(id) {
+  var count = 0;
+  D.characters.forEach(function (char) {
+    if (char.voiceBind && char.voiceBind.id === id) count += 1;
+    (char.looksList || []).forEach(function (look) {
+      if (look.voiceBind && look.voiceBind.id === id) count += 1;
+    });
+  });
+  return count;
+}
+
 function voiceItemHtml(voice) {
   var bound = voiceBindChar && voiceBindChar.voiceBind && voiceBindChar.voiceBind.id === voice.id;
+  var usage = voiceUsageCount(voice.id);
   var picked = voiceBindPick && voiceBindPick.id === voice.id;
   var playing = voicePlayingId === voice.id;
   var source = voice.source === "upload" ? "上传" : "AI 生成";
@@ -291,7 +307,7 @@ function voiceItemHtml(voice) {
   } else {
     lead = '<button type="button" class="voice-play' + (playing ? " is-playing" : "") + '" data-voice-play="' + voice.id + '" aria-label="' + (playing ? "停止" : "试听") + escapeHtml(voice.name) + '">' +
       (playing ? '<span class="voice-bars" aria-hidden="true"><i></i><i></i><i></i></span>' : "▶") + "</button>";
-    meta = [escapeHtml(voice.summary || ""), voiceDurationText(voice.duration), escapeHtml(voice.time || "")].filter(Boolean).join(" · ");
+    meta = [escapeHtml(voice.summary || ""), voiceDurationText(voice.duration), escapeHtml(voice.time || ""), usage > 1 ? "被 " + usage + " 个形象使用" : ""].filter(Boolean).join(" · ");
   }
   var acts = "";
   if (voice.status === "failed") {
@@ -305,7 +321,7 @@ function voiceItemHtml(voice) {
   }
   if (voice.status !== "generating") {
     acts += '<button type="button" class="voice-item-act is-danger" data-voice-del="' + voice.id + '"' +
-      (bound ? ' disabled aria-label="使用中的音色不能删除" data-tip="使用中，不能删除"' : ' aria-label="删除" data-tip="删除"') + ">" + VOICE_TRASH_ICON + "</button>";
+      (usage ? ' disabled aria-label="使用中的音色不能删除" data-tip="已有形象使用，不能删除"' : ' aria-label="删除" data-tip="删除"') + ">" + VOICE_TRASH_ICON + "</button>";
   }
   return '<div class="' + cls + '" data-voice-id="' + voice.id + '"' +
     (voice.status === "ready" ? ' role="radio" tabindex="0" aria-checked="' + (picked ? "true" : "false") + '"' : "") + ">" +
@@ -337,6 +353,25 @@ function paintVoiceSwitch() {
   button.setAttribute("aria-checked", on ? "true" : "false");
   button.title = bound ? (on ? "点击停用，已选音色会保留" : "点击开启，旁白和对白使用这个音色") : "先绑定一条音色，才能开启";
   document.getElementById("voice-switch-label").textContent = on ? "已开启" : bound ? "已关闭" : "未开启";
+  paintVoiceSyncEntry(on);
+}
+
+function paintVoiceSyncEntry(on) {
+  var counts = voiceSyncCounts();
+  var pending = on ? counts.none + counts.own : 0;
+  var reason = !on ? "请先开启当前角色的音色" : !counts.all ? "当前角色没有其他子形象" : !pending ? "所有子形象都已使用当前音色，无需同步" : "";
+  var open = document.getElementById("voice-sync-open");
+  var all = document.getElementById("voice-sync-all");
+  open.disabled = !!reason;
+  all.disabled = !!reason;
+  open.title = reason || "选择要同步的子形象";
+  all.title = reason || "把当前音色同步给 " + pending + " 个子形象";
+  document.getElementById("voice-sync-stats").innerHTML = !on || !counts.all
+    ? "<em>" + (reason) + "</em>"
+    : "<span>共 " + counts.all + " 个</span>" +
+      '<span><i class="dot same"></i>已使用 ' + counts.same + "</span>" +
+      '<span><i class="dot none"></i>暂无音色 ' + counts.none + "</span>" +
+      '<span><i class="dot own"></i>独立音色 ' + counts.own + "</span>";
 }
 
 function paintVoiceConfirm() {
@@ -352,6 +387,287 @@ function paintVoiceConfirm() {
   else if (isBound) note.textContent = "这条音频正在使用";
   else if (!heard) note.textContent = "试听后才能使用「" + pick.name + "」";
   else note.textContent = bound ? "替换后只影响之后的配音，已生成的不变" : "将绑定到「" + voiceBindChar.name + "」";
+}
+
+function voiceSyncTargets() {
+  if (!voiceBindChar) return [];
+  var looks = voiceBindChar.looksList || [];
+  var mainIndex = looks.findIndex(function (look) {
+    return voiceBindChar.look && look.name.indexOf(voiceBindChar.look) !== -1;
+  });
+  if (mainIndex < 0) mainIndex = 0;
+  var main = looks[mainIndex];
+  return orderedLooks(looks).map(function (entry) { return entry.look; }).filter(function (look) {
+    return look !== main;
+  });
+}
+
+function voiceSyncDepth(look, targets) {
+  var depth = 0;
+  var cur = look;
+  var guard = 0;
+  while (cur && cur.parentId && guard++ < 12) {
+    var parentId = cur.parentId;
+    cur = targets.filter(function (item) { return item.id === parentId; })[0];
+    if (cur) depth += 1;
+  }
+  return depth;
+}
+
+function voiceSyncDescendants(look, targets) {
+  var out = [];
+  targets.forEach(function (item) {
+    if (item.parentId === look.id) {
+      out.push(item);
+      voiceSyncDescendants(item, targets).forEach(function (child) { out.push(child); });
+    }
+  });
+  return out;
+}
+
+function voiceSyncEpsText(look) {
+  var raw = String(look.eps || "");
+  if (!raw) return "";
+  if (raw.length <= 8) return "第 " + raw + " 集";
+  return parseEpisodeNumbers(raw).length + " 集";
+}
+
+function voiceSyncState(look) {
+  if (!look || !look.voiceBind) return "none";
+  var bound = voiceBindChar && voiceBindChar.voiceBind;
+  return bound && look.voiceBind.id === bound.id ? "same" : "own";
+}
+
+function voiceSyncSame(look) {
+  return voiceSyncState(look) === "same";
+}
+
+function voiceSyncCounts() {
+  var out = { all: 0, none: 0, own: 0, same: 0 };
+  voiceSyncTargets().forEach(function (look) {
+    out.all += 1;
+    out[voiceSyncState(look)] += 1;
+  });
+  return out;
+}
+
+function voiceSyncMatches(look) {
+  var query = voiceSyncQuery.trim().toLowerCase();
+  if (voiceSyncFilter !== "all" && voiceSyncState(look) !== voiceSyncFilter) return false;
+  return !query || String(look.name || "").toLowerCase().indexOf(query) !== -1 ||
+    String(look.eps || "").toLowerCase().indexOf(query) !== -1;
+}
+
+function voiceSyncPickedTargets() {
+  return voiceSyncTargets().filter(function (look) {
+    return voiceSyncSelected[look.id] && !voiceSyncSame(look);
+  });
+}
+
+function voiceSyncShortName(look) {
+  var nameRe = new RegExp("^" + String(voiceBindChar.name || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "[-—·]?");
+  return String(look.name || "").replace(nameRe, "") || look.name;
+}
+
+function renderVoiceSyncTabs() {
+  var counts = voiceSyncCounts();
+  var tabs = [["all", "全部"], ["none", "暂无音色"], ["own", "独立音色"], ["same", "已使用"]];
+  document.getElementById("voice-sync-tabs").innerHTML = tabs.map(function (tab) {
+    return '<button type="button" class="' + (voiceSyncFilter === tab[0] ? "on" : "") + '" data-voice-sync-tab="' + tab[0] + '">' +
+      tab[1] + "<b>" + counts[tab[0]] + "</b></button>";
+  }).join("");
+}
+
+function renderVoiceSyncList() {
+  var all = voiceSyncTargets();
+  var flat = !!voiceSyncQuery.trim() || voiceSyncFilter !== "all";
+  var list = all.filter(voiceSyncMatches);
+  var labels = { none: "暂无音色", own: "独立音色", same: "已使用当前音色" };
+  renderVoiceSyncTabs();
+  document.getElementById("voice-sync-list").innerHTML = list.length ? list.map(function (look) {
+    var state = voiceSyncState(look);
+    var same = state === "same";
+    var selected = !!voiceSyncSelected[look.id] && !same;
+    var name = voiceSyncShortName(look);
+    var depth = flat ? 0 : voiceSyncDepth(look, all);
+    var pending = flat ? [] : voiceSyncDescendants(look, all).filter(function (item) { return !voiceSyncSame(item); });
+    var branch = pending.length
+      ? '<button type="button" class="voice-sync-branch" data-voice-sync-branch="' + look.id + '" title="选中这个形象和它下面所有还没用当前音色的子形象">+ 下级 ' + pending.length + "</button>"
+      : (flat ? "" : '<span class="voice-sync-branch-slot" aria-hidden="true"></span>');
+    var sub = state === "own" ? "当前：" + escapeHtml(look.voiceBind.name) : "";
+    return '<div class="voice-sync-row" style="--depth:' + depth + '">' +
+      (depth ? '<i class="voice-sync-tree" aria-hidden="true">↳</i>' : "") +
+      '<button type="button" class="voice-sync-item' + (selected ? " is-selected" : "") + (same ? " is-same" : "") + '" data-voice-sync-id="' + look.id + '"' + (same ? " disabled" : "") + ">" +
+      '<span class="voice-sync-check" aria-hidden="true">' + (same || selected ? "✓" : "") + "</span>" +
+      '<span class="voice-sync-avatar"><img loading="lazy" decoding="async" src="' + (look.image || voiceBindChar.image || "") + '" alt=""></span>' +
+      '<span class="voice-sync-item-main"><strong title="' + escapeHtml(name) + '">' + escapeHtml(name) + "</strong>" + (sub ? "<small>" + sub + "</small>" : "") + "</span>" +
+      '<span class="voice-sync-role" title="第 ' + escapeHtml(String(look.eps || "")) + ' 集">' + escapeHtml(voiceSyncEpsText(look)) + "</span>" +
+      '<span class="voice-sync-state is-' + state + '">' + labels[state] + "</span></button>" +
+      branch + "</div>";
+  }).join("") : '<p class="voice-sync-empty">没有匹配的子形象</p>';
+  paintVoiceSyncSummary();
+}
+
+function paintVoiceSyncSummary() {
+  var selected = voiceSyncPickedTargets();
+  var overwrite = selected.filter(function (look) { return !!look.voiceBind; }).length;
+  var count = document.getElementById("voice-sync-count");
+  var submit = document.getElementById("voice-sync-submit");
+  count.textContent = selected.length
+    ? "已选 " + selected.length + " 个" + (overwrite ? "，其中 " + overwrite + " 个会覆盖原音色" : "")
+    : "请选择要同步的子形象";
+  count.classList.toggle("is-warn", overwrite > 0);
+  submit.disabled = !selected.length || voiceSyncBusy;
+  submit.textContent = voiceSyncBusy ? "同步中…" : selected.length ? "同步到 " + selected.length + " 个子形象" : "同步音色";
+}
+
+function closeVoiceSyncConfirm() {
+  if (voiceSyncBusy) return;
+  document.getElementById("voice-sync-confirm").hidden = true;
+}
+
+function closeVoiceSyncDialog() {
+  if (voiceSyncBusy) return;
+  closeVoiceSyncConfirm();
+  document.getElementById("voice-sync-dialog").classList.remove("open");
+}
+
+function showVoiceSyncConfirm(targets) {
+  var conflicts = targets.filter(function (look) { return voiceSyncState(look) === "own"; });
+  if (!conflicts.length) {
+    applyVoiceSync(targets);
+    return;
+  }
+  var names = conflicts.slice(0, 2).map(voiceSyncShortName).join("、");
+  document.getElementById("voice-sync-confirm-title").textContent = "覆盖 " + conflicts.length + " 个子形象的独立音色？";
+  document.getElementById("voice-sync-confirm-copy").textContent =
+    "「" + names + "」" + (conflicts.length > 2 ? "等 " + conflicts.length + " 个子形象" : "") + "原有的音色会被替换为「" + voiceBindChar.voiceBind.name + "」。只替换音频，图片、名称、提示词和已生成内容均不变，同步后可撤销。";
+  document.getElementById("voice-sync-confirm").hidden = false;
+}
+
+function requestVoiceSync() {
+  var targets = voiceSyncPickedTargets();
+  if (!targets.length || voiceSyncBusy) return;
+  showVoiceSyncConfirm(targets);
+}
+
+var voiceSyncUndoSnapshot = null;
+var voiceSyncUndoTimer = 0;
+var voiceSyncAllTargets = [];
+
+function hideVoiceSyncUndo() {
+  clearTimeout(voiceSyncUndoTimer);
+  voiceSyncUndoSnapshot = null;
+  document.getElementById("voice-sync-undo").classList.remove("open");
+}
+
+function showVoiceSyncUndo(message, snapshot) {
+  clearTimeout(voiceSyncUndoTimer);
+  voiceSyncUndoSnapshot = snapshot;
+  document.getElementById("voice-sync-undo-text").textContent = message;
+  document.getElementById("voice-sync-undo").classList.add("open");
+  voiceSyncUndoTimer = setTimeout(hideVoiceSyncUndo, 8000);
+}
+
+function undoVoiceSync() {
+  var snapshot = voiceSyncUndoSnapshot;
+  if (!snapshot) return;
+  snapshot.forEach(function (entry) {
+    if (entry.bind) entry.look.voiceBind = entry.bind; else delete entry.look.voiceBind;
+    if (entry.on === undefined) delete entry.look.voiceOn; else entry.look.voiceOn = entry.on;
+  });
+  hideVoiceSyncUndo();
+  if (document.getElementById("voice-dialog").classList.contains("open")) {
+    renderVoiceList();
+    paintVoiceConfirm();
+    paintVoiceSwitch();
+  }
+  refreshVoiceSurfaces();
+  ReplicaUI.toast("已撤销，" + snapshot.length + " 个子形象恢复原音色");
+}
+
+function setVoiceSyncBusy(busy) {
+  voiceSyncBusy = busy;
+  ["voice-sync-cancel", "voice-sync-x", "voice-sync-all-cancel", "voice-sync-all-submit"].forEach(function (id) {
+    document.getElementById(id).disabled = busy;
+  });
+  document.getElementById("voice-sync-all-submit").textContent = busy ? "同步中…" : "确认同步";
+  paintVoiceSyncSummary();
+}
+
+function applyVoiceSync(targets) {
+  if (!targets.length || voiceSyncBusy || !voiceBindChar || !charVoiceOn(voiceBindChar)) return;
+  var source = Object.assign({}, voiceBindChar.voiceBind);
+  var sourceOn = voiceBindChar.voiceOn !== false;
+  document.getElementById("voice-sync-confirm").hidden = true;
+  setVoiceSyncBusy(true);
+  setTimeout(function () {
+    var snapshot = targets.map(function (look) {
+      return { look: look, bind: look.voiceBind ? Object.assign({}, look.voiceBind) : null, on: look.voiceOn };
+    });
+    targets.forEach(function (look) {
+      look.voiceBind = Object.assign({}, source);
+      look.voiceOn = sourceOn;
+    });
+    setVoiceSyncBusy(false);
+    document.getElementById("voice-sync-dialog").classList.remove("open");
+    document.getElementById("voice-sync-all-dialog").classList.remove("open");
+    renderVoiceList();
+    paintVoiceConfirm();
+    paintVoiceSwitch();
+    refreshVoiceSurfaces();
+    showVoiceSyncUndo("已将 " + targets.length + " 个子形象统一为「" + source.name + "」", snapshot);
+  }, 780);
+}
+
+function openVoiceSyncDialog() {
+  if (!voiceBindChar || !charVoiceOn(voiceBindChar)) {
+    ReplicaUI.toast("请先为当前角色开启一个音色");
+    return;
+  }
+  voiceSyncSelected = {};
+  voiceSyncQuery = "";
+  voiceSyncFilter = "all";
+  document.getElementById("voice-sync-source-avatar").innerHTML = '<img decoding="async" src="' + (voiceBindChar.image || "") + '" alt="">';
+  document.getElementById("voice-sync-source-name").textContent = voiceBindChar.name;
+  document.getElementById("voice-sync-source-voice").textContent = "当前音色：" + voiceBindChar.voiceBind.name;
+  document.getElementById("voice-sync-search").value = "";
+  document.getElementById("voice-sync-confirm").hidden = true;
+  renderVoiceSyncList();
+  document.getElementById("voice-sync-dialog").classList.add("open");
+}
+
+function closeVoiceSyncAllDialog() {
+  if (voiceSyncBusy) return;
+  document.getElementById("voice-sync-all-dialog").classList.remove("open");
+}
+
+function openVoiceSyncAllDialog() {
+  if (!voiceBindChar || !charVoiceOn(voiceBindChar)) {
+    ReplicaUI.toast("请先为当前角色开启一个音色");
+    return;
+  }
+  var targets = voiceSyncTargets().filter(function (look) { return !voiceSyncSame(look); });
+  if (!targets.length) {
+    ReplicaUI.toast("所有子形象都已使用当前音色，无需同步");
+    return;
+  }
+  var counts = voiceSyncCounts();
+  var own = targets.filter(function (look) { return voiceSyncState(look) === "own"; });
+  var rows = [];
+  if (counts.none) rows.push('<li><i class="dot none"></i><span>暂无音色</span><b>' + counts.none + ' 个</b><em>直接设为当前音色</em></li>');
+  if (own.length) {
+    var tail = function (look) { return String(voiceSyncShortName(look)).split("-").pop(); };
+    var names = own.slice(0, 2).map(tail).join("、") + (own.length > 2 ? " 等" : "");
+    rows.push('<li><i class="dot own"></i><span>独立音色</span><b>' + own.length + ' 个</b><em title="' + escapeHtml(own.map(voiceSyncShortName).join("、")) + '">将被覆盖：' + escapeHtml(names) + "</em></li>");
+  }
+  if (counts.same) rows.push('<li><i class="dot same"></i><span>已使用当前音色</span><b>' + counts.same + ' 个</b><em>自动跳过</em></li>');
+  voiceSyncAllTargets = targets;
+  document.getElementById("voice-sync-all-title").textContent = "把「" + voiceBindChar.voiceBind.name + "」同步给 " + targets.length + " 个子形象？";
+  document.getElementById("voice-sync-all-copy").innerHTML =
+    '<ul class="voice-sync-mini-list">' + rows.join("") + "</ul>" +
+    "<small>只替换音频，图片、名称、提示词和已生成内容均不变，同步后可撤销。</small>";
+  document.getElementById("voice-sync-all-dialog").classList.add("open");
 }
 
 function renderVoicePanes() {
@@ -956,6 +1272,60 @@ document.getElementById("voice-switch").onclick = function () {
   refreshVoiceSurfaces();
   ReplicaUI.toast(char.voiceOn ? "已开启「" + char.name + "」的音色" : "已关闭「" + char.name + "」的音色，已选音色会保留");
 };
+document.getElementById("voice-sync-open").onclick = openVoiceSyncDialog;
+document.getElementById("voice-sync-all").onclick = openVoiceSyncAllDialog;
+document.getElementById("voice-sync-all-cancel").onclick = closeVoiceSyncAllDialog;
+document.getElementById("voice-sync-all-submit").onclick = function () { applyVoiceSync(voiceSyncAllTargets); };
+document.getElementById("voice-sync-all-dialog").onclick = function (e) { if (e.target === this) closeVoiceSyncAllDialog(); };
+document.getElementById("voice-sync-undo-btn").onclick = undoVoiceSync;
+document.getElementById("voice-sync-x").onclick = closeVoiceSyncDialog;
+document.getElementById("voice-sync-cancel").onclick = closeVoiceSyncDialog;
+document.getElementById("voice-sync-submit").onclick = requestVoiceSync;
+document.getElementById("voice-sync-confirm-cancel").onclick = closeVoiceSyncConfirm;
+document.getElementById("voice-sync-confirm-submit").onclick = function () {
+  applyVoiceSync(voiceSyncPickedTargets());
+};
+document.getElementById("voice-sync-search").oninput = function () {
+  voiceSyncQuery = this.value;
+  renderVoiceSyncList();
+};
+document.getElementById("voice-sync-tabs").onclick = function (e) {
+  var tab = e.target.closest("[data-voice-sync-tab]");
+  if (!tab) return;
+  voiceSyncFilter = tab.dataset.voiceSyncTab;
+  renderVoiceSyncList();
+};
+document.getElementById("voice-sync-select-all").onclick = function () {
+  voiceSyncTargets().filter(voiceSyncMatches).forEach(function (char) {
+    if (!voiceSyncSame(char)) voiceSyncSelected[char.id] = true;
+  });
+  renderVoiceSyncList();
+};
+document.getElementById("voice-sync-clear").onclick = function () {
+  voiceSyncSelected = {};
+  renderVoiceSyncList();
+};
+document.getElementById("voice-sync-list").onclick = function (e) {
+  var branch = e.target.closest("[data-voice-sync-branch]");
+  if (branch) {
+    var all = voiceSyncTargets();
+    var root = all.filter(function (look) { return look.id === branch.dataset.voiceSyncBranch; })[0];
+    if (!root) return;
+    var group = [root].concat(voiceSyncDescendants(root, all)).filter(function (look) { return !voiceSyncSame(look); });
+    var every = group.every(function (look) { return voiceSyncSelected[look.id]; });
+    group.forEach(function (look) { voiceSyncSelected[look.id] = !every; });
+    renderVoiceSyncList();
+    return;
+  }
+  var row = e.target.closest("[data-voice-sync-id]");
+  if (!row || row.disabled) return;
+  var id = row.dataset.voiceSyncId;
+  voiceSyncSelected[id] = !voiceSyncSelected[id];
+  renderVoiceSyncList();
+};
+document.getElementById("voice-sync-dialog").onclick = function (e) {
+  if (e.target === this) closeVoiceSyncDialog();
+};
 document.querySelector(".voice-seg").onclick = function (e) {
   var button = e.target.closest("[data-voice-tab]");
   if (!button) return;
@@ -1120,8 +1490,12 @@ function handleVoiceUpload(file) {
   }, 500);
   setTimeout(function () {
     if (token !== voiceUploadSeq) return;
-    if (file.size < 12 * 1024) {
-      paintVoiceUploadState("error", "音频太短", "请上传 10 秒以上的清晰人声");
+    if (file.size < 4 * 1024) {
+      paintVoiceUploadState("error", "音频太短", "音频时长不能少于 2 秒");
+      return;
+    }
+    if (file.size > 600 * 1024 || /长|long/i.test(file.name)) {
+      paintVoiceUploadState("error", "音频太长", "音频时长不能超过 15 秒");
       return;
     }
     if (/噪|嘈杂|noise|吵|bgm|音乐/i.test(file.name)) {
@@ -1141,7 +1515,7 @@ function handleVoiceUpload(file) {
       name: file.name.replace(/\.[^.]+$/, "").slice(0, 14) || "上传人声",
       summary: note || "上传人声",
       time: voiceStamp(),
-      duration: Math.max(10, Math.min(60, Math.round(file.size / 32000))),
+      duration: Math.max(2, Math.min(15, Math.round(file.size / 32000))),
       pitch: 1,
       rate: 1
     };
