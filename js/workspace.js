@@ -56,6 +56,7 @@
   var dragAsset = null;
   var wheelTimer = null;
   var pendingDeleteAsset = null;
+  var editingAsset = null;
 
   function $(s, r) { return (r || document).querySelector(s); }
   function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
@@ -184,10 +185,11 @@
 
   function charCard(c) {
     var placed = state.view === "stage" && boardOf(shot()).marks.some(function (m) { return m.asset === c.id; });
+    var label = charLabel(c);
     return '<div class="acard ws-acard is-char' + (placed ? " is-placed" : "") + '" role="button" tabindex="0" draggable="true" data-asset="' + c.id + '" data-kind="char">' +
-      '<span class="thumb"><img loading="lazy" decoding="async" src="' + (c.sheet || c.image) + '" alt="">' + assetDeleteButton(c.id, "char", charLabel(c)) +
+      '<span class="thumb"><img loading="lazy" decoding="async" src="' + (c.sheet || c.image) + '" alt="">' +
       (placed ? '<span class="ws-placed">已站位</span>' : "") + "</span>" +
-      '<span class="name">' + charLabel(c) + "</span></div>";
+      '<span class="name">' + label + "</span>" + assetCardActions(c.id, "char", label) + "</div>";
   }
 
   function sceneCard(s) {
@@ -200,13 +202,13 @@
         stageStatusIcon(st.apply) + (n ? "<em>" + n + "</em>" : "") + "</span>";
     }
     return '<div class="acard ws-acard is-scene" role="button" tabindex="0" data-asset="' + s.key + '" data-kind="scene">' +
-      '<span class="thumb"><img loading="lazy" decoding="async" src="' + s.image + '" alt="">' + assetDeleteButton(s.key, "scene", s.name) + hot + "</span>" +
-      '<span class="name">' + s.name + "</span></div>";
+      '<span class="thumb"><img loading="lazy" decoding="async" src="' + s.image + '" alt="">' + hot + "</span>" +
+      '<span class="name">' + s.name + "</span>" + assetCardActions(s.key, "scene", s.name) + "</div>";
   }
 
   function propCard(p) {
     return '<div class="acard ws-acard is-prop" role="button" tabindex="0" data-asset="' + p.id + '" data-kind="prop">' +
-      '<span class="thumb"><img loading="lazy" decoding="async" src="' + p.image + '" alt="">' + assetDeleteButton(p.id, "prop", p.name) + '</span><span class="name">' + p.name + "</span></div>";
+      '<span class="thumb"><img loading="lazy" decoding="async" src="' + p.image + '" alt=""></span><span class="name">' + p.name + "</span>" + assetCardActions(p.id, "prop", p.name) + "</div>";
   }
 
   var ICON_CHAR = '<svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="4.6" r="2.3" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M2.8 12c.5-2.4 2.1-3.6 4.2-3.6s3.7 1.2 4.2 3.6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>';
@@ -218,9 +220,15 @@
   var ICON_PROP = '<svg viewBox="0 0 14 14" aria-hidden="true"><rect x="2" y="4" width="10" height="8" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M5 4V2.8h4V4" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>';
   var ICON_FOLDER = '<svg class="ws-folder-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4.2c0-.7.5-1.2 1.2-1.2h3.1l1.1 1.2h4.4c.7 0 1.2.5 1.2 1.2v6.2c0 .7-.5 1.2-1.2 1.2H3.7c-.7 0-1.2-.5-1.2-1.2z" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/></svg>';
   var ICON_DELETE = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M6 4.5V3h4v1.5m1.5 0-.5 9H5l-.5-9M6.8 7v4M9.2 7v4" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var ICON_EDIT = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 11.8 4 8.6 11.2 1.4a1.4 1.4 0 0 1 2 2L6 10.6l-2.8 1.2zM9.8 2.8l2.4 2.4" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 13.5h10" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
 
-  function assetDeleteButton(id, kind, name) {
-    return '<button class="ws-asset-delete" type="button" data-act="delete-asset" data-asset-id="' + id + '" data-asset-kind="' + kind + '" data-asset-name="' + name + '" aria-label="删除' + name + '" data-tip="删除资产">' + ICON_DELETE + "</button>";
+  /* 编辑 + 删除成组放在卡片上（不在缩略图内），列表视图不会被 46px 缩略图裁掉 */
+  function assetCardActions(id, kind, name) {
+    var attrs = ' type="button" data-asset-id="' + escAttr(id) + '" data-asset-kind="' + kind + '" data-asset-name="' + escAttr(name) + '"';
+    return '<span class="ws-acard-acts">' +
+      '<button class="ws-asset-edit-btn"' + attrs + ' data-act="edit-asset" aria-label="编辑' + escAttr(name) + '" title="编辑">' + ICON_EDIT + "</button>" +
+      '<button class="ws-asset-delete"' + attrs + ' data-act="delete-asset" aria-label="删除' + escAttr(name) + '" title="删除">' + ICON_DELETE + "</button>" +
+      "</span>";
   }
 
   function assetGroups() {
@@ -356,6 +364,663 @@
     renderAll();
     ReplicaUI.toast("资产已删除");
   }
+
+  /* ---------- 资产编辑弹窗 ---------- */
+
+  var AE_Q5 = ["低画质", "标准画质", "高清画质", "超清画质", "极致画质"];
+  var AE_Q3 = ["低画质", "标准画质", "高清画质"];
+  var AE_RES = ["1K", "2K", "4K"];
+  /* 生图模型与资产库（assets-composer.js）保持一致 */
+  var AE_MODELS = [
+    { id: "gimage-26-pro", group: "G Image", name: "G Image 2.6 Pro", badge: "新", tag: "精修", qualities: AE_Q5, resolutions: AE_RES },
+    { id: "gimage-26-fast", group: "G Image", name: "G Image 2.6 Fast", badge: "新", tag: "快速", qualities: AE_Q5, resolutions: AE_RES },
+    { id: "gpt-25-pro", group: "G Image", name: "G Image 2.5 Pro", tag: "精修", qualities: AE_Q5, resolutions: AE_RES },
+    { id: "gpt-25-fast", group: "G Image", name: "G Image 2.5 Fast", tag: "快速", qualities: AE_Q5, resolutions: AE_RES },
+    { id: "gpt-2", group: "G Image", name: "G Image2", badge: "热门", qualities: AE_Q3, resolutions: AE_RES },
+    { id: "nano-banana-21", group: "Bimage", name: "Bimage 2.1", badge: "新", resolutions: ["512P", "1K", "2K", "4K"] },
+    { id: "banana-2", group: "Bimage", name: "Bimage 2", resolutions: ["512P", "1K", "2K", "4K"] },
+    { id: "nano-banana-2-lite", group: "Bimage", name: "Bimage 2 Lite", badge: "新", resolutions: ["1K"] },
+    { id: "banana-pro", group: "Bimage", name: "Bimage Pro", resolutions: ["1K", "2K", "4K"] },
+    { id: "seedream-5", group: "Seedream", name: "Seedream 5.0 Pro", resolutions: ["1K", "2K"] },
+    { id: "seedream-55", group: "Seedream", name: "Seedream 5.5", badge: "新", resolutions: ["1K", "2K"] }
+  ];
+  var AE_GEN_COST = 5;
+  var AE_REVERSE_COST = 3;
+  var AE_REF_MAX = 10;
+  var AE_TEXT = {
+    char: { title: "编辑形象", name: "形象名称", prompt: "形象描述", gen: "生成形象", noun: "形象", placeholder: "描述年龄、五官、发型、服装与体态", rewrite: "五官端正清晰，服饰款式、材质和配色符合人物身份，整体造型统一。" },
+    scene: { title: "编辑场景", name: "场景名称", prompt: "场景描述", gen: "生成场景", noun: "场景", placeholder: "描述空间、时间、天气与光线氛围", rewrite: "前后景层次清楚，光线方向、色调和天气氛围统一，画面中不出现人物。" },
+    prop: { title: "编辑道具", name: "道具名称", prompt: "道具描述", gen: "生成道具", noun: "道具", placeholder: "描述外形、材质、颜色与使用痕迹", rewrite: "材质、颜色和结构清晰，尺寸比例准确，纯色干净背景，主体突出。" }
+  };
+  var AE_ICON_X = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M3 3l6 6M9 3l-6 6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+  var AE_ICON_PLUS = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.2v9.6M3.2 8h9.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+  var AE_ICON_SPARK = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 9.5 6.5 14.2 8 9.5 9.5 8 14.2 6.5 9.5 1.8 8 6.5 6.5z" fill="currentColor"/></svg>';
+  var AE_SPIN = '<i class="ws-ae-spin" aria-hidden="true"></i>';
+  var aeToken = 0;
+  var aeMaskDown = false;
+
+  function parseEpsText(text) {
+    var out = [];
+    String(text || "").split(",").forEach(function (part) {
+      var range = part.trim().split("-").map(Number);
+      if (!range[0]) return;
+      if (range.length > 1) {
+        for (var n = range[0]; n <= range[1]; n++) if (out.indexOf(n) === -1) out.push(n);
+      } else if (out.indexOf(range[0]) === -1) out.push(range[0]);
+    });
+    return out.sort(function (a, b) { return a - b; });
+  }
+
+  function epsToText(list) {
+    if (!list || !list.length) return "";
+    var sorted = list.slice().sort(function (a, b) { return a - b; });
+    var parts = [];
+    var start = sorted[0];
+    var prev = sorted[0];
+    for (var i = 1; i <= sorted.length; i++) {
+      var cur = sorted[i];
+      if (cur === prev + 1) { prev = cur; continue; }
+      parts.push(start === prev ? String(start) : start + "-" + prev);
+      start = prev = cur;
+    }
+    return parts.join(",");
+  }
+
+  function resolveEditTarget(id, kind) {
+    if (kind === "char") {
+      var c = charById(id);
+      if (!c) return null;
+      var look = activeLook(c);
+      return {
+        kind: "char", id: id, char: c, look: look,
+        name: look ? look.name : charLabel(c),
+        image: c.sheet || (look && (look.sheet || look.image)) || c.image,
+        prompt: look ? look.prompt || "" : c.prompt || "",
+        voice: look && look.voice != null ? look.voice : c.voice || "",
+        audioOn: !!c.voiceAudioOn,
+        eps: look ? parseEpsText(look.eps) : (c.eps || []).slice(),
+        refs: [c.image].filter(Boolean)
+      };
+    }
+    if (kind === "scene") {
+      var parts = String(id).split("/");
+      var scene = sceneById(parts[0]);
+      if (!scene) return null;
+      var looks = scene.looksList || [];
+      var lookS = parts[1] ? looks.find(function (entry) { return entry.id === parts[1]; }) || null : looks[0] || null;
+      var info = D.stageScenes[id];
+      return {
+        kind: "scene", id: id, scene: scene, look: lookS,
+        name: lookS ? lookS.name : scene.name,
+        image: (lookS && (lookS.sheet || lookS.image)) || (info && info.image) || scene.image,
+        prompt: lookS ? lookS.prompt || "" : scene.prompt || "",
+        voice: "",
+        audioOn: false,
+        eps: lookS ? parseEpsText(lookS.eps) : (scene.eps || []).slice(),
+        refs: [scene.image].filter(Boolean)
+      };
+    }
+    var prop = propById(id);
+    if (!prop) return null;
+    return {
+      kind: "prop", id: id, prop: prop, look: null,
+      name: prop.name,
+      image: prop.image,
+      prompt: prop.prompt || "",
+      voice: "",
+      audioOn: false,
+      eps: (prop.eps || []).slice(),
+      refs: [prop.image].filter(Boolean)
+    };
+  }
+
+  function aeModel() {
+    return AE_MODELS.find(function (m) { return m.id === editingAsset.model; }) || AE_MODELS[0];
+  }
+
+  /* 只比较会被保存的字段；模型、画质等生成设置不算修改 */
+  function aeFormState() {
+    var a = editingAsset;
+    return JSON.stringify([
+      $("#asset-edit-name").value.trim(),
+      $("#asset-edit-prompt").value,
+      $("#asset-edit-voice").value,
+      a.eps.join(","),
+      a.audioOn,
+      a.rev
+    ]);
+  }
+
+  function aeIsDirty() {
+    return !!editingAsset && aeFormState() !== editingAsset.initial;
+  }
+
+  function aeSyncDirty() {
+    if (!editingAsset) return;
+    $("#asset-edit-foot-hint").hidden = !aeIsDirty();
+  }
+
+  function aeSyncCount() {
+    $("#asset-edit-count").textContent = $("#asset-edit-prompt").value.length + "/2000";
+  }
+
+  function aeSetNameError(show) {
+    $("#asset-edit-name-error").hidden = !show;
+    $("#asset-edit-name").classList.toggle("is-error", show);
+    $("#asset-edit-name").setAttribute("aria-invalid", show ? "true" : "false");
+  }
+
+  function aeSetPromptError(text) {
+    $("#asset-edit-prompt-error").textContent = text || "";
+    $("#asset-edit-prompt-error").hidden = !text;
+    $("#asset-edit-composer").classList.toggle("is-error", !!text);
+  }
+
+  function paintAeEps(renderGrid) {
+    var a = editingAsset;
+    if (!a) return;
+    var text = epsToText(a.eps).replace(/,/g, ", ");
+    var label = $("#asset-edit-eps-text");
+    var open = a.menu === "eps";
+    label.textContent = text || "请选择集数";
+    label.classList.toggle("is-empty", !text);
+    $("#asset-edit-eps-btn").title = text ? "第 " + text + " 集" : "";
+    $("#asset-edit-eps-btn").setAttribute("aria-expanded", open ? "true" : "false");
+    $("#asset-edit-eps-pop").hidden = !open;
+    $("#asset-edit-eps-count").textContent = "已选 " + a.eps.length + " 集";
+    if (open && renderGrid) {
+      var total = Math.max(15, Number(D.project.episodeTotal) || 15);
+      var cells = "";
+      for (var i = 1; i <= total; i++) {
+        var on = a.eps.indexOf(i) > -1;
+        cells += '<button type="button" class="ws-ae-ep' + (on ? " on" : "") + (i === EPISODE ? " is-current" : "") +
+          '" data-act="ae-toggle-ep" data-ep="' + i + '" aria-pressed="' + (on ? "true" : "false") + '"' +
+          (i === EPISODE ? ' title="当前集"' : "") + ">" + i + "</button>";
+      }
+      $("#asset-edit-eps-grid").innerHTML = cells;
+    }
+    var left = a.hadCurrentEp && a.eps.indexOf(EPISODE) === -1;
+    $("#asset-edit-eps-warn").hidden = !left;
+    if (left) $("#asset-edit-eps-warn").textContent = "已取消第 " + EPISODE + " 集，保存后该" + AE_TEXT[a.kind].noun + "将不再用于本集。";
+  }
+
+  function paintAeRefs() {
+    var a = editingAsset;
+    if (!a) return;
+    $("#asset-edit-ref-count").textContent = a.refs.length + "/" + AE_REF_MAX;
+    $("#asset-edit-refs").innerHTML =
+      (a.refs.length >= AE_REF_MAX ? "" : '<button type="button" class="ws-ae-ref-add" data-act="ae-add-ref" aria-label="添加参考图" title="添加参考图">' + AE_ICON_PLUS + "</button>") +
+      a.refs.map(function (src, i) {
+        return '<span class="ws-ae-ref"><img src="' + escAttr(src) + '" alt="参考图 ' + (i + 1) + '">' +
+          '<button type="button" data-act="ae-remove-ref" data-ref="' + i + '" aria-label="移除参考图 ' + (i + 1) + '" title="移除">' + AE_ICON_X + "</button></span>";
+      }).join("");
+  }
+
+  function paintAeMenus() {
+    var a = editingAsset;
+    if (!a) return;
+    var m = aeModel();
+    $("#asset-edit-model-label").textContent = m.name;
+    $("#asset-edit-quality-label").textContent = (m.qualities ? a.quality.replace("画质", "") + " · " : "") + a.res;
+    ["model", "quality"].forEach(function (key) {
+      var open = a.menu === key;
+      $("#asset-edit-" + key).setAttribute("aria-expanded", open ? "true" : "false");
+      $("#asset-edit-" + key + "-menu").hidden = !open;
+    });
+    if (a.menu === "model") {
+      var group = "";
+      $("#asset-edit-model-menu").innerHTML = AE_MODELS.map(function (item) {
+        var head = item.group !== group ? '<div class="ws-ae-menu-group">' + item.group + "</div>" : "";
+        var on = item.id === m.id;
+        group = item.group;
+        return head + '<button type="button" role="option" class="ws-ae-menu-item' + (on ? " on" : "") + '" aria-selected="' + (on ? "true" : "false") +
+          '" data-act="ae-set-model" data-value="' + item.id + '"><span>' + item.name + "</span>" +
+          (item.badge ? "<em>" + item.badge + "</em>" : "") + (item.tag ? "<small>" + item.tag + "</small>" : "") + "</button>";
+      }).join("");
+    }
+    if (a.menu === "quality") {
+      var seg = function (title, act, list, current) {
+        return '<div class="ws-ae-seg-label">' + title + '</div><div class="ws-ae-seg" role="radiogroup" aria-label="' + title + '">' +
+          list.map(function (value) {
+            var on = value === current;
+            return '<button type="button" role="radio" aria-checked="' + (on ? "true" : "false") + '" class="' + (on ? "on" : "") +
+              '" data-act="' + act + '" data-value="' + value + '">' + value.replace("画质", "") + "</button>";
+          }).join("") + "</div>";
+      };
+      $("#asset-edit-quality-menu").innerHTML =
+        (m.qualities ? seg("画质", "ae-set-quality", m.qualities, a.quality) : "") +
+        seg("分辨率", "ae-set-res", m.resolutions, a.res);
+    }
+  }
+
+  function paintAeSwitches() {
+    var a = editingAsset;
+    if (!a) return;
+    [["#asset-edit-audio-switch", a.audioOn], ["#asset-edit-match", a.matchOn], ["#asset-edit-reverse", a.reverseOn]].forEach(function (pair) {
+      $(pair[0]).classList.toggle("on", pair[1]);
+      $(pair[0]).setAttribute("aria-checked", pair[1] ? "true" : "false");
+    });
+    $("#asset-edit-audio-upload").hidden = !a.audioOn;
+  }
+
+  function paintAeBusy() {
+    var a = editingAsset;
+    if (!a) return;
+    var gen = $("#asset-edit-generate");
+    var rewrite = $("#asset-edit-rewrite");
+    gen.disabled = a.generating;
+    gen.innerHTML = a.generating
+      ? AE_SPIN + "生成中…"
+      : AE_TEXT[a.kind].gen + '<span class="ws-ae-cost">' + AE_ICON_SPARK + AE_GEN_COST + "</span>";
+    gen.setAttribute("aria-label", a.generating ? "生成中" : AE_TEXT[a.kind].gen + "，消耗 " + AE_GEN_COST + " 积分");
+    rewrite.disabled = a.rewriting || a.generating;
+    rewrite.innerHTML = a.rewriting ? AE_SPIN + "改写中…" : AE_ICON_SPARK + "AI 改写";
+    $("#asset-edit-prompt").readOnly = a.rewriting;
+    $("#asset-edit-undo").hidden = a.undoPrompt == null || a.rewriting;
+    $("#asset-edit-loading").hidden = !a.generating;
+    $("#asset-edit-badge").hidden = !a.generated || a.generating;
+    $("#asset-edit-save").disabled = a.generating;
+    $("#asset-edit-save").title = a.generating ? "图片生成完成后可保存" : "";
+  }
+
+  function aeShowConfirm(show, keepFocus) {
+    $("#asset-edit-confirm").hidden = !show;
+    $$(".ws-ae-head, .ws-ae-body, .ws-ae-foot").forEach(function (el) { el.inert = show; });
+    if (keepFocus) return;
+    setTimeout(function () {
+      var target = show ? $('[data-act="ae-keep-editing"]') : $(".ws-ae");
+      if (target) target.focus();
+    }, 0);
+  }
+
+  function aeCloseMenu() {
+    if (!editingAsset || !editingAsset.menu) return false;
+    editingAsset.menu = null;
+    paintAeEps(false);
+    paintAeMenus();
+    return true;
+  }
+
+  function openAssetEdit(id, kind, byKeyboard) {
+    var target = resolveEditTarget(id, kind);
+    if (!target) {
+      ReplicaUI.toast("找不到该资产");
+      return;
+    }
+    var text = AE_TEXT[target.kind];
+    editingAsset = {
+      kind: target.kind,
+      id: target.id,
+      char: target.char || null,
+      scene: target.scene || null,
+      prop: target.prop || null,
+      look: target.look || null,
+      eps: target.eps.slice(),
+      hadCurrentEp: target.eps.indexOf(EPISODE) > -1,
+      refs: target.refs.slice(),
+      image: target.image,
+      initialImage: target.image,
+      initialVoice: target.voice,
+      audioOn: target.audioOn,
+      rev: 0,
+      menu: null,
+      matchOn: false,
+      reverseOn: false,
+      model: "gpt-2",
+      quality: "高清画质",
+      res: "1K",
+      generating: false,
+      generated: false,
+      rewriting: false,
+      undoPrompt: null,
+      filePurpose: "",
+      token: ++aeToken,
+      returnFocus: byKeyboard ? { id: target.id, kind: target.kind } : null
+    };
+    $("#asset-edit-title").textContent = text.title;
+    $("#asset-edit-name-label").textContent = text.name;
+    $("#asset-edit-prompt-label").textContent = text.prompt;
+    $("#asset-edit-prompt").placeholder = text.placeholder;
+    $("#asset-edit-name").value = target.name;
+    $("#asset-edit-prompt").value = target.prompt;
+    $("#asset-edit-voice").value = target.voice;
+    $("#asset-edit-img").src = target.image;
+    $("#asset-edit-img").alt = target.name;
+    $("#asset-edit-voice-block").hidden = target.kind !== "char";
+    aeSetNameError(false);
+    aeSetPromptError("");
+    aeShowConfirm(false, true);
+    paintAeEps(false);
+    paintAeRefs();
+    paintAeMenus();
+    paintAeSwitches();
+    paintAeBusy();
+    aeSyncCount();
+    editingAsset.initial = aeFormState();
+    aeSyncDirty();
+    $("#asset-edit-modal").classList.add("open");
+    $(".ws-ae-info").scrollTop = 0;
+    setTimeout(function () { $(".ws-ae").focus(); }, 0);
+  }
+
+  function aeRestoreFocus(back) {
+    if (!back) return;
+    var btn = $$('[data-act="edit-asset"]').find(function (el) {
+      return el.dataset.assetId === back.id && el.dataset.assetKind === back.kind;
+    });
+    if (btn) btn.focus();
+  }
+
+  function closeAssetEdit() {
+    var back = editingAsset && editingAsset.returnFocus;
+    editingAsset = null;
+    aeShowConfirm(false, true);
+    $("#asset-edit-modal").classList.remove("open");
+    aeRestoreFocus(back);
+  }
+
+  /* 关闭、取消、点遮罩、Esc 都走这里：有修改时先确认 */
+  function requestCloseAssetEdit() {
+    if (!editingAsset) return;
+    aeCloseMenu();
+    if (aeIsDirty()) {
+      aeShowConfirm(true);
+      return;
+    }
+    closeAssetEdit();
+  }
+
+  function saveAssetEdit() {
+    var a = editingAsset;
+    if (!a || a.generating) return;
+    var name = $("#asset-edit-name").value.trim();
+    if (!name) {
+      aeSetNameError(true);
+      $("#asset-edit-name").focus();
+      return;
+    }
+    if (!aeIsDirty()) {
+      closeAssetEdit();
+      return;
+    }
+    var prompt = $("#asset-edit-prompt").value;
+    var voice = $("#asset-edit-voice").value.trim();
+    var epsText = epsToText(a.eps);
+    var imageChanged = a.image !== a.initialImage;
+    var nameChanged = false;
+    if (a.kind === "char") {
+      var c = a.char;
+      if (a.look) {
+        nameChanged = a.look.name !== name;
+        a.look.name = name;
+        a.look.prompt = prompt;
+        a.look.eps = epsText;
+        if (voice !== a.initialVoice) a.look.voice = voice;
+        if (imageChanged) a.look.sheet = a.image;
+        if (a.look === (c.looksList || [])[0]) c.look = name.indexOf(c.name + "-") === 0 ? name.slice(c.name.length + 1) : name;
+      } else {
+        nameChanged = c.name !== name;
+        c.name = name;
+        c.prompt = prompt;
+        c.eps = a.eps.slice();
+        if (voice !== a.initialVoice) c.voice = voice;
+      }
+      if (imageChanged) c.sheet = a.image;
+      c.voiceAudioOn = a.audioOn;
+    } else if (a.kind === "scene") {
+      var sc = a.scene;
+      if (a.look) {
+        nameChanged = a.look.name !== name;
+        a.look.name = name;
+        a.look.prompt = prompt;
+        a.look.eps = epsText;
+        if (imageChanged) { a.look.image = a.image; a.look.sheet = a.image; }
+        if (D.stageScenes[a.id]) {
+          D.stageScenes[a.id].name = name;
+          if (imageChanged) D.stageScenes[a.id].image = a.image;
+        }
+        if (a.look === sc.looksList[0]) {
+          sc.name = name;
+          if (imageChanged) sc.image = a.image;
+        }
+      } else {
+        nameChanged = sc.name !== name;
+        sc.name = name;
+        sc.prompt = prompt;
+        sc.eps = a.eps.slice();
+        if (imageChanged) sc.image = a.image;
+      }
+    } else {
+      nameChanged = a.prop.name !== name;
+      a.prop.name = name;
+      a.prop.prompt = prompt;
+      a.prop.eps = a.eps.slice();
+      if (imageChanged) a.prop.image = a.image;
+    }
+    var back = a.returnFocus;
+    a.returnFocus = null;
+    closeAssetEdit();
+    if (nameChanged) state.promptShot = null;
+    renderAll();
+    aeRestoreFocus(back);
+    ReplicaUI.toast("已保存");
+  }
+
+  function aePickFile(purpose) {
+    var input = $("#asset-edit-file");
+    editingAsset.filePurpose = purpose;
+    input.value = "";
+    input.click();
+  }
+
+  $("#asset-edit-file").addEventListener("change", function () {
+    var a = editingAsset;
+    var file = this.files && this.files[0];
+    if (!a || !file) return;
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type)) {
+      ReplicaUI.toast("仅支持 PNG、JPG、WebP 图片");
+      return;
+    }
+    var token = a.token;
+    var purpose = a.filePurpose;
+    var reader = new FileReader();
+    reader.onload = function () {
+      if (!editingAsset || editingAsset.token !== token) return;
+      if (purpose === "ref") {
+        if (a.refs.length >= AE_REF_MAX) return;
+        a.refs.push(reader.result);
+        a.rev++;
+        paintAeRefs();
+      } else {
+        a.image = reader.result;
+        a.generated = false;
+        a.rev++;
+        $("#asset-edit-img").src = a.image;
+        paintAeBusy();
+        if (a.reverseOn && D.credits >= AE_REVERSE_COST) {
+          D.credits -= AE_REVERSE_COST;
+          $("#credits").textContent = ReplicaUI.credits();
+          ReplicaUI.toast("演示：已更换图片并反推描述 · " + AE_REVERSE_COST + " 积分");
+        } else {
+          ReplicaUI.toast(a.reverseOn ? "已更换图片；积分不足，未反推描述" : "已更换图片");
+        }
+      }
+      aeSyncDirty();
+    };
+    reader.readAsDataURL(file);
+  });
+
+  function aeRewrite() {
+    var a = editingAsset;
+    var area = $("#asset-edit-prompt");
+    var before = area.value;
+    if (!a || a.rewriting || a.generating) return;
+    if (!before.trim()) {
+      aeSetPromptError("请先填写描述，再使用 AI 改写");
+      area.focus();
+      return;
+    }
+    var token = a.token;
+    var extra = AE_TEXT[a.kind].rewrite;
+    a.rewriting = true;
+    paintAeBusy();
+    setTimeout(function () {
+      if (!editingAsset || editingAsset.token !== token) return;
+      a.rewriting = false;
+      if (before.indexOf(extra) === -1) {
+        area.value = (before.trim().replace(/[。！？；，.!?;,\s]+$/, "") + "。" + extra).slice(0, 2000);
+        a.undoPrompt = before;
+        ReplicaUI.toast("已改写描述");
+      } else {
+        ReplicaUI.toast("描述已是改写后的版本");
+      }
+      aeSyncCount();
+      paintAeBusy();
+      aeSyncDirty();
+    }, 900);
+  }
+
+  function aeGenerate() {
+    var a = editingAsset;
+    var area = $("#asset-edit-prompt");
+    if (!a || a.generating || a.rewriting) return;
+    if (!area.value.trim()) {
+      aeSetPromptError("请先填写描述，再生成图片");
+      area.focus();
+      return;
+    }
+    if (D.credits < AE_GEN_COST) {
+      ReplicaUI.toast("积分不足，本次生成需要 " + AE_GEN_COST + " 积分");
+      return;
+    }
+    var token = a.token;
+    D.credits -= AE_GEN_COST;
+    $("#credits").textContent = ReplicaUI.credits();
+    a.generating = true;
+    aeCloseMenu();
+    paintAeBusy();
+    setTimeout(function () {
+      if (!editingAsset || editingAsset.token !== token) return;
+      a.generating = false;
+      a.generated = true;
+      a.rev++;
+      paintAeBusy();
+      aeSyncDirty();
+      ReplicaUI.toast("生成完成，保存后生效");
+    }, 1800);
+  }
+
+  function assetEditAction(act, t) {
+    var a = editingAsset;
+    if (!a) return;
+    if (act === "cancel-asset-edit") { requestCloseAssetEdit(); return; }
+    if (act === "save-asset-edit") { saveAssetEdit(); return; }
+    if (act === "ae-keep-editing") { aeShowConfirm(false); return; }
+    if (act === "ae-discard") { closeAssetEdit(); return; }
+    if (act === "ae-toggle-menu") {
+      a.menu = a.menu === t.dataset.menu ? null : t.dataset.menu;
+      paintAeEps(true);
+      paintAeMenus();
+      return;
+    }
+    if (act === "ae-toggle-ep") {
+      var ep = Number(t.dataset.ep);
+      var at = a.eps.indexOf(ep);
+      if (at > -1) a.eps.splice(at, 1);
+      else {
+        a.eps.push(ep);
+        a.eps.sort(function (x, y) { return x - y; });
+      }
+      t.classList.toggle("on", at === -1);
+      t.setAttribute("aria-pressed", at === -1 ? "true" : "false");
+      paintAeEps(false);
+      aeSyncDirty();
+      return;
+    }
+    if (act === "ae-clear-eps") {
+      a.eps = [];
+      paintAeEps(true);
+      aeSyncDirty();
+      return;
+    }
+    if (act === "ae-add-ref") { aePickFile("ref"); return; }
+    if (act === "ae-remove-ref") {
+      a.refs.splice(Number(t.dataset.ref), 1);
+      a.rev++;
+      paintAeRefs();
+      aeSyncDirty();
+      return;
+    }
+    if (act === "ae-toggle-audio") {
+      a.audioOn = !a.audioOn;
+      paintAeSwitches();
+      aeSyncDirty();
+      return;
+    }
+    if (act === "ae-match") { a.matchOn = !a.matchOn; paintAeSwitches(); return; }
+    if (act === "ae-reverse") { a.reverseOn = !a.reverseOn; paintAeSwitches(); return; }
+    if (act === "ae-set-model") {
+      a.model = t.dataset.value;
+      var m = aeModel();
+      if (m.qualities && m.qualities.indexOf(a.quality) === -1) a.quality = "高清画质";
+      if (m.resolutions.indexOf(a.res) === -1) a.res = m.resolutions.indexOf("1K") > -1 ? "1K" : m.resolutions[0];
+      a.menu = null;
+      paintAeMenus();
+      $("#asset-edit-model").focus();
+      return;
+    }
+    if (act === "ae-set-quality") { a.quality = t.dataset.value; paintAeMenus(); return; }
+    if (act === "ae-set-res") { a.res = t.dataset.value; paintAeMenus(); return; }
+    if (act === "ae-replace") { aePickFile("image"); return; }
+    if (act === "ae-download") {
+      var link = document.createElement("a");
+      link.href = a.image;
+      link.download = ($("#asset-edit-name").value.trim() || "asset").replace(/[\\/:*?"<>|]/g, "_");
+      link.click();
+      return;
+    }
+    if (act === "ae-rewrite") { aeRewrite(); return; }
+    if (act === "ae-undo-rewrite") {
+      if (a.undoPrompt == null) return;
+      $("#asset-edit-prompt").value = a.undoPrompt;
+      a.undoPrompt = null;
+      aeSyncCount();
+      paintAeBusy();
+      aeSyncDirty();
+      $("#asset-edit-prompt").focus();
+      return;
+    }
+    if (act === "ae-generate") { aeGenerate(); return; }
+    if (act === "ae-upload-audio") { ReplicaUI.toast("演示：上传参考音频"); return; }
+    if (act === "ae-history") { ReplicaUI.toast("演示：查看生成历史"); return; }
+    if (act === "ae-paint") { ReplicaUI.toast("演示：P 图"); }
+  }
+
+  function aeTrapTab(e) {
+    var root = $("#asset-edit-confirm").hidden ? $(".ws-ae") : $("#asset-edit-confirm");
+    var items = $$("button, input, textarea", root).filter(function (el) {
+      return !el.disabled && el.type !== "file" && el.offsetParent !== null && !el.closest("[inert]");
+    });
+    if (!items.length) return;
+    var active = document.activeElement;
+    var first = items[0];
+    var last = items[items.length - 1];
+    if (!root.contains(active) || active === root) {
+      e.preventDefault();
+      (e.shiftKey ? last : first).focus();
+    } else if (e.shiftKey && active === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+
+  /* 在弹窗内按下并拖到遮罩上松开（如选中文字）不算点击遮罩 */
+  document.addEventListener("pointerdown", function (e) {
+    aeMaskDown = e.target.id === "asset-edit-modal";
+  });
 
   /* ---------- 提示词 ---------- */
 
@@ -1325,6 +1990,11 @@
       return;
     }
     if (e.target.id === "asset-delete-modal") { closeAssetDelete(); return; }
+    if (e.target.id === "asset-edit-modal") {
+      if (aeMaskDown && !aeCloseMenu()) requestCloseAssetEdit();
+      return;
+    }
+    if (editingAsset && editingAsset.menu && !e.target.closest('.ws-ae-pop, [data-act="ae-toggle-menu"]')) aeCloseMenu();
     if (e.target.id === "script-preview-modal") { closeScriptPreview(); return; }
     if (!t) return;
     if (t.dataset.stageOpen) { openStage(t.dataset.stageOpen, false); return; }
@@ -1431,8 +2101,16 @@
       openAssetDelete({ id: t.dataset.assetId, kind: t.dataset.assetKind, name: t.dataset.assetName });
       return;
     }
+    if (act === "edit-asset") {
+      openAssetEdit(t.dataset.assetId, t.dataset.assetKind, e.detail === 0);
+      return;
+    }
     if (act === "cancel-asset-delete") { closeAssetDelete(); return; }
     if (act === "confirm-asset-delete") { confirmAssetDelete(); return; }
+    if (act === "cancel-asset-edit" || act === "save-asset-edit" || (act && act.indexOf("ae-") === 0)) {
+      assetEditAction(act, t);
+      return;
+    }
     if (act === "list") $("#list-drawer").classList.add("open");
     if (act === "close-list") $("#list-drawer").classList.remove("open");
     if (act === "toggle-ratio") {
@@ -2415,12 +3093,27 @@
 
   document.addEventListener("input", function (e) {
     if (e.target && e.target.id === "ws-vol-range") setVolume(e.target.value);
+    if (editingAsset && e.target && e.target.closest && e.target.closest("#asset-edit-modal")) {
+      if (e.target.id === "asset-edit-prompt") { aeSyncCount(); aeSetPromptError(""); }
+      if (e.target.id === "asset-edit-name") aeSetNameError(false);
+      aeSyncDirty();
+    }
   });
 
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && $("#style-confirm").classList.contains("open")) return;
     if (e.key === "Escape" && $("#asset-delete-modal").classList.contains("open")) {
       closeAssetDelete();
+      return;
+    }
+    if ($("#asset-edit-modal").classList.contains("open")) {
+      /* 弹窗打开时接管键盘，避免触发站位图等全局快捷键；输入法组合中的 Esc 不关闭 */
+      if (e.isComposing) return;
+      if (e.key === "Tab") aeTrapTab(e);
+      if (e.key === "Escape") {
+        if (!$("#asset-edit-confirm").hidden) aeShowConfirm(false);
+        else if (!aeCloseMenu()) requestCloseAssetEdit();
+      }
       return;
     }
     var hotKey = e.target.closest && e.target.closest("[data-stage-open]");
